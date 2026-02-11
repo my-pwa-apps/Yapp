@@ -17,9 +17,9 @@ export const MessageBubble: React.FC<Props> = ({ message, isMine, showSender, me
     );
   }
 
-  const formatTime = (ts: any) => {
+  const formatTime = (ts: number | undefined) => {
     if (!ts) return '';
-    const date = ts.toDate ? ts.toDate() : new Date(ts);
+    const date = new Date(ts);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
@@ -31,11 +31,10 @@ export const MessageBubble: React.FC<Props> = ({ message, isMine, showSender, me
         return (
           <div className="message-media">
             <img
-              src={message.mediaURL || message.imageURL}
+              src={message.mediaURL}
               alt="Shared image"
               className="message-image"
               loading="lazy"
-              onClick={() => window.open(message.mediaURL || message.imageURL, '_blank')}
             />
           </div>
         );

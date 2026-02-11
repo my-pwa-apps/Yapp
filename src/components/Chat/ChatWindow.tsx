@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMessages, sendMessage, sendMediaMessage, markMessagesRead, setTyping } from '../../hooks/useMessages';
 import { getUserProfile, membersToArray } from '../../hooks/useChats';
 import { compressImage, blobToDataURL } from '../../hooks/useMediaUpload';
@@ -33,11 +33,12 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // Detect self-chat
-  const isSelfChat =
-    chat.type === 'direct' &&
-    membersToArray(chat.members).length === 1 &&
-    membersToArray(chat.members)[0] === currentUid;
+  // Memoize member list & self-chat detection
+  const members = useMemo(() => membersToArray(chat.members), [chat.members]);
+  const isSelfChat = useMemo(
+    () => chat.type === 'direct' && members.length === 1 && members[0] === currentUid,
+    [chat.type, members, currentUid]
+  );
 
   // Resolve chat name / other profile
   useEffect(() => {
@@ -47,7 +48,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
       setChatName('You');
       setOtherProfile(null);
     } else {
-      const otherId = membersToArray(chat.members).find((m) => m !== currentUid);
+      const otherId = members.find((m) => m !== currentUid);
       if (otherId) {
         getUserProfile(otherId).then((p) => {
           if (p) {
@@ -78,6 +79,14 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
   useEffect(() => {
     inputRef.current?.focus();
   }, [chat.id]);
+
+  // Close attach menu on outside click
+  useEffect(() => {
+    if (!showAttachMenu) return;
+    const handleClick = () => setShowAttachMenu(false);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [showAttachMenu]);
 
   const handleSend = async () => {
     const trimmed = text.trim();
@@ -119,7 +128,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
       return otherProfile.online ? 'online' : 'offline';
     }
     if (chat.type === 'group') {
-      return `${membersToArray(chat.members).length} members`;
+      return `${members.length} members`;
     }
     return '';
   };
@@ -179,7 +188,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
             message={msg}
             isMine={msg.senderId === currentUid}
             showSender={chat.type === 'group'}
-            memberCount={membersToArray(chat.members).length}
+            memberCount={members.length}
           />
         ))}
         <div ref={bottomRef} />

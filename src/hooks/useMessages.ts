@@ -43,28 +43,14 @@ export async function sendMessage(
   senderName: string,
   text: string
 ) {
-  const timestamp = Date.now();
-
-  // Add message
-  const msgRef = push(ref(db, `messages/${chatId}`));
-  await set(msgRef, {
+  await _pushMessage(chatId, {
     chatId,
     senderId,
     senderName,
     text,
-    timestamp,
+    timestamp: Date.now(),
     readBy: { [senderId]: true },
     type: 'text',
-  });
-
-  // Update chat's lastMessage
-  await update(ref(db, `chats/${chatId}`), {
-    lastMessage: {
-      text,
-      senderId,
-      senderName,
-      timestamp,
-    },
   });
 }
 
@@ -80,27 +66,32 @@ export async function sendMediaMessage(
   previewText: string,
   extra?: { voiceDuration?: number }
 ) {
-  const timestamp = Date.now();
-
-  const msgRef = push(ref(db, `messages/${chatId}`));
-  await set(msgRef, {
+  await _pushMessage(chatId, {
     chatId,
     senderId,
     senderName,
     text: previewText,
-    timestamp,
+    timestamp: Date.now(),
     readBy: { [senderId]: true },
     type,
     mediaURL,
     ...(extra?.voiceDuration !== undefined ? { voiceDuration: extra.voiceDuration } : {}),
   });
+}
 
+/** Internal: push a message and update lastMessage in one place */
+async function _pushMessage(
+  chatId: string,
+  msg: Record<string, unknown>
+) {
+  const msgRef = push(ref(db, `messages/${chatId}`));
+  await set(msgRef, msg);
   await update(ref(db, `chats/${chatId}`), {
     lastMessage: {
-      text: previewText,
-      senderId,
-      senderName,
-      timestamp,
+      text: msg.text,
+      senderId: msg.senderId,
+      senderName: msg.senderName,
+      timestamp: msg.timestamp,
     },
   });
 }

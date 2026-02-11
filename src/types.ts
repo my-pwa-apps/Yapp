@@ -37,9 +37,7 @@ export interface Message {
   readBy: Record<string, boolean>;
   type: 'text' | 'image' | 'gif' | 'sticker' | 'voice' | 'system';
   mediaURL?: string;
-  mediaThumbnail?: string;
   voiceDuration?: number;
-  imageURL?: string;
 }
 
 export interface CallData {

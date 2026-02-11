@@ -49,9 +49,9 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
     return name.charAt(0).toUpperCase();
   };
 
-  const formatTime = (ts: any) => {
+  const formatTime = (ts: number | undefined) => {
     if (!ts) return '';
-    const date = ts.toDate ? ts.toDate() : new Date(ts);
+    const date = new Date(ts);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     if (diff < 86400000 && now.getDate() === date.getDate()) {

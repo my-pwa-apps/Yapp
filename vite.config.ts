@@ -33,9 +33,9 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/firestore\.googleapis\.com\/.*/i,
+            urlPattern: /^https:\/\/.*firebasedatabase\.app\/.*/i,
             handler: 'NetworkFirst',
-            options: { cacheName: 'firestore-cache', expiration: { maxEntries: 50, maxAgeSeconds: 300 } },
+            options: { cacheName: 'rtdb-cache', expiration: { maxEntries: 50, maxAgeSeconds: 300 } },
           },
         ],
       },

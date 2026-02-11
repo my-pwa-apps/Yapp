@@ -68,7 +68,6 @@ export const VoiceRecorder: React.FC<Props> = ({ onSend, onCancel }) => {
 
   const handleCancel = () => {
     stopRecording();
-    if (audioUrl) URL.revokeObjectURL(audioUrl);
     onCancel();
   };
 
@@ -82,6 +81,13 @@ export const VoiceRecorder: React.FC<Props> = ({ onSend, onCancel }) => {
       }
     };
   }, [startRecording]);
+
+  // Revoke blob URL on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
+    };
+  }, [audioUrl]);
 
   const formatDuration = (secs: number) => {
     const m = Math.floor(secs / 60);

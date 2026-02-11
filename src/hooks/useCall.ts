@@ -8,7 +8,6 @@ import {
   onChildAdded,
   push,
   remove,
-  off,
 } from 'firebase/database';
 import { db } from '../firebase';
 import type { CallData } from '../types';
@@ -47,25 +46,27 @@ export function useCall(currentUid: string, currentName: string): UseCallReturn 
 
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const callIdRef = useRef<string | null>(null);
-  const listenersRef = useRef<(() => void)[]>([]);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const unsubscribersRef = useRef<(() => void)[]>([]);
 
   const cleanup = useCallback(() => {
     // Close all peer connections
     peerConnectionsRef.current.forEach((pc) => pc.close());
     peerConnectionsRef.current.clear();
 
-    // Stop local stream tracks
-    localStream?.getTracks().forEach((t) => t.stop());
+    // Stop local stream tracks (use ref to avoid stale closure)
+    localStreamRef.current?.getTracks().forEach((t) => t.stop());
 
     // Remove all Firebase listeners
-    listenersRef.current.forEach((unsub) => unsub());
-    listenersRef.current = [];
+    unsubscribersRef.current.forEach((unsub) => unsub());
+    unsubscribersRef.current = [];
 
     setLocalStream(null);
+    localStreamRef.current = null;
     setRemoteStreams(new Map());
     setIsMuted(false);
     setIsVideoOff(false);
-  }, [localStream]);
+  }, []);
 
   // Listen for incoming calls
   useEffect(() => {
@@ -139,7 +140,7 @@ export function useCall(currentUid: string, currentName: string): UseCallReturn 
         pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
       }
     });
-    listenersRef.current.push(() => off(remoteCandidatesRef));
+    unsubscribersRef.current.push(unsubCandidates);
 
     peerConnectionsRef.current.set(remoteUid, pc);
     return pc;
@@ -152,6 +153,7 @@ export function useCall(currentUid: string, currentName: string): UseCallReturn 
   ) => {
     const stream = await getMediaStream(callType);
     setLocalStream(stream);
+    localStreamRef.current = stream;
 
     // Create call record in Firebase
     const callRef = push(ref(db, 'calls'));
@@ -199,7 +201,7 @@ export function useCall(currentUid: string, currentName: string): UseCallReturn 
           await update(ref(db, `calls/${callId}`), { status: 'active' });
         }
       });
-      listenersRef.current.push(() => off(answerRef));
+      unsubscribersRef.current.push(unsubAnswer);
     }
 
     // Listen for call status changes
@@ -215,7 +217,7 @@ export function useCall(currentUid: string, currentName: string): UseCallReturn 
         }, 2000);
       }
     });
-    listenersRef.current.push(() => off(statusRef));
+    unsubscribersRef.current.push(unsubStatus);
   };
 
   const acceptCall = async () => {
@@ -223,6 +225,7 @@ export function useCall(currentUid: string, currentName: string): UseCallReturn 
 
     const stream = await getMediaStream(callData.callType);
     setLocalStream(stream);
+    localStreamRef.current = stream;
     setCallState('active');
 
     const callId = callIdRef.current;
@@ -278,7 +281,7 @@ export function useCall(currentUid: string, currentName: string): UseCallReturn 
         }, 2000);
       }
     });
-    listenersRef.current.push(() => off(statusRef));
+    unsubscribersRef.current.push(unsubStatus);
   };
 
   const rejectCall = () => {
@@ -305,8 +308,9 @@ export function useCall(currentUid: string, currentName: string): UseCallReturn 
   };
 
   const toggleMute = () => {
-    if (localStream) {
-      localStream.getAudioTracks().forEach((t) => {
+    const stream = localStreamRef.current;
+    if (stream) {
+      stream.getAudioTracks().forEach((t) => {
         t.enabled = !t.enabled;
       });
       setIsMuted((prev) => !prev);
@@ -314,8 +318,9 @@ export function useCall(currentUid: string, currentName: string): UseCallReturn 
   };
 
   const toggleVideo = () => {
-    if (localStream) {
-      localStream.getVideoTracks().forEach((t) => {
+    const stream = localStreamRef.current;
+    if (stream) {
+      stream.getVideoTracks().forEach((t) => {
         t.enabled = !t.enabled;
       });
       setIsVideoOff((prev) => !prev);
@@ -325,7 +330,11 @@ export function useCall(currentUid: string, currentName: string): UseCallReturn 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      cleanup();
+      peerConnectionsRef.current.forEach((pc) => pc.close());
+      peerConnectionsRef.current.clear();
+      localStreamRef.current?.getTracks().forEach((t) => t.stop());
+      unsubscribersRef.current.forEach((unsub) => unsub());
+      unsubscribersRef.current = [];
     };
   }, []);
 
