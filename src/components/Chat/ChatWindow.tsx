@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ref, onValue } from 'firebase/database';
+import { db } from '../../firebase';
 import { useMessages, sendMessage, sendMediaMessage, markMessagesRead, setTyping } from '../../hooks/useMessages';
 import { getUserProfile, membersToArray } from '../../hooks/useChats';
 import { compressImage, blobToDataURL } from '../../hooks/useMediaUpload';
@@ -40,24 +42,29 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     [chat.type, members, currentUid]
   );
 
-  // Resolve chat name / other profile
+  // Resolve chat name / other profile (live listener for direct chats)
   useEffect(() => {
     if (chat.type === 'group') {
       setChatName(chat.name || 'Group');
-    } else if (isSelfChat) {
+      return;
+    }
+    if (isSelfChat) {
       setChatName('You');
       setOtherProfile(null);
-    } else {
-      const otherId = members.find((m) => m !== currentUid);
-      if (otherId) {
-        getUserProfile(otherId).then((p) => {
-          if (p) {
-            setChatName(p.displayName);
-            setOtherProfile(p);
-          }
-        });
-      }
+      return;
     }
+    const otherId = members.find((m) => m !== currentUid);
+    if (!otherId) return;
+    // Live listener so online/offline status updates in real-time
+    const userRef = ref(db, `users/${otherId}`);
+    const unsub = onValue(userRef, (snap) => {
+      if (snap.exists()) {
+        const p = snap.val() as UserProfile;
+        setChatName(p.displayName);
+        setOtherProfile(p);
+      }
+    });
+    return () => unsub();
   }, [chat, currentUid, isSelfChat]);
 
   // Scroll to bottom on new messages
@@ -80,12 +87,17 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     inputRef.current?.focus();
   }, [chat.id]);
 
-  // Close attach menu on outside click
+  // Close attach menu on outside click (delayed to avoid catching the opening click)
   useEffect(() => {
     if (!showAttachMenu) return;
-    const handleClick = () => setShowAttachMenu(false);
-    document.addEventListener('click', handleClick);
-    return () => document.removeEventListener('click', handleClick);
+    const handleClick = (e: MouseEvent) => {
+      const wrapper = document.querySelector('.attach-wrapper');
+      if (wrapper && wrapper.contains(e.target as Node)) return;
+      setShowAttachMenu(false);
+    };
+    // Use setTimeout so the listener isn't added during the same click event
+    const id = setTimeout(() => document.addEventListener('click', handleClick), 0);
+    return () => { clearTimeout(id); document.removeEventListener('click', handleClick); };
   }, [showAttachMenu]);
 
   const handleSend = async () => {
