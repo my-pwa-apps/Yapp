@@ -11,7 +11,7 @@ export default defineConfig({
       manifest: {
         name: "Yappin'",
         short_name: "Yappin'",
-        description: 'Fast, secure messaging for everyone',
+        description: 'Keep yappin\' man',
         theme_color: '#65a30d',
         background_color: '#111B21',
         display: 'standalone',

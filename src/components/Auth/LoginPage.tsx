@@ -50,7 +50,7 @@ export const LoginPage: React.FC = () => {
         <div className="login-logo">
           <YappLogo size={72} />
           <h1>Yappin'</h1>
-          <p className="login-subtitle">Fast, secure messaging for everyone</p>
+          <p className="login-subtitle">Keep yappin' man</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">

@@ -99,6 +99,7 @@ export const AppLayout: React.FC = () => {
           <div className="no-chat">
             <YappLogo size={80} />
             <h2>Yappin'</h2>
+            <p className="app-subtitle">Keep yappin' man</p>
             <p>Select a chat or start a new conversation</p>
           </div>
         )}
