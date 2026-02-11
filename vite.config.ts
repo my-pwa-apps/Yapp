@@ -17,13 +17,13 @@ export default defineConfig({
         background_color: '#111B21',
         display: 'standalone',
         orientation: 'portrait',
-        scope: '/',
-        start_url: '/',
+        scope: '/Yapp/',
+        start_url: '/Yapp/',
         icons: [
-          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: '/Yapp/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/Yapp/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
           {
-            src: '/icons/icon-512.png',
+            src: '/Yapp/icons/icon-512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',
