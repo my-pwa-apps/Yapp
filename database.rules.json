@@ -1,0 +1,32 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid",
+        "online": {
+          ".write": "auth != null && auth.uid === $uid || newData.val() === false"
+        },
+        "lastSeen": {
+          ".write": "auth != null && auth.uid === $uid || newData.isNumber() === true"
+        }
+      }
+    },
+    "chats": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "messages": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "calls": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "callSignaling": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}

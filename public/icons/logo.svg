@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle with gradient - matching the 192x192 design -->
+  <circle cx="256" cy="256" r="248" fill="url(#green_gradient)" />
+  <!-- Border for the icon -->
+  <circle cx="256" cy="256" r="248" stroke="#84cc16" stroke-width="8" stroke-opacity="0.3" />
+  
+  <!-- Chat bubble shapes - stylized Y for Yappin - matching the 192x192 design -->
+  <path d="M274.67 168C334.67 168 384 217.33 384 277.33C384 337.33 334.67 386.67 274.67 386.67H200L150.67 437.33V386.67C129.33 373.33 114.67 357.33 114.67 277.33C114.67 217.33 165.33 168 224 168H274.67Z" fill="white" />
+  
+  <!-- Y shape inside the bubble -->
+  <path d="M205.33 229.33L240 277.33L274.67 229.33" stroke="#84cc16" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M240 277.33L240 325.33" stroke="#84cc16" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <!-- Small speech bubbles -->
+  <circle cx="320" cy="208" r="18.67" fill="#84cc16" opacity="0.8" />
+  <circle cx="349.33" cy="248" r="13.33" fill="#84cc16" opacity="0.6" />
+  <circle cx="368" cy="288" r="10.67" fill="#84cc16" opacity="0.4" />
+  
+  <!-- Define the gradient -->
+  <defs>
+    <linearGradient id="green_gradient" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#a3e635" />
+      <stop offset="1" stop-color="#65a30d" />
+    </linearGradient>
+  </defs>
+</svg>

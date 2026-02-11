@@ -1,0 +1,104 @@
+.login-page {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #65a30d 0%, #84cc16 50%, #a3e635 100%);
+  padding: 1rem;
+}
+
+.login-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 2.5rem 2rem;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.login-logo {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.login-logo h1 {
+  margin: 0.5rem 0 0;
+  font-size: 2rem;
+  color: #65a30d;
+}
+
+.login-subtitle {
+  color: #667781;
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.login-input {
+  padding: 0.85rem 1rem;
+  border: 2px solid #e9edef;
+  border-radius: 10px;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+  font-family: inherit;
+}
+
+.login-input:focus {
+  border-color: #65a30d;
+}
+
+.login-btn {
+  padding: 0.85rem;
+  background: #65a30d;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-family: inherit;
+}
+
+.login-btn:hover:not(:disabled) {
+  background: #84cc16;
+}
+
+.login-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.login-error {
+  color: #dc3545;
+  font-size: 0.85rem;
+  margin: 0;
+  text-align: center;
+}
+
+.login-toggle {
+  text-align: center;
+  margin-top: 1.5rem;
+  color: #667781;
+  font-size: 0.9rem;
+}
+
+.login-toggle button {
+  background: none;
+  border: none;
+  color: #65a30d;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
+.login-toggle button:hover {
+  text-decoration: underline;
+}
