@@ -4,31 +4,50 @@
       ".read": "auth != null",
       ".indexOn": ["email"],
       "$uid": {
-        ".read": "auth != null",
-        ".write": "auth != null && auth.uid === $uid",
-        "online": {
-          ".write": "auth != null && auth.uid === $uid || newData.val() === false"
-        },
-        "lastSeen": {
-          ".write": "auth != null && auth.uid === $uid || newData.isNumber() === true"
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "contacts": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "contactRequests": {
+      "$targetUid": {
+        ".read": "auth != null && auth.uid === $targetUid",
+        "$senderUid": {
+          ".write": "auth != null && (auth.uid === $senderUid || auth.uid === $targetUid)",
+          ".validate": "newData.hasChildren(['from', 'fromName', 'fromEmail', 'to', 'timestamp', 'status'])"
         }
       }
     },
     "chats": {
       ".read": "auth != null",
-      ".write": "auth != null"
+      "$chatId": {
+        ".write": "auth != null && (!data.exists() || data.child('members').child(auth.uid).exists())"
+      }
     },
     "messages": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      "$chatId": {
+        ".read": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
+        ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
+        "$msgId": {
+          ".validate": "newData.child('senderId').val() === auth.uid || newData.child('senderId').val() === 'system'"
+        }
+      }
     },
     "calls": {
       ".read": "auth != null",
-      ".write": "auth != null"
+      "$callId": {
+        ".write": "auth != null && (!data.exists() || data.child('participants').child(auth.uid).exists())"
+      }
     },
     "callSignaling": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      "$callId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
     }
   }
 }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { searchUsers, findOrCreateDirectChat } from '../../hooks/useChats';
+import { sendContactRequest } from '../../hooks/useContactRequests';
 import type { UserProfile } from '../../types';
 
 interface Props {
@@ -12,12 +13,14 @@ export const NewChatModal: React.FC<Props> = ({ currentUser, onClose, onChatCrea
   const [email, setEmail] = useState('');
   const [results, setResults] = useState<UserProfile[]>([]);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [searching, setSearching] = useState(false);
   const [creating, setCreating] = useState(false);
 
   const handleSearch = async () => {
     if (!email.trim()) return;
     setError('');
+    setSuccess('');
     setSearching(true);
     try {
       const users = await searchUsers(email.trim().toLowerCase(), currentUser.uid);
@@ -29,13 +32,24 @@ export const NewChatModal: React.FC<Props> = ({ currentUser, onClose, onChatCrea
     setSearching(false);
   };
 
-  const handleStartChat = async (user: UserProfile) => {
+  const handleSendRequest = async (user: UserProfile) => {
     setCreating(true);
+    setError('');
+    setSuccess('');
     try {
-      const chatId = await findOrCreateDirectChat(currentUser, user.uid);
-      onChatCreated(chatId);
+      const result = await sendContactRequest(currentUser, user);
+      if (result === 'sent') {
+        setSuccess(`Request sent to ${user.displayName}!`);
+        setResults([]);
+      } else if (result === 'already_sent') {
+        setError('Request already sent — waiting for them to accept');
+      } else if (result === 'already_contacts') {
+        // They're already contacts or reverse-request was auto-accepted — open chat
+        const chatId = await findOrCreateDirectChat(currentUser, user.uid);
+        onChatCreated(chatId);
+      }
     } catch {
-      setError('Failed to create chat');
+      setError('Failed to send request');
     }
     setCreating(false);
   };
@@ -87,6 +101,7 @@ export const NewChatModal: React.FC<Props> = ({ currentUser, onClose, onChatCrea
           </button>
 
           {error && <p className="modal-error">{error}</p>}
+          {success && <p className="modal-success">{success}</p>}
 
           {results.map((user) => (
             <div key={user.uid} className="user-result">
@@ -97,8 +112,8 @@ export const NewChatModal: React.FC<Props> = ({ currentUser, onClose, onChatCrea
                 <div className="user-result-name">{user.displayName}</div>
                 <div className="user-result-email">{user.email}</div>
               </div>
-              <button onClick={() => handleStartChat(user)} disabled={creating}>
-                Chat
+              <button onClick={() => handleSendRequest(user)} disabled={creating}>
+                Add
               </button>
             </div>
           ))}

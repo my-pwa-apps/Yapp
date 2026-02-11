@@ -50,3 +50,13 @@ export interface CallData {
   participants: Record<string, boolean>;
   createdAt: number;
 }
+
+export interface ContactRequest {
+  id: string;
+  from: string;
+  fromName: string;
+  fromEmail: string;
+  to: string;
+  timestamp: number;
+  status: 'pending' | 'accepted' | 'rejected';
+}

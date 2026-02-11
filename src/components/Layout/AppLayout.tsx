@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useChats, membersToArray } from '../../hooks/useChats';
 import { useCall } from '../../hooks/useCall';
+import { useContactRequests } from '../../hooks/useContactRequests';
 import { ChatList } from '../Chat/ChatList';
 import { ChatWindow } from '../Chat/ChatWindow';
 import { NewChatModal } from '../Chat/NewChatModal';
 import { NewGroupModal } from '../Chat/NewGroupModal';
 import { ProfilePanel } from '../Chat/ProfilePanel';
 import { CallScreen } from '../Chat/CallScreen';
+import { ContactRequestsModal } from '../Chat/ContactRequestsModal';
 import type { Chat } from '../../types';
 import { YappLogo } from '../YappLogo';
 import './AppLayout.css';
@@ -16,10 +18,12 @@ export const AppLayout: React.FC = () => {
   const { user, profile, signOut } = useAuth();
   const { chats, loading } = useChats(user?.uid);
   const call = useCall(user?.uid ?? '', profile?.displayName ?? '');
+  const contactRequests = useContactRequests(user?.uid);
   const [activeChat, setActiveChat] = useState<Chat | null>(null);
   const [showNewChat, setShowNewChat] = useState(false);
   const [showNewGroup, setShowNewGroup] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showRequests, setShowRequests] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
 
   // On mobile, hide sidebar when chat is selected
@@ -64,6 +68,14 @@ export const AppLayout: React.FC = () => {
               <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
                 <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12zM11 5h2v4h4v2h-4v4h-2v-4H7V9h4z"/>
               </svg>
+            </button>
+            <button className="icon-btn requests-btn" title="Contact requests" onClick={() => setShowRequests(true)}>
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+              </svg>
+              {contactRequests.length > 0 && (
+                <span className="requests-badge">{contactRequests.length}</span>
+              )}
             </button>
             <button className="icon-btn" title="Sign out" onClick={signOut}>
               <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
@@ -132,6 +144,18 @@ export const AppLayout: React.FC = () => {
         <ProfilePanel
           profile={profile!}
           onClose={() => setShowProfile(false)}
+        />
+      )}
+      {showRequests && (
+        <ContactRequestsModal
+          currentUser={profile!}
+          requests={contactRequests}
+          onClose={() => setShowRequests(false)}
+          onChatCreated={(chatId) => {
+            setShowRequests(false);
+            const chat = chats.find((c) => c.id === chatId);
+            if (chat) handleSelectChat(chat);
+          }}
         />
       )}
 
