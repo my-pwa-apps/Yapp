@@ -36,7 +36,7 @@
         ".read": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
         ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
         "$msgId": {
-          ".validate": "newData.child('senderId').val() === auth.uid || newData.child('senderId').val() === 'system'"
+          ".validate": "data.exists() || newData.child('senderId').val() === auth.uid || newData.child('senderId').val() === 'system'"
         }
       }
     },
