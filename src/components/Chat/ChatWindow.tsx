@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useMessages, sendMessage, sendMediaMessage, markMessagesRead, setTyping } from '../../hooks/useMessages';
 import { getUserProfile, membersToArray } from '../../hooks/useChats';
-import { uploadMedia, compressImage } from '../../hooks/useMediaUpload';
+import { compressImage, blobToDataURL } from '../../hooks/useMediaUpload';
 import { MessageBubble } from './MessageBubble';
 import { GifPicker } from './GifPicker';
 import { StickerPicker } from './StickerPicker';
@@ -212,8 +212,8 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
             setShowVoiceRecorder(false);
             setUploading(true);
             try {
-              const url = await uploadMedia(chat.id, blob, 'voice', 'voice.webm');
-              await sendMediaMessage(chat.id, currentUid, currentName, 'voice', url, '🎤 Voice message', { voiceDuration: duration });
+              const dataUrl = await blobToDataURL(blob);
+              await sendMediaMessage(chat.id, currentUid, currentName, 'voice', dataUrl, '🎤 Voice message', { voiceDuration: duration });
             } catch { /* ignore */ }
             setUploading(false);
           }}
@@ -267,9 +267,8 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
               e.target.value = '';
               setUploading(true);
               try {
-                const compressed = await compressImage(file);
-                const url = await uploadMedia(chat.id, compressed, 'images', file.name);
-                await sendMediaMessage(chat.id, currentUid, currentName, 'image', url, '📷 Photo');
+                const dataUrl = await compressImage(file);
+                await sendMediaMessage(chat.id, currentUid, currentName, 'image', dataUrl, '📷 Photo');
               } catch { /* ignore */ }
               setUploading(false);
             }}

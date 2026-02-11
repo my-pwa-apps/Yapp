@@ -1,27 +1,20 @@
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '../firebase';
-
 /**
- * Upload a file (image, voice memo, etc.) to Firebase Storage.
- * Returns the public download URL.
+ * Convert a Blob to a base64 data URL for storing directly in RTDB.
  */
-export async function uploadMedia(
-  chatId: string,
-  file: Blob,
-  folder: 'images' | 'voice' | 'files',
-  filename?: string
-): Promise<string> {
-  const ext = filename?.split('.').pop() || (file.type.split('/')[1] ?? 'bin');
-  const name = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const storageRef = ref(storage, `chat-${folder}/${chatId}/${name}`);
-  await uploadBytes(storageRef, file);
-  return getDownloadURL(storageRef);
+export function blobToDataURL(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 
 /**
- * Compress an image before uploading (max 1200px, 0.8 quality).
+ * Compress an image and return it as a base64 data URL.
+ * Max 800px, JPEG quality 0.7 to keep size reasonable for RTDB.
  */
-export function compressImage(file: File, maxSize = 1200): Promise<Blob> {
+export function compressImage(file: File | Blob, maxSize = 800): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const reader = new FileReader();
@@ -40,11 +33,8 @@ export function compressImage(file: File, maxSize = 1200): Promise<Blob> {
       canvas.height = height;
       const ctx = canvas.getContext('2d')!;
       ctx.drawImage(img, 0, 0, width, height);
-      canvas.toBlob(
-        (blob) => (blob ? resolve(blob) : reject(new Error('Compress failed'))),
-        'image/jpeg',
-        0.8
-      );
+      // Return as data URL string directly
+      resolve(canvas.toDataURL('image/jpeg', 0.7));
     };
     img.onerror = reject;
     reader.onerror = reject;
