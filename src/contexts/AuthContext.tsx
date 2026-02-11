@@ -33,6 +33,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateStatus: (status: string) => Promise<void>;
+  updateDisplayName: (displayName: string) => Promise<void>;
   updatePhotoURL: (photoURL: string | null) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   // MFA
@@ -173,6 +174,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setProfile((p) => (p ? { ...p, status } : null));
   };
 
+  const updateDisplayName = async (displayName: string) => {
+    if (!user) return;
+    await updateProfile(user, { displayName });
+    await update(ref(db, `users/${user.uid}`), { displayName });
+    setProfile((p) => (p ? { ...p, displayName } : null));
+  };
+
   const updatePhotoURL = async (photoURL: string | null) => {
     if (!user) return;
     await update(ref(db, `users/${user.uid}`), { photoURL });
@@ -236,7 +244,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <AuthContext.Provider value={{
       user, profile, loading, signIn, signUp, signOut,
-      updateStatus, updatePhotoURL, changePassword,
+      updateStatus, updateDisplayName, updatePhotoURL, changePassword,
       enrollMFA, finalizeMFAEnrollment, unenrollMFA, isMFAEnabled,
       mfaResolver, verifyMFASignIn,
     }}>

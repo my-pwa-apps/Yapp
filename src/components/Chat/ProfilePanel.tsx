@@ -10,8 +10,10 @@ interface Props {
 }
 
 export const ProfilePanel: React.FC<Props> = ({ profile, onClose }) => {
-  const { updateStatus, updatePhotoURL, changePassword, isMFAEnabled } = useAuth();
+  const { updateStatus, updateDisplayName, updatePhotoURL, changePassword, isMFAEnabled } = useAuth();
   const [editing, setEditing] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [displayName, setDisplayName] = useState(profile.displayName);
   const [status, setStatus] = useState(profile.status);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -88,7 +90,25 @@ export const ProfilePanel: React.FC<Props> = ({ profile, onClose }) => {
 
           <div className="profile-field">
             <label>Your Name</label>
-            <p>{profile.displayName}</p>
+            {editingName ? (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  className="modal-input"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && displayName.trim() && (async () => { await updateDisplayName(displayName.trim()); setEditingName(false); })()}
+                  autoFocus
+                  maxLength={30}
+                />
+                <button className="send-btn" onClick={async () => { if (displayName.trim()) { await updateDisplayName(displayName.trim()); setEditingName(false); } }} style={{ width: 36, height: 36 }}>
+                  ✓
+                </button>
+              </div>
+            ) : (
+              <p onClick={() => setEditingName(true)} style={{ cursor: 'pointer' }} title="Click to edit">
+                {profile.displayName} <span style={{ fontSize: '0.75rem', color: '#8696A0' }}>✏️</span>
+              </p>
+            )}
           </div>
 
           <div className="profile-field">

@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { getUserProfile, membersToArray } from '../../hooks/useChats';
+import { ref, onValue } from 'firebase/database';
+import { db } from '../../firebase';
+import { membersToArray } from '../../hooks/useChats';
 import type { Chat, UserProfile } from '../../types';
 
 interface Props {
@@ -13,21 +15,29 @@ interface Props {
 export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid, onSelect }) => {
   const [memberProfiles, setMemberProfiles] = useState<Record<string, UserProfile>>({});
 
-  // Fetch profiles for direct chat names
+  // Live-listen to other users' profiles for realtime presence, name & photo updates
   useEffect(() => {
     const uids = new Set<string>();
     chats.forEach((c) => {
       if (c.type === 'direct') {
         membersToArray(c.members).forEach((m) => {
-          if (m !== currentUid && !memberProfiles[m]) uids.add(m);
+          if (m !== currentUid) uids.add(m);
         });
       }
     });
+
+    const unsubs: (() => void)[] = [];
     uids.forEach((uid) => {
-      getUserProfile(uid).then((p) => {
-        if (p) setMemberProfiles((prev) => ({ ...prev, [uid]: p }));
+      const userRef = ref(db, `users/${uid}`);
+      const unsub = onValue(userRef, (snap) => {
+        if (snap.exists()) {
+          setMemberProfiles((prev) => ({ ...prev, [uid]: snap.val() as UserProfile }));
+        }
       });
+      unsubs.push(unsub);
     });
+
+    return () => unsubs.forEach((u) => u());
   }, [chats, currentUid]);
 
   const isSelfChat = (chat: Chat) => {
