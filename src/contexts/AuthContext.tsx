@@ -52,6 +52,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           if (snap.exists()) {
             const data = snap.val() as UserProfile;
+            // Normalize email to lowercase if needed
+            const normalizedEmail = (firebaseUser.email || '').toLowerCase();
+            if (data.email !== normalizedEmail) {
+              data.email = normalizedEmail;
+              await update(userRef, { email: normalizedEmail });
+            }
             setProfile(data);
             await update(userRef, { online: true, lastSeen: serverTimestamp() });
           } else {
@@ -59,7 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const newProfile: UserProfile = {
               uid: firebaseUser.uid,
               displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-              email: firebaseUser.email || '',
+              email: (firebaseUser.email || '').toLowerCase(),
               photoURL: firebaseUser.photoURL || null,
               status: 'Hey there! I am using Yapp',
               online: true,
@@ -100,7 +106,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const userProfile: UserProfile = {
       uid: cred.user.uid,
       displayName,
-      email,
+      email: email.toLowerCase(),
       photoURL: null,
       status: 'Hey there! I am using Yapp',
       online: true,

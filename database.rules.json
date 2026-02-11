@@ -10,13 +10,16 @@
     "contacts": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid"
+        "$contactUid": {
+          ".write": "auth != null && (auth.uid === $uid || auth.uid === $contactUid)"
+        }
       }
     },
     "contactRequests": {
       "$targetUid": {
         ".read": "auth != null && auth.uid === $targetUid",
         "$senderUid": {
+          ".read": "auth != null && auth.uid === $senderUid",
           ".write": "auth != null && (auth.uid === $senderUid || auth.uid === $targetUid)",
           ".validate": "newData.hasChildren(['from', 'fromName', 'fromEmail', 'to', 'timestamp', 'status'])"
         }
