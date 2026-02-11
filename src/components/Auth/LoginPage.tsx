@@ -4,13 +4,18 @@ import { YappLogo } from '../YappLogo';
 import './LoginPage.css';
 
 export const LoginPage: React.FC = () => {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, mfaResolver, verifyMFASignIn } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // MFA challenge state
+  const [mfaCode, setMfaCode] = useState('');
+  const [mfaLoading, setMfaLoading] = useState(false);
+  const [mfaError, setMfaError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,6 +35,11 @@ export const LoginPage: React.FC = () => {
     } catch (err: any) {
       console.error('Auth error:', err.code, err.message);
       const code = err.code;
+      if (code === 'auth/multi-factor-auth-required') {
+        // MFA challenge UI will appear via mfaResolver state
+        setLoading(false);
+        return;
+      }
       const friendly: Record<string, string> = {
         'auth/email-already-in-use': 'This email is already registered. Try signing in.',
         'auth/invalid-email': 'Please enter a valid email address.',
@@ -43,6 +53,60 @@ export const LoginPage: React.FC = () => {
     }
     setLoading(false);
   };
+
+  const handleMFAVerify = async () => {
+    if (mfaCode.length !== 6) return;
+    setMfaLoading(true);
+    setMfaError('');
+    try {
+      await verifyMFASignIn(mfaCode);
+    } catch (err: any) {
+      setMfaError(err?.message || 'Invalid verification code. Please try again.');
+    }
+    setMfaLoading(false);
+  };
+
+  // Show MFA challenge screen when resolver is active
+  if (mfaResolver) {
+    return (
+      <div className="login-page">
+        <div className="login-card">
+          <div className="login-logo">
+            <YappLogo size={72} />
+            <h1>Yappin'</h1>
+            <p className="login-subtitle">Two-Factor Authentication</p>
+          </div>
+
+          <div className="login-form">
+            <p style={{ color: '#8696A0', textAlign: 'center', margin: '0 0 16px' }}>
+              Enter the 6-digit code from your authenticator app
+            </p>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              className="login-input mfa-code-input"
+              placeholder="000000"
+              value={mfaCode}
+              onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+              autoFocus
+              onKeyDown={(e) => e.key === 'Enter' && handleMFAVerify()}
+              style={{ textAlign: 'center', fontSize: '1.5rem', letterSpacing: '0.5rem' }}
+            />
+            {mfaError && <p className="login-error">{mfaError}</p>}
+            <button
+              className="login-btn"
+              onClick={handleMFAVerify}
+              disabled={mfaLoading || mfaCode.length !== 6}
+            >
+              {mfaLoading ? 'Verifying...' : 'Verify'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="login-page">

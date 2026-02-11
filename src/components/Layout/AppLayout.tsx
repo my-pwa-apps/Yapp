@@ -54,7 +54,10 @@ export const AppLayout: React.FC = () => {
         <header className="sidebar-header">
           <div className="sidebar-user" onClick={() => setShowProfile(true)}>
             <div className="avatar avatar-sm">
-              {profile?.displayName?.charAt(0).toUpperCase()}
+              {profile?.photoURL
+                ? <img src={profile.photoURL} alt="" className="avatar-img" />
+                : profile?.displayName?.charAt(0).toUpperCase()
+              }
             </div>
             <span className="sidebar-username">{profile?.displayName}</span>
           </div>

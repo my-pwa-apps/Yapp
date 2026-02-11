@@ -45,8 +45,16 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
   };
 
   const getChatAvatar = (chat: Chat) => {
+    // Try to get profile photo for direct chats
+    if (chat.type === 'direct') {
+      if (isSelfChat(chat)) return null; // self-chat, no photo needed
+      const otherId = membersToArray(chat.members).find((m) => m !== currentUid);
+      if (otherId && memberProfiles[otherId]?.photoURL) {
+        return { type: 'photo' as const, url: memberProfiles[otherId].photoURL! };
+      }
+    }
     const name = getChatName(chat);
-    return name.charAt(0).toUpperCase();
+    return { type: 'initial' as const, letter: name.charAt(0).toUpperCase() };
   };
 
   const formatTime = (ts: number | undefined) => {
@@ -86,7 +94,13 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
           className={`chat-item ${chat.id === activeId ? 'active' : ''}`}
           onClick={() => onSelect(chat)}
         >
-          <div className="avatar avatar-md">{getChatAvatar(chat)}</div>
+          <div className="avatar avatar-md">
+            {(() => {
+              const av = getChatAvatar(chat);
+              if (av && av.type === 'photo') return <img src={av.url} alt="" className="avatar-img" />;
+              return av ? av.letter : '📝';
+            })()}
+          </div>
           <div className="chat-item-info">
             <div className="chat-item-top">
               <span className="chat-item-name">

@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { AvatarPicker } from './AvatarPicker';
+import { MFASetup } from './MFASetup';
 import type { UserProfile } from '../../types';
 
 interface Props {
@@ -8,13 +10,49 @@ interface Props {
 }
 
 export const ProfilePanel: React.FC<Props> = ({ profile, onClose }) => {
-  const { updateStatus } = useAuth();
-  const [editing, setEditing] = React.useState(false);
-  const [status, setStatus] = React.useState(profile.status);
+  const { updateStatus, updatePhotoURL, changePassword, isMFAEnabled } = useAuth();
+  const [editing, setEditing] = useState(false);
+  const [status, setStatus] = useState(profile.status);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [showMFASetup, setShowMFASetup] = useState(false);
+
+  // Password form state
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [pwError, setPwError] = useState('');
+  const [pwSuccess, setPwSuccess] = useState('');
+  const [pwLoading, setPwLoading] = useState(false);
 
   const handleSaveStatus = async () => {
     await updateStatus(status);
     setEditing(false);
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPwError('');
+    setPwSuccess('');
+    if (newPw.length < 6) { setPwError('New password must be at least 6 characters'); return; }
+    if (newPw !== confirmPw) { setPwError('New passwords do not match'); return; }
+    setPwLoading(true);
+    try {
+      await changePassword(currentPw, newPw);
+      setPwSuccess('Password changed successfully!');
+      setCurrentPw(''); setNewPw(''); setConfirmPw('');
+      setTimeout(() => { setPwSuccess(''); setShowPasswordForm(false); }, 2000);
+    } catch (err: any) {
+      const code = err?.code;
+      if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+        setPwError('Current password is incorrect');
+      } else if (code === 'auth/weak-password') {
+        setPwError('New password is too weak');
+      } else {
+        setPwError(err?.message || 'Failed to change password');
+      }
+    }
+    setPwLoading(false);
   };
 
   return (
@@ -29,8 +67,23 @@ export const ProfilePanel: React.FC<Props> = ({ profile, onClose }) => {
           <h3>Profile</h3>
         </div>
         <div className="profile-content">
-          <div className="profile-avatar-large">
-            {profile.displayName.charAt(0).toUpperCase()}
+          {/* Avatar */}
+          <div
+            className="profile-avatar-large clickable"
+            onClick={() => setShowAvatarPicker(true)}
+            title="Change profile picture"
+          >
+            {profile.photoURL ? (
+              <img src={profile.photoURL} alt="avatar" className="profile-avatar-img" />
+            ) : (
+              profile.displayName.charAt(0).toUpperCase()
+            )}
+            <div className="avatar-edit-overlay">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+              </svg>
+              <span style={{ fontSize: '0.7rem' }}>CHANGE</span>
+            </div>
           </div>
 
           <div className="profile-field">
@@ -59,17 +112,71 @@ export const ProfilePanel: React.FC<Props> = ({ profile, onClose }) => {
                 </button>
               </div>
             ) : (
-              <p
-                onClick={() => setEditing(true)}
-                style={{ cursor: 'pointer' }}
-                title="Click to edit"
-              >
+              <p onClick={() => setEditing(true)} style={{ cursor: 'pointer' }} title="Click to edit">
                 {profile.status}
               </p>
             )}
           </div>
+
+          {/* Security section */}
+          <div className="profile-section-label">Security</div>
+
+          {/* Change password */}
+          {showPasswordForm ? (
+            <form onSubmit={handleChangePassword} className="profile-security-form">
+              <input
+                type="password" placeholder="Current password" className="modal-input"
+                value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} required
+              />
+              <input
+                type="password" placeholder="New password" className="modal-input"
+                value={newPw} onChange={(e) => setNewPw(e.target.value)} required minLength={6}
+              />
+              <input
+                type="password" placeholder="Confirm new password" className="modal-input"
+                value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} required minLength={6}
+              />
+              {pwError && <p className="login-error" style={{ margin: '4px 0' }}>{pwError}</p>}
+              {pwSuccess && <p className="modal-success">{pwSuccess}</p>}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="submit" className="profile-action-btn" disabled={pwLoading}>
+                  {pwLoading ? 'Changing...' : 'Change Password'}
+                </button>
+                <button type="button" className="profile-action-btn secondary" onClick={() => setShowPasswordForm(false)}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <button className="profile-action-btn" onClick={() => setShowPasswordForm(true)}>
+              🔑 Change Password
+            </button>
+          )}
+
+          {/* MFA toggle */}
+          <button className="profile-action-btn" onClick={() => setShowMFASetup(true)} style={{ marginTop: 8 }}>
+            🔐 {isMFAEnabled ? 'Manage' : 'Enable'} Two-Factor Auth
+          </button>
         </div>
       </div>
+
+      {showAvatarPicker && (
+        <AvatarPicker
+          currentPhotoURL={profile.photoURL}
+          displayName={profile.displayName}
+          onSelect={async (url) => {
+            await updatePhotoURL(url);
+            setShowAvatarPicker(false);
+          }}
+          onClose={() => setShowAvatarPicker(false)}
+        />
+      )}
+
+      {showMFASetup && (
+        <MFASetup
+          onClose={() => setShowMFASetup(false)}
+        />
+      )}
     </div>
   );
 };

@@ -170,7 +170,10 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
           </svg>
         </button>
         <div className="avatar avatar-md">
-          {chatName.charAt(0).toUpperCase()}
+          {otherProfile?.photoURL
+            ? <img src={otherProfile.photoURL} alt="" className="avatar-img" />
+            : chatName.charAt(0).toUpperCase()
+          }
         </div>
         <div className="chat-header-info">
           <div className="chat-header-name">{chatName}</div>

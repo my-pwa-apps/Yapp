@@ -2,6 +2,7 @@ import React from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginPage } from './components/Auth/LoginPage';
 import { AppLayout } from './components/Layout/AppLayout';
+import { PWAPrompts } from './components/PWAPrompts';
 import { YappLogo } from './components/YappLogo';
 
 const AppInner: React.FC = () => {
@@ -30,6 +31,7 @@ const AppInner: React.FC = () => {
 
 const App: React.FC = () => (
   <AuthProvider>
+    <PWAPrompts />
     <AppInner />
   </AuthProvider>
 );

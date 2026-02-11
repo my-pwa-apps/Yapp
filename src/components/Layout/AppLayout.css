@@ -1447,3 +1447,282 @@
   margin: 6px 0;
 }
 
+/* ── Avatar image inside .avatar ── */
+.avatar-img,
+.profile-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* ── Profile avatar clickable ── */
+.profile-avatar-large.clickable {
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: opacity 0.2s;
+}
+
+.profile-avatar-large.clickable:hover {
+  opacity: 0.85;
+}
+
+.avatar-edit-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+  border-radius: 50%;
+}
+
+.profile-avatar-large.clickable:hover .avatar-edit-overlay {
+  opacity: 1;
+}
+
+/* ── Avatar Picker modal ── */
+.avatar-preview-wrapper {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.avatar-preview-img {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #65a30d;
+}
+
+.avatar-preview-initials {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #2A3942;
+  color: #AEBAC1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0 auto;
+  border: 3px solid #2A3942;
+}
+
+.default-avatars-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.default-avatar-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  padding: 0;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s, transform 0.15s;
+  justify-self: center;
+}
+
+.default-avatar-btn:hover {
+  border-color: #65a30d;
+  transform: scale(1.08);
+}
+
+.default-avatar-btn img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.avatar-action-btn {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: #202C33;
+  color: #E9EDEF;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+  transition: background 0.2s;
+}
+
+.avatar-action-btn:hover {
+  background: #2A3942;
+}
+
+.avatar-action-btn.remove {
+  color: #ef4444;
+}
+
+.avatar-action-btn.remove:hover {
+  background: #3b1616;
+}
+
+/* ── Profile security section ── */
+.profile-section-label {
+  font-size: 0.8rem;
+  color: #84cc16;
+  font-weight: 500;
+  margin: 24px 0 12px;
+  padding-top: 16px;
+  border-top: 1px solid #2A3942;
+}
+
+.profile-security-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profile-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #65a30d;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.profile-action-btn:hover {
+  background: #4d7c0f;
+}
+
+.profile-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.profile-action-btn.secondary {
+  background: #2A3942;
+  color: #AEBAC1;
+}
+
+.profile-action-btn.secondary:hover {
+  background: #3A4A54;
+}
+
+/* ── MFA Setup ── */
+.mfa-qr-container {
+  text-align: center;
+  padding: 16px;
+  background: #fff;
+  border-radius: 12px;
+  margin: 0 auto;
+  width: fit-content;
+}
+
+.mfa-qr-img {
+  width: 200px;
+  height: 200px;
+}
+
+.mfa-secret-key {
+  background: #202C33;
+  color: #84cc16;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  word-break: break-all;
+}
+
+.mfa-code-input {
+  text-align: center;
+  font-size: 1.5rem !important;
+  letter-spacing: 0.5rem;
+}
+
+/* ── PWA Banners ── */
+.pwa-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  animation: slideUp 0.3s ease-out;
+}
+
+.install-banner {
+  background: #1a2e1a;
+  border-top: 2px solid #65a30d;
+}
+
+.update-banner {
+  background: #2e2a1a;
+  border-top: 2px solid #eab308;
+}
+
+.pwa-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #E9EDEF;
+  font-size: 0.9rem;
+  flex: 1;
+}
+
+.pwa-banner-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.pwa-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.pwa-btn:hover {
+  opacity: 0.85;
+}
+
+.pwa-btn.install {
+  background: #65a30d;
+  color: #fff;
+}
+
+.pwa-btn.update {
+  background: #eab308;
+  color: #000;
+}
+
+.pwa-btn.dismiss {
+  background: transparent;
+  color: #8696A0;
+  border: 1px solid #2A3942;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
