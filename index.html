@@ -2,15 +2,26 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#65a30d" />
-    <meta name="description" content="Yappin' - Keep yappin' man" />
+    <meta name="description" content="Yappin' — a modern chat app for messages, GIFs, stickers, photos, voice, and video calls. Keep yappin' man!" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Yappin'" />
     <link rel="icon" type="image/svg+xml" href="/Yapp/favicon.svg" />
     <link rel="apple-touch-icon" href="/Yapp/icons/icon-192.png" />
     <title>Yappin'</title>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#111B21;color:#E9EDEF;font-family:sans-serif;text-align:center;padding:24px">
+        <div>
+          <h1>Yappin'</h1>
+          <p style="margin-top:12px;color:#8696a0">JavaScript is required to run this app. Please enable it in your browser settings.</p>
+        </div>
+      </div>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
