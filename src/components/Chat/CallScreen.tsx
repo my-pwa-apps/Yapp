@@ -32,24 +32,66 @@ export const CallScreen: React.FC<Props> = ({
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
 
+  const isVideo = callData?.callType === 'video';
+
+  // Cleanup hidden audio elements on unmount (call ended)
+  useEffect(() => {
+    return () => {
+      document.querySelectorAll('[id^="remote-audio-"]').forEach((el) => el.remove());
+    };
+  }, []);
+
   // Attach local stream to video element
   useEffect(() => {
     if (localVideoRef.current && localStream) {
       localVideoRef.current.srcObject = localStream;
+      localVideoRef.current.play().catch(() => {});
     }
   }, [localStream]);
 
-  // Attach remote streams to video elements
+  // Attach remote streams — for audio calls, create hidden <audio> elements
+  // so iOS Safari actually plays the remote audio
   useEffect(() => {
     remoteStreams.forEach((stream, uid) => {
       const el = remoteVideoRefs.current.get(uid);
       if (el && el.srcObject !== stream) {
         el.srcObject = stream;
+        el.play().catch(() => {});
       }
     });
-  }, [remoteStreams]);
 
-  const isVideo = callData?.callType === 'video';
+    // For audio calls (no video elements rendered), use hidden audio elements
+    if (!isVideo || callState !== 'active') {
+      remoteStreams.forEach((stream, uid) => {
+        const existingAudio = document.getElementById(`remote-audio-${uid}`) as HTMLAudioElement;
+        if (existingAudio) {
+          if (existingAudio.srcObject !== stream) {
+            existingAudio.srcObject = stream;
+            existingAudio.play().catch(() => {});
+          }
+        } else {
+          const audio = document.createElement('audio');
+          audio.id = `remote-audio-${uid}`;
+          audio.autoplay = true;
+          audio.srcObject = stream;
+          audio.setAttribute('playsinline', '');
+          document.body.appendChild(audio);
+          audio.play().catch(() => {});
+        }
+      });
+    }
+
+    // Cleanup hidden audio elements when streams are removed
+    return () => {
+      const audioEls = document.querySelectorAll('[id^="remote-audio-"]');
+      audioEls.forEach((el) => {
+        const uid = el.id.replace('remote-audio-', '');
+        if (!remoteStreams.has(uid)) {
+          el.remove();
+        }
+      });
+    };
+  }, [remoteStreams, isVideo, callState]);
 
   const getStatusText = () => {
     switch (callState) {

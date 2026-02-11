@@ -87,6 +87,21 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     inputRef.current?.focus();
   }, [chat.id]);
 
+  // On mobile, scroll compose bar into view when virtual keyboard opens
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      // When keyboard opens, visual viewport height shrinks
+      // Scroll the compose input into view
+      requestAnimationFrame(() => {
+        inputRef.current?.scrollIntoView({ block: 'nearest' });
+      });
+    };
+    vv.addEventListener('resize', onResize);
+    return () => vv.removeEventListener('resize', onResize);
+  }, []);
+
   // Close attach menu on outside click (delayed to avoid catching the opening click)
   useEffect(() => {
     if (!showAttachMenu) return;

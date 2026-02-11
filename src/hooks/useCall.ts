@@ -48,11 +48,14 @@ export function useCall(currentUid: string, currentName: string): UseCallReturn 
   const callIdRef = useRef<string | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const unsubscribersRef = useRef<(() => void)[]>([]);
+  // Queue ICE candidates that arrive before remoteDescription is set
+  const iceCandidateQueues = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
 
   const cleanup = useCallback(() => {
     // Close all peer connections
     peerConnectionsRef.current.forEach((pc) => pc.close());
     peerConnectionsRef.current.clear();
+    iceCandidateQueues.current.clear();
 
     // Stop local stream tracks (use ref to avoid stale closure)
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
@@ -93,11 +96,34 @@ export function useCall(currentUid: string, currentName: string): UseCallReturn 
   }, [currentUid, callState]);
 
   const getMediaStream = async (callType: 'audio' | 'video'): Promise<MediaStream> => {
-    return navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video: callType === 'video',
-    });
+    try {
+      return await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: callType === 'video',
+      });
+    } catch (err) {
+      // iOS fallback: if video fails, try audio-only
+      if (callType === 'video') {
+        console.warn('[useCall] Video getUserMedia failed, trying audio-only:', err);
+        try {
+          return await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        } catch (audioErr) {
+          console.error('[useCall] Audio getUserMedia also failed:', audioErr);
+          throw audioErr;
+        }
+      }
+      throw err;
+    }
   };
+
+  /** Flush queued ICE candidates once remoteDescription is set */
+  const flushIceCandidates = useCallback((pc: RTCPeerConnection, remoteUid: string) => {
+    const queue = iceCandidateQueues.current.get(remoteUid);
+    if (queue && queue.length > 0) {
+      queue.forEach((c) => pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {}));
+      iceCandidateQueues.current.set(remoteUid, []);
+    }
+  }, []);
 
   const createPeerConnection = (
     callId: string,
@@ -129,6 +155,9 @@ export function useCall(currentUid: string, currentName: string): UseCallReturn 
       });
     };
 
+    // Initialise candidate queue for this peer
+    iceCandidateQueues.current.set(remoteUid, []);
+
     // Listen for remote ICE candidates
     const remoteCandidatesRef = ref(
       db,
@@ -136,8 +165,14 @@ export function useCall(currentUid: string, currentName: string): UseCallReturn 
     );
     const unsubCandidates = onChildAdded(remoteCandidatesRef, (snap) => {
       const candidate = snap.val();
-      if (candidate && pc.remoteDescription) {
+      if (!candidate) return;
+      // If remoteDescription is set we can add immediately, otherwise queue
+      if (pc.remoteDescription) {
         pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+      } else {
+        const q = iceCandidateQueues.current.get(remoteUid) || [];
+        q.push(candidate);
+        iceCandidateQueues.current.set(remoteUid, q);
       }
     });
     unsubscribersRef.current.push(unsubCandidates);
@@ -151,7 +186,14 @@ export function useCall(currentUid: string, currentName: string): UseCallReturn 
     callType: 'audio' | 'video',
     members: string[]
   ) => {
-    const stream = await getMediaStream(callType);
+    let stream: MediaStream;
+    try {
+      stream = await getMediaStream(callType);
+    } catch (err) {
+      console.error('[useCall] Cannot start call – media access denied:', err);
+      alert('Could not access camera/microphone. Please allow media permissions and try again.');
+      return;
+    }
     setLocalStream(stream);
     localStreamRef.current = stream;
 
@@ -197,6 +239,8 @@ export function useCall(currentUid: string, currentName: string): UseCallReturn 
         const answer = snap.val();
         if (answer && pc.signalingState === 'have-local-offer') {
           await pc.setRemoteDescription(new RTCSessionDescription(answer));
+          // Flush any ICE candidates that arrived before remoteDescription
+          flushIceCandidates(pc, remoteUid);
           setCallState('active');
           await update(ref(db, `calls/${callId}`), { status: 'active' });
         }
@@ -223,7 +267,15 @@ export function useCall(currentUid: string, currentName: string): UseCallReturn 
   const acceptCall = async () => {
     if (!callData || !callIdRef.current) return;
 
-    const stream = await getMediaStream(callData.callType);
+    let stream: MediaStream;
+    try {
+      stream = await getMediaStream(callData.callType);
+    } catch (err) {
+      console.error('[useCall] Cannot accept call – media access denied:', err);
+      alert('Could not access camera/microphone. Please allow media permissions.');
+      rejectCall();
+      return;
+    }
     setLocalStream(stream);
     localStreamRef.current = stream;
     setCallState('active');
@@ -245,6 +297,9 @@ export function useCall(currentUid: string, currentName: string): UseCallReturn 
       if (offer) {
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
 
+        // Flush any ICE candidates that arrived before remoteDescription
+        flushIceCandidates(pc, remoteUid);
+
         // Create and set answer
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
@@ -253,16 +308,6 @@ export function useCall(currentUid: string, currentName: string): UseCallReturn 
           type: answer.type,
           sdp: answer.sdp,
         });
-
-        // Process any queued ICE candidates
-        const candidatesSnap = await get(
-          ref(db, `callSignaling/${callId}/${remoteUid}_${currentUid}/candidates`)
-        );
-        if (candidatesSnap.exists()) {
-          candidatesSnap.forEach((child) => {
-            pc.addIceCandidate(new RTCIceCandidate(child.val())).catch(() => {});
-          });
-        }
       }
     }
 
@@ -332,6 +377,7 @@ export function useCall(currentUid: string, currentName: string): UseCallReturn 
     return () => {
       peerConnectionsRef.current.forEach((pc) => pc.close());
       peerConnectionsRef.current.clear();
+      iceCandidateQueues.current.clear();
       localStreamRef.current?.getTracks().forEach((t) => t.stop());
       unsubscribersRef.current.forEach((unsub) => unsub());
       unsubscribersRef.current = [];
