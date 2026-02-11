@@ -7,7 +7,7 @@ interface Props {
 
 export const YappLogo: React.FC<Props> = ({ size = 72, className }) => (
   <img
-    src="/icons/logo.svg"
+    src={`${import.meta.env.BASE_URL}icons/logo.svg`}
     alt="Yapp"
     width={size}
     height={size}
