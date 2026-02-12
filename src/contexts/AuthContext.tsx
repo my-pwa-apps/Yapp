@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -61,6 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [isMFAEnabled, setIsMFAEnabled] = useState(false);
   const [mfaResolver, setMfaResolver] = useState<ReturnType<typeof getMultiFactorResolver> | null>(null);
+  const presenceUnsubRef = useRef<(() => void) | null>(null);
 
   // Check MFA enrollment status whenever user changes
   const checkMFAStatus = (u: User | null) => {
@@ -111,6 +112,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const connectedRef = ref(db, '.info/connected');
           const onlineRef = ref(db, `users/${firebaseUser.uid}/online`);
           const lastSeenRef = ref(db, `users/${firebaseUser.uid}/lastSeen`);
+          // Clean up previous listener if re-running
+          presenceUnsubRef.current?.();
           const connUnsub = onValue(connectedRef, (snap) => {
             if (snap.val() === true) {
               // Connection established — mark online and set up disconnect handlers
@@ -119,8 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               set(onlineRef, true);
             }
           });
-          // Store cleanup for when auth state changes
-          (window as any).__yapPresenceUnsub = connUnsub;
+          presenceUnsubRef.current = connUnsub;
 
           checkMFAStatus(firebaseUser);
         } catch (e) {
@@ -128,10 +130,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } else {
         // Clean up presence listener when signed out
-        if ((window as any).__yapPresenceUnsub) {
-          (window as any).__yapPresenceUnsub();
-          (window as any).__yapPresenceUnsub = null;
-        }
+        presenceUnsubRef.current?.();
+        presenceUnsubRef.current = null;
         setProfile(null);
       }
       setLoading(false);

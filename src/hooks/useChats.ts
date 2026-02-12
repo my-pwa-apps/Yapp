@@ -8,6 +8,7 @@ import {
   update,
   query,
   orderByChild,
+  equalTo,
   serverTimestamp,
 } from 'firebase/database';
 import { db } from '../firebase';
@@ -237,14 +238,14 @@ export async function rejectPendingMember(chatId: string, uid: string) {
   await set(ref(db, `chats/${chatId}/pendingMembers/${uid}`), null);
 }
 
-/** Search users by email */
+/** Search users by email (uses indexed query) */
 export async function searchUsers(emailQuery: string, currentUid: string): Promise<UserProfile[]> {
-  const usersRef = query(ref(db, 'users'), orderByChild('email'));
+  const usersRef = query(ref(db, 'users'), orderByChild('email'), equalTo(emailQuery));
   const snap = await get(usersRef);
   const results: UserProfile[] = [];
   snap.forEach((child) => {
     const val = child.val() as UserProfile;
-    if (val.email === emailQuery && val.uid !== currentUid) {
+    if (val.uid !== currentUid) {
       results.push(val);
     }
   });

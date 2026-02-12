@@ -59,7 +59,7 @@
     "callSignaling": {
       "$callId": {
         ".read": "auth != null",
-        ".write": "auth != null"
+        ".write": "auth != null && root.child('calls').child($callId).child('participants').child(auth.uid).exists()"
       }
     }
   }

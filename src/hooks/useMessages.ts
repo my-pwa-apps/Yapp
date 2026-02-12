@@ -3,7 +3,6 @@ import {
   ref,
   onValue,
   push,
-  set,
   update,
 } from 'firebase/database';
 import { db } from '../firebase';
@@ -79,21 +78,21 @@ export async function sendMediaMessage(
   });
 }
 
-/** Internal: push a message and update lastMessage in one place */
+/** Internal: push a message and update lastMessage atomically */
 async function _pushMessage(
   chatId: string,
   msg: Record<string, unknown>
 ) {
-  const msgRef = push(ref(db, `messages/${chatId}`));
-  await set(msgRef, msg);
-  await update(ref(db, `chats/${chatId}`), {
-    lastMessage: {
-      text: msg.text,
-      senderId: msg.senderId,
-      senderName: msg.senderName,
-      timestamp: msg.timestamp,
-    },
-  });
+  const msgKey = push(ref(db, `messages/${chatId}`)).key!;
+  const updates: Record<string, unknown> = {};
+  updates[`messages/${chatId}/${msgKey}`] = msg;
+  updates[`chats/${chatId}/lastMessage`] = {
+    text: msg.text,
+    senderId: msg.senderId,
+    senderName: msg.senderName,
+    timestamp: msg.timestamp,
+  };
+  await update(ref(db), updates);
 }
 
 export async function markMessagesRead(chatId: string, messageIds: string[], uid: string) {

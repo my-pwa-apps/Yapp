@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../../firebase';
 import { membersToArray } from '../../hooks/useChats';
@@ -16,8 +16,8 @@ interface Props {
 export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid, unreadCounts = {}, onSelect }) => {
   const [memberProfiles, setMemberProfiles] = useState<Record<string, UserProfile>>({});
 
-  // Live-listen to other users' profiles for realtime presence, name & photo updates
-  useEffect(() => {
+  // Compute a stable key of other-user UIDs to avoid re-subscribing on every chats update
+  const otherUidKey = useMemo(() => {
     const uids = new Set<string>();
     chats.forEach((c) => {
       if (c.type === 'direct') {
@@ -26,6 +26,13 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
         });
       }
     });
+    return Array.from(uids).sort().join(',');
+  }, [chats, currentUid]);
+
+  // Live-listen to other users' profiles for realtime presence, name & photo updates
+  useEffect(() => {
+    if (!otherUidKey) return;
+    const uids = otherUidKey.split(',');
 
     const unsubs: (() => void)[] = [];
     uids.forEach((uid) => {
@@ -39,7 +46,7 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
     });
 
     return () => unsubs.forEach((u) => u());
-  }, [chats, currentUid]);
+  }, [otherUidKey]);
 
   const isSelfChat = (chat: Chat) => {
     if (chat.type !== 'direct') return false;

@@ -70,6 +70,7 @@
   justify-content: center;
   font-weight: 600;
   flex-shrink: 0;
+  -webkit-user-select: none;
   user-select: none;
 }
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useChats, membersToArray } from '../../hooks/useChats';
 import { useCall } from '../../hooks/useCall';
@@ -52,6 +52,10 @@ export const AppLayout: React.FC = () => {
   const [showNotifSettings, setShowNotifSettings] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
 
+  // Use ref so notification effect always reads current activeChat without re-running
+  const activeChatRef = useRef(activeChat);
+  activeChatRef.current = activeChat;
+
   // Track previous counts to detect new items
   const prevChatSnapRef = useRef<Record<string, number>>({});
   const prevContactReqCountRef = useRef(0);
@@ -68,7 +72,7 @@ export const AppLayout: React.FC = () => {
         const name = chat.type === 'group'
           ? `${chat.lastMessage.senderName} in ${chat.name || 'Group'}`
           : chat.lastMessage.senderName;
-        notifyMessage(name, chat.lastMessage.text, chat.id, activeChat?.id);
+        notifyMessage(name, chat.lastMessage.text, chat.id, activeChatRef.current?.id);
       }
     });
     const snap: Record<string, number> = {};
@@ -110,17 +114,17 @@ export const AppLayout: React.FC = () => {
   }, [joinRequests, notifyJoinRequest]);
 
   // On mobile, hide sidebar when chat is selected
-  const handleSelectChat = (chat: Chat) => {
+  const handleSelectChat = useCallback((chat: Chat) => {
     setActiveChat(chat);
     if (window.innerWidth < 768) {
       setShowSidebar(false);
     }
-  };
+  }, []);
 
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     setShowSidebar(true);
     setActiveChat(null);
-  };
+  }, []);
 
   // Keep activeChat in sync with live data
   useEffect(() => {
