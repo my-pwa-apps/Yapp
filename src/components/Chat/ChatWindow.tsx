@@ -43,6 +43,13 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
   const { encryptMessage, decryptMessage, chatKey } = useChatEncryption(chat, currentUid, cryptoKeys);
   const [enablingE2EE, setEnablingE2EE] = useState(false);
   const [showKeyRecovery, setShowKeyRecovery] = useState(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout>>();
+  const showToast = (msg: string) => {
+    clearTimeout(toastTimer.current);
+    setToastMsg(msg);
+    toastTimer.current = setTimeout(() => setToastMsg(null), 4000);
+  };
   const [showUserDetail, setShowUserDetail] = useState(false);
   const [text, setText] = useState('');
   const [chatName, setChatName] = useState('');
@@ -410,12 +417,12 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
                 if (needsKeyRecovery) {
                   setShowKeyRecovery(true);
                 } else {
-                  alert('Sign out and sign back in to set up encryption keys.');
+                  showToast('Sign out and sign back in to set up encryption keys.');
                 }
                 return;
               }
               if (chat.type === 'direct') {
-                alert('Direct chat encryption activates automatically when both users have encryption keys set up.');
+                showToast('Direct chat encryption activates automatically when both users have encryption keys set up.');
                 return;
               }
               setEnablingE2EE(true);
@@ -426,9 +433,9 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
                   // Force re-resolve chatKey
                   window.location.reload();
                 } else {
-                  alert('Could not enable encryption. Some members may not have set up encryption keys.');
+                  showToast('Could not enable encryption. Some members may not have set up encryption keys.');
                 }
-              } catch { alert('Failed to enable encryption.'); }
+              } catch { showToast('Failed to enable encryption.'); }
               setEnablingE2EE(false);
             }}
           >
@@ -692,6 +699,11 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
           onRecover={async (pw) => { await recoverKeys(pw); setShowKeyRecovery(false); }}
           onSkip={() => setShowKeyRecovery(false)}
         />
+      )}
+      {toastMsg && (
+        <div className="app-toast" onClick={() => setToastMsg(null)}>
+          {toastMsg}
+        </div>
       )}
     </div>
   );
