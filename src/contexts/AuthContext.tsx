@@ -8,10 +8,8 @@ import {
   updatePassword as firebaseUpdatePassword,
   reauthenticateWithCredential,
   EmailAuthProvider,
-  multiFactor,
-  TotpMultiFactorGenerator,
-  TotpSecret,
-  getMultiFactorResolver,
+  GoogleAuthProvider,
+  signInWithPopup,
   User,
 } from 'firebase/auth';
 import {
@@ -47,20 +45,13 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateStatus: (status: string) => Promise<void>;
   updateDisplayName: (displayName: string) => Promise<void>;
   updatePhotoURL: (photoURL: string | null) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
-  // MFA
-  enrollMFA: (password: string) => Promise<{ secret: TotpSecret; qrUrl: string }>;
-  finalizeMFAEnrollment: (secret: TotpSecret, verificationCode: string) => Promise<void>;
-  unenrollMFA: () => Promise<void>;
-  isMFAEnabled: boolean;
-  // MFA sign-in resolver (set when MFA challenge occurs)
-  mfaResolver: ReturnType<typeof getMultiFactorResolver> | null;
-  verifyMFASignIn: (code: string) => Promise<void>;
   // E2EE
   cryptoKeys: CryptoKeys | null;
   needsKeyRecovery: boolean;
@@ -79,22 +70,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isMFAEnabled, setIsMFAEnabled] = useState(false);
-  const [mfaResolver, setMfaResolver] = useState<ReturnType<typeof getMultiFactorResolver> | null>(null);
   const [cryptoKeys, setCryptoKeys] = useState<CryptoKeys | null>(null);
   const [needsKeyRecovery, setNeedsKeyRecovery] = useState(false);
   const presenceUnsubRef = useRef<(() => void) | null>(null);
-  const pendingPasswordRef = useRef<string | null>(null);
-
-  // Check MFA enrollment status whenever user changes
-  const checkMFAStatus = (u: User | null) => {
-    if (u) {
-      const enrolled = multiFactor(u).enrolledFactors;
-      setIsMFAEnabled(enrolled.length > 0);
-    } else {
-      setIsMFAEnabled(false);
-    }
-  };
 
   /** Load E2EE keys from IndexedDB (for page refresh) or flag recovery needed */
   const loadLocalCryptoKeys = async (uid: string) => {
@@ -207,7 +185,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           presenceUnsubRef.current = connUnsub;
 
-          checkMFAStatus(firebaseUser);
           // Load E2EE keys from IndexedDB (or flag for recovery)
           await loadLocalCryptoKeys(firebaseUser.uid);
         } catch (e) {
@@ -233,18 +210,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await update(userRef, { online: true, lastSeen: serverTimestamp() });
       const snap = await get(userRef);
       setProfile(snap.val() as UserProfile);
-      checkMFAStatus(cred.user);
       // Recover E2EE keys
       await recoverKeysFromRTDB(cred.user.uid, password);
     } catch (err: any) {
-      if (err.code === 'auth/multi-factor-auth-required') {
-        pendingPasswordRef.current = password;
-        const resolver = getMultiFactorResolver(auth, err);
-        setMfaResolver(resolver);
-        throw err;
-      }
       throw err;
     }
+  };
+
+  const signInWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    const cred = await signInWithPopup(auth, provider);
+    const userRef = ref(db, `users/${cred.user.uid}`);
+    const snap = await get(userRef);
+    if (snap.exists()) {
+      await update(userRef, { online: true, lastSeen: serverTimestamp() });
+      setProfile(snap.val() as UserProfile);
+    } else {
+      const newProfile: UserProfile = {
+        uid: cred.user.uid,
+        displayName: cred.user.displayName || cred.user.email?.split('@')[0] || 'User',
+        email: (cred.user.email || '').toLowerCase(),
+        photoURL: cred.user.photoURL || null,
+        status: "Hey there! I'm using Yappin'",
+        online: true,
+        lastSeen: Date.now(),
+        createdAt: Date.now(),
+      };
+      await set(userRef, newProfile);
+      setProfile(newProfile);
+    }
+    // Load E2EE keys from IndexedDB (or flag for recovery)
+    await loadLocalCryptoKeys(cred.user.uid);
   };
 
   const signUp = async (email: string, password: string, displayName: string) => {
@@ -325,72 +321,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // MFA enrollment — requires reauthentication
-  const enrollMFA = async (password: string): Promise<{ secret: TotpSecret; qrUrl: string }> => {
-    if (!user || !user.email) throw new Error('Not signed in');
-    // Reauthenticate first — Firebase requires recent sign-in for MFA
-    const credential = EmailAuthProvider.credential(user.email, password);
-    await reauthenticateWithCredential(user, credential);
-    const session = await multiFactor(user).getSession();
-    const secret = await TotpMultiFactorGenerator.generateSecret(session);
-    const qrUrl = secret.generateQrCodeUrl(user.email || 'user', "Yappin'");
-    return { secret, qrUrl };
-  };
-
-  const finalizeMFAEnrollment = async (secret: TotpSecret, verificationCode: string) => {
-    if (!user) throw new Error('Not signed in');
-    const assertion = TotpMultiFactorGenerator.assertionForEnrollment(secret, verificationCode);
-    await multiFactor(user).enroll(assertion, 'Authenticator app');
-    checkMFAStatus(user);
-  };
-
-  const unenrollMFA = async () => {
-    if (!user) throw new Error('Not signed in');
-    const enrolled = multiFactor(user).enrolledFactors;
-    if (enrolled.length > 0) {
-      await multiFactor(user).unenroll(enrolled[0]);
-      checkMFAStatus(user);
-    }
-  };
-
-  // MFA sign-in verification (called from LoginPage when MFA is required)
-  const verifyMFASignIn = async (code: string) => {
-    if (!mfaResolver) throw new Error('No MFA resolver available');
-    // Find the TOTP hint
-    const totpHint = mfaResolver.hints.find(
-      (h) => h.factorId === TotpMultiFactorGenerator.FACTOR_ID
-    );
-    if (!totpHint) throw new Error('No TOTP factor enrolled');
-    const assertion = TotpMultiFactorGenerator.assertionForSignIn(
-      totpHint.uid,
-      code
-    );
-    const cred = await mfaResolver.resolveSignIn(assertion);
-    setMfaResolver(null);
-    // Complete login
-    const userRef = ref(db, `users/${cred.user.uid}`);
-    await update(userRef, { online: true, lastSeen: serverTimestamp() });
-    const snap = await get(userRef);
-    setProfile(snap.val() as UserProfile);
-    checkMFAStatus(cred.user);
-    // Recover E2EE keys using cached password from initial sign-in attempt
-    const password = pendingPasswordRef.current;
-    pendingPasswordRef.current = null;
-    if (password) {
-      try {
-        await recoverKeysFromRTDB(cred.user.uid, password);
-      } catch {
-        // Will fall back to key recovery modal
-      }
-    }
-  };
-
   return (
     <AuthContext.Provider value={{
-      user, profile, loading, signIn, signUp, signOut,
+      user, profile, loading, signIn, signInWithGoogle, signUp, signOut,
       updateStatus, updateDisplayName, updatePhotoURL, changePassword,
-      enrollMFA, finalizeMFAEnrollment, unenrollMFA, isMFAEnabled,
-      mfaResolver, verifyMFASignIn,
       cryptoKeys, needsKeyRecovery, recoverKeys,
     }}>
       {children}

@@ -688,6 +688,25 @@
   margin-top: 8px;
 }
 
+.invite-prompt {
+  text-align: center;
+  padding: 12px;
+  margin-top: 12px;
+  background: var(--bg-input);
+  border-radius: 10px;
+}
+
+.invite-prompt p {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.invite-btn {
+  background: var(--accent) !important;
+  color: white !important;
+}
+
 .user-result {
   display: flex;
   align-items: center;

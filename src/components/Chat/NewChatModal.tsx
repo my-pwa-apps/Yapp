@@ -16,20 +16,46 @@ export const NewChatModal: React.FC<Props> = ({ currentUser, onClose, onChatCrea
   const [success, setSuccess] = useState('');
   const [searching, setSearching] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [notFound, setNotFound] = useState(false);
+
+  const appUrl = 'https://my-pwa-apps.github.io/Yapp/';
 
   const handleSearch = async () => {
     if (!email.trim()) return;
     setError('');
     setSuccess('');
+    setNotFound(false);
     setSearching(true);
     try {
       const users = await searchUsers(email.trim().toLowerCase(), currentUser.uid);
       setResults(users);
-      if (users.length === 0) setError('No user found with that email');
+      if (users.length === 0) {
+        setNotFound(true);
+      }
     } catch {
       setError('Failed to search');
     }
     setSearching(false);
+  };
+
+  const handleInvite = async () => {
+    const inviteText = `Hey! Join me on Yappin' — ${appUrl}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "Yappin'", text: inviteText, url: appUrl });
+        setSuccess('Invite sent!');
+      } catch {
+        // User cancelled share
+      }
+    } else {
+      // Fallback: copy to clipboard
+      try {
+        await navigator.clipboard.writeText(inviteText);
+        setSuccess('Invite link copied to clipboard!');
+      } catch {
+        setError('Could not copy invite link');
+      }
+    }
   };
 
   const handleSendRequest = async (user: UserProfile) => {
@@ -102,6 +128,18 @@ export const NewChatModal: React.FC<Props> = ({ currentUser, onClose, onChatCrea
 
           {error && <p className="modal-error">{error}</p>}
           {success && <p className="modal-success">{success}</p>}
+
+          {notFound && (
+            <div className="invite-prompt">
+              <p>No user found with that email.</p>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 12px' }}>
+                Invite them to join Yappin'!
+              </p>
+              <button className="modal-btn invite-btn" onClick={handleInvite}>
+                📨 Send Invite
+              </button>
+            </div>
+          )}
 
           {results.map((user) => (
             <div key={user.uid} className="user-result">

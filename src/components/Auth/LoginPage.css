@@ -104,3 +104,50 @@
 .login-toggle button:hover {
   text-decoration: underline;
 }
+
+/* Divider */
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 1.25rem 0;
+  color: #8696A0;
+  font-size: 0.85rem;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #d1d7db;
+}
+
+/* Google sign-in button */
+.google-sign-in-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 0.8rem;
+  border: 2px solid #d1d7db;
+  border-radius: 10px;
+  background: #fff;
+  color: #3c4043;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  font-family: inherit;
+}
+
+.google-sign-in-btn:hover:not(:disabled) {
+  background: #f8f9fa;
+  border-color: #65a30d;
+}
+
+.google-sign-in-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

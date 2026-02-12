@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { AvatarPicker } from './AvatarPicker';
-import { MFASetup } from './MFASetup';
 import type { UserProfile } from '../../types';
 
 interface Props {
@@ -10,14 +9,13 @@ interface Props {
 }
 
 export const ProfilePanel: React.FC<Props> = ({ profile, onClose }) => {
-  const { updateStatus, updateDisplayName, updatePhotoURL, changePassword, isMFAEnabled } = useAuth();
+  const { updateStatus, updateDisplayName, updatePhotoURL, changePassword } = useAuth();
   const [editing, setEditing] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [displayName, setDisplayName] = useState(profile.displayName);
   const [status, setStatus] = useState(profile.status);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
-  const [showMFASetup, setShowMFASetup] = useState(false);
 
   // Password form state
   const [currentPw, setCurrentPw] = useState('');
@@ -172,11 +170,6 @@ export const ProfilePanel: React.FC<Props> = ({ profile, onClose }) => {
               🔑 Change Password
             </button>
           )}
-
-          {/* MFA toggle */}
-          <button className="profile-action-btn" onClick={() => setShowMFASetup(true)} style={{ marginTop: 8 }}>
-            🔐 {isMFAEnabled ? 'Manage' : 'Enable'} Two-Factor Auth
-          </button>
         </div>
       </div>
 
@@ -189,12 +182,6 @@ export const ProfilePanel: React.FC<Props> = ({ profile, onClose }) => {
             setShowAvatarPicker(false);
           }}
           onClose={() => setShowAvatarPicker(false)}
-        />
-      )}
-
-      {showMFASetup && (
-        <MFASetup
-          onClose={() => setShowMFASetup(false)}
         />
       )}
     </div>
