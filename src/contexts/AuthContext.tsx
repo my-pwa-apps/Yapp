@@ -19,6 +19,7 @@ import {
   set,
   get,
   update,
+  onValue,
   serverTimestamp,
   onDisconnect,
 } from 'firebase/database';
@@ -106,17 +107,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setProfile(newProfile);
           }
 
-          // Set up presence: mark offline on disconnect
+          // Set up presence via .info/connected — re-registers on every reconnect
+          const connectedRef = ref(db, '.info/connected');
           const onlineRef = ref(db, `users/${firebaseUser.uid}/online`);
           const lastSeenRef = ref(db, `users/${firebaseUser.uid}/lastSeen`);
-          onDisconnect(onlineRef).set(false);
-          onDisconnect(lastSeenRef).set(serverTimestamp());
+          const connUnsub = onValue(connectedRef, (snap) => {
+            if (snap.val() === true) {
+              // Connection established — mark online and set up disconnect handlers
+              onDisconnect(onlineRef).set(false);
+              onDisconnect(lastSeenRef).set(serverTimestamp());
+              set(onlineRef, true);
+            }
+          });
+          // Store cleanup for when auth state changes
+          (window as any).__yapPresenceUnsub = connUnsub;
 
           checkMFAStatus(firebaseUser);
         } catch (e) {
           console.error('[Auth] Database error:', e);
         }
       } else {
+        // Clean up presence listener when signed out
+        if ((window as any).__yapPresenceUnsub) {
+          (window as any).__yapPresenceUnsub();
+          (window as any).__yapPresenceUnsub = null;
+        }
         setProfile(null);
       }
       setLoading(false);
