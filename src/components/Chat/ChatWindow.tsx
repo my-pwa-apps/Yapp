@@ -156,7 +156,11 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
       savedScrollPositions.set(chatId, el.scrollTop);
     };
     el.addEventListener('scroll', onScroll, { passive: true });
-    return () => el.removeEventListener('scroll', onScroll);
+    return () => {
+      // Save final scroll position when switching away
+      savedScrollPositions.set(chatId, el.scrollTop);
+      el.removeEventListener('scroll', onScroll);
+    };
   }, [chat.id]);
 
   // Keep ref in sync for cleanup
@@ -168,6 +172,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
   useEffect(() => {
     initialScrollDone.current = false;
     prevMessageCount.current = 0;
+    setDecryptedMessages([]);
     setShowSearch(false);
     setSearchQuery('');
     setSearchResults([]);
