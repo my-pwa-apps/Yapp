@@ -7,6 +7,10 @@ export interface UserProfile {
   online: boolean;
   lastSeen: number;
   createdAt: number;
+  /** ECDH P-256 public key (JWK JSON string) */
+  publicKey?: string;
+  /** Private key encrypted with login password (PBKDF2 + AES-GCM) */
+  encryptedPrivateKey?: { ciphertext: string; iv: string; salt: string };
 }
 
 export interface Chat {
@@ -23,6 +27,9 @@ export interface Chat {
     senderId: string;
     senderName: string;
     timestamp: number;
+    encrypted?: boolean;
+    ciphertext?: string;
+    iv?: string;
   };
   typing?: Record<string, boolean>;
   /** Pending join/invite requests: uid -> { type, fromName, timestamp } */
@@ -47,6 +54,10 @@ export interface Message {
   type: 'text' | 'image' | 'gif' | 'sticker' | 'voice' | 'system';
   mediaURL?: string;
   voiceDuration?: number;
+  /** E2EE fields */
+  encrypted?: boolean;
+  ciphertext?: string;
+  iv?: string;
 }
 
 export interface CallData {

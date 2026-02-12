@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { searchUsers, createGroupChat } from '../../hooks/useChats';
+import { useAuth } from '../../contexts/AuthContext';
 import type { UserProfile } from '../../types';
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export const NewGroupModal: React.FC<Props> = ({ currentUser, onClose, onGroupCreated }) => {
+  const { cryptoKeys } = useAuth();
   const [groupName, setGroupName] = useState('');
   const [email, setEmail] = useState('');
   const [members, setMembers] = useState<UserProfile[]>([]);
@@ -57,7 +59,8 @@ export const NewGroupModal: React.FC<Props> = ({ currentUser, onClose, onGroupCr
       const chatId = await createGroupChat(
         currentUser,
         groupName.trim(),
-        members.map((m) => m.uid)
+        members.map((m) => m.uid),
+        cryptoKeys ?? undefined
       );
       onGroupCreated(chatId);
     } catch {

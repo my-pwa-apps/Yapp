@@ -40,17 +40,24 @@ export async function sendMessage(
   chatId: string,
   senderId: string,
   senderName: string,
-  text: string
+  text: string,
+  encryption?: { ciphertext: string; iv: string }
 ) {
-  await _pushMessage(chatId, {
+  const msg: Record<string, unknown> = {
     chatId,
     senderId,
     senderName,
-    text,
+    text: encryption ? '🔒 Encrypted message' : text,
     timestamp: Date.now(),
     readBy: { [senderId]: true },
     type: 'text',
-  });
+  };
+  if (encryption) {
+    msg.encrypted = true;
+    msg.ciphertext = encryption.ciphertext;
+    msg.iv = encryption.iv;
+  }
+  await _pushMessage(chatId, msg);
 }
 
 /**
@@ -86,12 +93,18 @@ async function _pushMessage(
   const msgKey = push(ref(db, `messages/${chatId}`)).key!;
   const updates: Record<string, unknown> = {};
   updates[`messages/${chatId}/${msgKey}`] = msg;
-  updates[`chats/${chatId}/lastMessage`] = {
+  const lastMessage: Record<string, unknown> = {
     text: msg.text,
     senderId: msg.senderId,
     senderName: msg.senderName,
     timestamp: msg.timestamp,
   };
+  if (msg.encrypted) {
+    lastMessage.encrypted = true;
+    lastMessage.ciphertext = msg.ciphertext;
+    lastMessage.iv = msg.iv;
+  }
+  updates[`chats/${chatId}/lastMessage`] = lastMessage;
   await update(ref(db), updates);
 }
 

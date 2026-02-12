@@ -15,12 +15,13 @@ import { CallScreen } from '../Chat/CallScreen';
 import { ContactRequestsModal } from '../Chat/ContactRequestsModal';
 import { GroupInfoPanel } from '../Chat/GroupInfoPanel';
 import { NotificationSettings } from '../Chat/NotificationSettings';
+import { KeyRecoveryModal } from '../Chat/KeyRecoveryModal';
 import type { Chat } from '../../types';
 import { YappLogo } from '../YappLogo';
 import './AppLayout.css';
 
 export const AppLayout: React.FC = () => {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, needsKeyRecovery, recoverKeys } = useAuth();
   const { chats, loading } = useChats(user?.uid);
   const call = useCall(user?.uid ?? '', profile?.displayName ?? '');
   const contactRequests = useContactRequests(user?.uid);
@@ -51,6 +52,7 @@ export const AppLayout: React.FC = () => {
   const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [showNotifSettings, setShowNotifSettings] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
+  const [keyRecoveryDismissed, setKeyRecoveryDismissed] = useState(false);
 
   // Use ref so notification effect always reads current activeChat without re-running
   const activeChatRef = useRef(activeChat);
@@ -287,6 +289,14 @@ export const AppLayout: React.FC = () => {
           onEnd={call.endCall}
           onToggleMute={call.toggleMute}
           onToggleVideo={call.toggleVideo}
+        />
+      )}
+
+      {/* E2EE key recovery modal */}
+      {needsKeyRecovery && !keyRecoveryDismissed && (
+        <KeyRecoveryModal
+          onRecover={recoverKeys}
+          onSkip={() => setKeyRecoveryDismissed(true)}
         />
       )}
     </div>

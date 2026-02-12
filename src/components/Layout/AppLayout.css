@@ -356,6 +356,11 @@
   margin-top: 1px;
 }
 
+.e2ee-lock {
+  font-size: 0.6rem;
+  opacity: 0.5;
+}
+
 .message-time {
   font-size: 0.7rem;
   color: rgba(255, 255, 255, 0.45);

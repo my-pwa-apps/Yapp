@@ -80,6 +80,7 @@ export const MessageBubble: React.FC<Props> = ({ message, isMine, showSender, me
         )}
         {renderContent()}
         <div className="message-meta">
+          {message.encrypted && <span className="e2ee-lock" title="End-to-end encrypted">🔒</span>}
           <span className="message-time">{formatTime(message.timestamp)}</span>
           {isMine && (
             isRead ? (

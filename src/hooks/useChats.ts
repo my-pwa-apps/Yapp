@@ -13,6 +13,11 @@ import {
 } from 'firebase/database';
 import { db } from '../firebase';
 import type { Chat, UserProfile } from '../types';
+import {
+  generateGroupKey,
+  wrapGroupKeyForMember,
+  importPublicKey,
+} from './useCrypto';
 
 /** Helper: convert members record {uid: true} to array */
 export function membersToArray(members: Record<string, boolean> | undefined): string[] {
@@ -108,7 +113,8 @@ export async function findOrCreateDirectChat(
 export async function createGroupChat(
   currentUser: UserProfile,
   name: string,
-  memberUids: string[]
+  memberUids: string[],
+  cryptoKeys?: { privateKey: CryptoKey; publicKey: CryptoKey }
 ): Promise<string> {
   const allMembers: Record<string, boolean> = { [currentUser.uid]: true };
   memberUids.forEach((uid) => { allMembers[uid] = true; });
@@ -125,6 +131,29 @@ export async function createGroupChat(
     createdAt: Date.now(),
   };
   await set(newChatRef, newChat);
+
+  // E2EE: distribute group key to all members
+  if (cryptoKeys) {
+    try {
+      const groupKey = await generateGroupKey();
+      const allUids = [currentUser.uid, ...memberUids];
+      const wrappedKeys: Record<string, { wrappedKey: string; iv: string; wrappedBy: string }> = {};
+      for (const uid of allUids) {
+        const pubSnap = await get(ref(db, `users/${uid}/publicKey`));
+        if (!pubSnap.exists()) continue;
+        const memberPub = await importPublicKey(pubSnap.val());
+        const { wrappedKey, iv } = await wrapGroupKeyForMember(
+          groupKey, cryptoKeys.privateKey, memberPub, chatId
+        );
+        wrappedKeys[uid] = { wrappedKey, iv, wrappedBy: currentUser.uid };
+      }
+      if (Object.keys(wrappedKeys).length > 0) {
+        await set(ref(db, `chats/${chatId}/encryptedGroupKey`), wrappedKeys);
+      }
+    } catch (e) {
+      console.error('[E2EE] Failed to distribute group key:', e);
+    }
+  }
 
   // Send system message
   const msgRef = push(ref(db, `messages/${chatId}`));

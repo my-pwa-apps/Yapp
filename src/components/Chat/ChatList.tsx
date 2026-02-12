@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../../firebase';
 import { membersToArray } from '../../hooks/useChats';
+import { useAuth } from '../../contexts/AuthContext';
+import { resolveChatKey } from '../../hooks/useE2EE';
+import { decrypt as e2eeDecrypt } from '../../hooks/useCrypto';
 import type { Chat, UserProfile } from '../../types';
 
 interface Props {
@@ -14,7 +17,9 @@ interface Props {
 }
 
 export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid, unreadCounts = {}, onSelect }) => {
+  const { cryptoKeys } = useAuth();
   const [memberProfiles, setMemberProfiles] = useState<Record<string, UserProfile>>({});
+  const [decryptedPreviews, setDecryptedPreviews] = useState<Record<string, string>>({});
 
   // Compute a stable key of other-user UIDs to avoid re-subscribing on every chats update
   const otherUidKey = useMemo(() => {
@@ -47,6 +52,26 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
 
     return () => unsubs.forEach((u) => u());
   }, [otherUidKey]);
+
+  // Decrypt encrypted lastMessage previews
+  useEffect(() => {
+    if (!cryptoKeys) return;
+    chats.forEach(async (chat) => {
+      const lm = chat.lastMessage;
+      if (!lm?.encrypted || !lm.ciphertext || !lm.iv) return;
+      // Skip if we already decrypted this exact message
+      const cacheKey = `${chat.id}:${lm.timestamp}`;
+      if (decryptedPreviews[cacheKey]) return;
+      try {
+        const key = await resolveChatKey(chat, currentUid, cryptoKeys.privateKey);
+        if (!key) return;
+        const text = await e2eeDecrypt(lm.ciphertext, lm.iv, key);
+        setDecryptedPreviews((prev) => ({ ...prev, [cacheKey]: text }));
+      } catch {
+        setDecryptedPreviews((prev) => ({ ...prev, [cacheKey]: '🔒 Encrypted' }));
+      }
+    });
+  }, [chats, cryptoKeys, currentUid]);
 
   const isSelfChat = (chat: Chat) => {
     if (chat.type !== 'direct') return false;
@@ -134,7 +159,14 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
               </span>
               <span className="chat-item-preview">
                 {chat.lastMessage
-                  ? `${chat.lastMessage.senderId === currentUid ? 'You' : chat.lastMessage.senderName}: ${chat.lastMessage.text}`
+                  ? (() => {
+                      const sender = chat.lastMessage.senderId === currentUid ? 'You' : chat.lastMessage.senderName;
+                      const previewKey = `${chat.id}:${chat.lastMessage.timestamp}`;
+                      const displayText = (chat.lastMessage.encrypted && decryptedPreviews[previewKey])
+                        ? decryptedPreviews[previewKey]
+                        : chat.lastMessage.text;
+                      return `${sender}: ${displayText}`;
+                    })()
                   : 'No messages yet'}
               </span>
               {(unreadCounts[chat.id] ?? 0) > 0 && (

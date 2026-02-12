@@ -1,14 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../../firebase';
+import { useAuth } from '../../contexts/AuthContext';
 import { useMessages, sendMessage, sendMediaMessage, markMessagesRead, setTyping } from '../../hooks/useMessages';
 import { getUserProfile, membersToArray } from '../../hooks/useChats';
 import { compressImage, blobToDataURL } from '../../hooks/useMediaUpload';
+import { useChatEncryption } from '../../hooks/useE2EE';
 import { MessageBubble } from './MessageBubble';
 import { GifPicker } from './GifPicker';
 import { StickerPicker } from './StickerPicker';
 import { VoiceRecorder } from './VoiceRecorder';
-import type { Chat, UserProfile } from '../../types';
+import type { Chat, UserProfile, Message } from '../../types';
 
 interface Props {
   chat: Chat;
@@ -20,14 +22,25 @@ interface Props {
 }
 
 export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onBack, onStartCall, onShowGroupInfo }) => {
+  const { cryptoKeys } = useAuth();
   const { messages, loading } = useMessages(chat.id);
+  const { encryptMessage, decryptMessage, chatKey } = useChatEncryption(chat, currentUid, cryptoKeys);
   const [text, setText] = useState('');
   const [chatName, setChatName] = useState('');
   const [otherProfile, setOtherProfile] = useState<UserProfile | null>(null);
+  const [decryptedMessages, setDecryptedMessages] = useState<Message[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Smart scroll: track whether initial load is done for this chat
+  const initialScrollDone = useRef(false);
+  const prevMessageCount = useRef(0);
+
+  // Swipe-back gesture refs
+  const touchStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
 
   // Track whether the page is visible (tab/window active)
   const [pageVisible, setPageVisible] = useState(!document.hidden);
@@ -78,10 +91,55 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     return () => document.removeEventListener('visibilitychange', handler);
   }, []);
 
-  // Scroll to bottom on new messages
+  // Decrypt encrypted messages
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (messages.length === 0) {
+      setDecryptedMessages([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const result = await Promise.all(
+        messages.map(async (msg) => {
+          if (msg.encrypted && msg.ciphertext && msg.iv) {
+            const plaintext = await decryptMessage(msg);
+            return { ...msg, text: plaintext };
+          }
+          return msg;
+        })
+      );
+      if (!cancelled) setDecryptedMessages(result);
+    })();
+    return () => { cancelled = true; };
+  }, [messages, chatKey]);
+
+  // Reset scroll tracking on chat switch
+  useEffect(() => {
+    initialScrollDone.current = false;
+    prevMessageCount.current = 0;
+  }, [chat.id]);
+
+  // Scroll to bottom on initial load
+  useEffect(() => {
+    if (loading || decryptedMessages.length === 0) return;
+    if (!initialScrollDone.current) {
+      initialScrollDone.current = true;
+      prevMessageCount.current = decryptedMessages.length;
+      bottomRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
+      return;
+    }
+    // On subsequent messages: auto-scroll only if near bottom
+    if (decryptedMessages.length > prevMessageCount.current) {
+      prevMessageCount.current = decryptedMessages.length;
+      const el = messagesContainerRef.current;
+      if (el) {
+        const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
+        if (isNearBottom) {
+          bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    }
+  }, [decryptedMessages, loading]);
 
   // Mark unread messages as read — only when page is visible
   useEffect(() => {
@@ -132,7 +190,13 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     if (!trimmed) return;
     setText('');
     setTyping(chat.id, currentUid, false);
-    await sendMessage(chat.id, currentUid, currentName, trimmed);
+    // Encrypt if E2EE is available for this chat
+    let encryption: { ciphertext: string; iv: string } | undefined;
+    if (chatKey) {
+      const enc = await encryptMessage(trimmed);
+      if (enc) encryption = enc;
+    }
+    await sendMessage(chat.id, currentUid, currentName, trimmed, encryption);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -176,7 +240,24 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
   };
 
   return (
-    <div className="chat-window">
+    <div
+      className="chat-window"
+      onTouchStart={(e) => {
+        const t = e.touches[0];
+        touchStartRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
+      }}
+      onTouchEnd={(e) => {
+        if (!touchStartRef.current) return;
+        const t = e.changedTouches[0];
+        const dx = t.clientX - touchStartRef.current.x;
+        const dy = t.clientY - touchStartRef.current.y;
+        const dt = Date.now() - touchStartRef.current.t;
+        touchStartRef.current = null;
+        if (dx > 80 && Math.abs(dy) < Math.abs(dx) * 0.5 && dt < 300) {
+          onBack();
+        }
+      }}
+    >
       {/* Header */}
       <div className="chat-window-header">
         <button className="back-btn" onClick={onBack} title="Back">
@@ -231,14 +312,14 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
           </button>
         )}
       </div>
-      <div className="messages-container">
+      <div className="messages-container" ref={messagesContainerRef}>
         {loading && <div className="loading-spinner">Loading messages...</div>}
-        {!loading && messages.length === 0 && (
+        {!loading && decryptedMessages.length === 0 && (
           <div className="empty-state">
             <p>No messages yet. Say hello!</p>
           </div>
         )}
-        {messages.map((msg) => (
+        {decryptedMessages.map((msg) => (
           <MessageBubble
             key={msg.id}
             message={msg}
