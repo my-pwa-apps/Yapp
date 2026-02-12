@@ -67,7 +67,7 @@ export const AvatarPicker: React.FC<Props> = ({ currentPhotoURL, displayName, on
   const isCustomPhoto = selected && !selected.startsWith('data:image/svg+xml');
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={(e) => { e.stopPropagation(); onClose(); }}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>Profile Picture</h3>

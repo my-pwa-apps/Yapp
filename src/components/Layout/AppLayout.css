@@ -1532,6 +1532,15 @@
   overflow: hidden;
   transition: border-color 0.2s, transform 0.15s;
   justify-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.default-avatar-btn > * {
+  pointer-events: none;
 }
 
 .default-avatar-btn:hover {

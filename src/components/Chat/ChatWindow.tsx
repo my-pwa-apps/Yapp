@@ -275,9 +275,9 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
               <div className="attach-menu">
                 <button onClick={() => { setShowAttachMenu(false); fileInputRef.current?.click(); }}>
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                    <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                    <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/>
                   </svg>
-                  Photo
+                  File
                 </button>
                 <button onClick={() => { setShowAttachMenu(false); setShowGifPicker(true); }}>
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
@@ -298,7 +298,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="*/*"
             style={{ display: 'none' }}
             onChange={async (e) => {
               const file = e.target.files?.[0];
@@ -307,7 +307,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
               setUploading(true);
               try {
                 const dataUrl = await compressImage(file);
-                await sendMediaMessage(chat.id, currentUid, currentName, 'image', dataUrl, '📷 Photo');
+                await sendMediaMessage(chat.id, currentUid, currentName, 'image', dataUrl, '📎 File');
               } catch { /* ignore */ }
               setUploading(false);
             }}
