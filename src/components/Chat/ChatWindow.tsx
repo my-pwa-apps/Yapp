@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useMessages, sendMessage, sendMediaMessage, markMessagesRead, setTyping } from '../../hooks/useMessages';
 import { getUserProfile, membersToArray } from '../../hooks/useChats';
 import { compressImage, blobToDataURL } from '../../hooks/useMediaUpload';
-import { useChatEncryption } from '../../hooks/useE2EE';
+import { useChatEncryption, enableGroupEncryption } from '../../hooks/useE2EE';
 import { MessageBubble } from './MessageBubble';
 import { GifPicker } from './GifPicker';
 import { StickerPicker } from './StickerPicker';
@@ -34,9 +34,10 @@ interface Props {
 }
 
 export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onBack, onStartCall, onShowGroupInfo }) => {
-  const { cryptoKeys, needsKeyRecovery } = useAuth();
+  const { cryptoKeys } = useAuth();
   const { messages, loading } = useMessages(chat.id);
   const { encryptMessage, decryptMessage, chatKey } = useChatEncryption(chat, currentUid, cryptoKeys);
+  const [enablingE2EE, setEnablingE2EE] = useState(false);
   const [text, setText] = useState('');
   const [chatName, setChatName] = useState('');
   const [otherProfile, setOtherProfile] = useState<UserProfile | null>(null);
@@ -328,34 +329,18 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
           }
         </div>
         <div className="chat-header-info">
-          <div className="chat-header-name">{chatName}</div>
+          <div className="chat-header-name">
+            {chatName}
+            {chatKey && (
+              <svg className="e2ee-header-lock" viewBox="0 0 24 24" width="14" height="14" fill="var(--accent)" title="End-to-end encrypted"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+            )}
+          </div>
           <div className="chat-header-status">
             {chat.type === 'direct' && !isSelfChat && otherProfile && (
               <span className={`presence-dot ${otherProfile.online ? 'online' : 'offline'}`} />
             )}
             {getStatusText()}
           </div>
-          {chatKey ? (
-            <div className="e2ee-banner e2ee-active" title="Messages are end-to-end encrypted. Only you and the participants can read them.">
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
-              <span>End-to-end encrypted</span>
-            </div>
-          ) : needsKeyRecovery ? (
-            <div className="e2ee-banner e2ee-warning" title="Enter your password to unlock encryption keys">
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
-              <span>Key recovery needed</span>
-            </div>
-          ) : !cryptoKeys ? (
-            <div className="e2ee-banner e2ee-inactive" title="Encryption keys not available. Sign out and back in to activate encryption.">
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h1.9c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10z"/></svg>
-              <span>Not encrypted — keys unavailable</span>
-            </div>
-          ) : (
-            <div className="e2ee-banner e2ee-inactive" title="The other participant hasn't set up encryption yet">
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h1.9c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10z"/></svg>
-              <span>Not encrypted</span>
-            </div>
-          )}
         </div>
         {/* Call buttons */}
         {onStartCall && (
@@ -379,6 +364,31 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
               </svg>
             </button>
           </div>
+        )}
+        {/* Enable E2EE button — shown when user has keys but chat isn't encrypted */}
+        {cryptoKeys && !chatKey && !enablingE2EE && (
+          <button
+            className="icon-btn enable-e2ee-btn"
+            title={chat.type === 'group' ? 'Enable end-to-end encryption' : 'E2EE requires both users to have encryption keys'}
+            onClick={async () => {
+              if (chat.type === 'direct') return; // Direct chat E2EE is automatic
+              setEnablingE2EE(true);
+              try {
+                const members = membersToArray(chat.members);
+                const ok = await enableGroupEncryption(chat.id, [currentUid, ...members.filter(m => m !== currentUid)], cryptoKeys);
+                if (!ok) alert('Could not enable encryption. Some members may not have set up encryption keys.');
+              } catch { alert('Failed to enable encryption.'); }
+              setEnablingE2EE(false);
+            }}
+            disabled={chat.type === 'direct'}
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h1.9c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10z"/>
+            </svg>
+          </button>
+        )}
+        {enablingE2EE && (
+          <span className="e2ee-enabling" title="Enabling encryption...">🔄</span>
         )}
         {/* Search in chat */}
         <button className="icon-btn" title="Search in chat" onClick={() => { setShowSearch(!showSearch); setTimeout(() => searchInputRef.current?.focus(), 100); }}>

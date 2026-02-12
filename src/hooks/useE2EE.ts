@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ref, get } from 'firebase/database';
+import { ref, get, set } from 'firebase/database';
 import { db } from '../firebase';
 import {
   deriveDirectChatKey,
@@ -9,6 +9,8 @@ import {
   decrypt as e2eeDecrypt,
   getCachedChatKey,
   setCachedChatKey,
+  generateGroupKey,
+  wrapGroupKeyForMember,
 } from './useCrypto';
 import type { Chat, Message } from '../types';
 
@@ -63,6 +65,37 @@ export async function resolveChatKey(
   } catch (e) {
     console.warn('[E2EE] Failed to resolve chat key:', e);
     return null;
+  }
+}
+
+/**
+ * Enable E2EE for an existing group chat by generating and distributing a group key.
+ */
+export async function enableGroupEncryption(
+  chatId: string,
+  memberUids: string[],
+  cryptoKeys: CryptoKeys
+): Promise<boolean> {
+  try {
+    const groupKey = await generateGroupKey();
+    const wrappedKeys: Record<string, { wrappedKey: string; iv: string; wrappedBy: string }> = {};
+    const currentUid = memberUids[0]; // caller is first
+    for (const uid of memberUids) {
+      const pubSnap = await get(ref(db, `users/${uid}/publicKey`));
+      if (!pubSnap.exists()) continue;
+      const memberPub = await importPublicKey(pubSnap.val());
+      const { wrappedKey, iv } = await wrapGroupKeyForMember(
+        groupKey, cryptoKeys.privateKey, memberPub, chatId
+      );
+      wrappedKeys[uid] = { wrappedKey, iv, wrappedBy: currentUid };
+    }
+    if (Object.keys(wrappedKeys).length === 0) return false;
+    await set(ref(db, `chats/${chatId}/encryptedGroupKey`), wrappedKeys);
+    setCachedChatKey(chatId, groupKey);
+    return true;
+  } catch (e) {
+    console.error('[E2EE] Failed to enable group encryption:', e);
+    return false;
   }
 }
 
