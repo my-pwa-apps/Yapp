@@ -12,6 +12,18 @@ import { StickerPicker } from './StickerPicker';
 import { VoiceRecorder } from './VoiceRecorder';
 import type { Chat, UserProfile, Message } from '../../types';
 
+// Scroll behavior preference
+const SCROLL_PREF_KEY = 'yapp_scroll_behavior';
+export type ScrollBehaviorPref = 'most-recent' | 'left-off';
+export function getScrollBehaviorPref(): ScrollBehaviorPref {
+  try {
+    return (localStorage.getItem(SCROLL_PREF_KEY) as ScrollBehaviorPref) || 'most-recent';
+  } catch { return 'most-recent'; }
+}
+export function setScrollBehaviorPref(pref: ScrollBehaviorPref) {
+  localStorage.setItem(SCROLL_PREF_KEY, pref);
+}
+
 interface Props {
   chat: Chat;
   currentUid: string;
@@ -39,8 +51,18 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
   const initialScrollDone = useRef(false);
   const prevMessageCount = useRef(0);
 
+  // Scroll position persistence
+  const scrollPositions = useRef<Record<string, number>>({});
+
   // Swipe-back gesture refs
   const touchStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
+
+  // In-chat search
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<number[]>([]);
+  const [searchIndex, setSearchIndex] = useState(0);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Track whether the page is visible (tab/window active)
   const [pageVisible, setPageVisible] = useState(!document.hidden);
@@ -113,19 +135,43 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     return () => { cancelled = true; };
   }, [messages, chatKey]);
 
-  // Reset scroll tracking on chat switch
+  // Save scroll position when leaving a chat
+  useEffect(() => {
+    const prevChatId = chat.id;
+    return () => {
+      const el = messagesContainerRef.current;
+      if (el) {
+        scrollPositions.current[prevChatId] = el.scrollTop;
+      }
+    };
+  }, [chat.id]);
+
+  // Reset scroll tracking on chat switch, close search
   useEffect(() => {
     initialScrollDone.current = false;
     prevMessageCount.current = 0;
+    setShowSearch(false);
+    setSearchQuery('');
+    setSearchResults([]);
   }, [chat.id]);
 
-  // Scroll to bottom on initial load
+  // Scroll to bottom or saved position on initial load
   useEffect(() => {
     if (loading || decryptedMessages.length === 0) return;
     if (!initialScrollDone.current) {
       initialScrollDone.current = true;
       prevMessageCount.current = decryptedMessages.length;
-      bottomRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
+      const scrollPref = getScrollBehaviorPref();
+      const savedPos = scrollPositions.current[chat.id];
+      if (scrollPref === 'left-off' && savedPos !== undefined) {
+        // Restore saved scroll position
+        requestAnimationFrame(() => {
+          const el = messagesContainerRef.current;
+          if (el) el.scrollTop = savedPos;
+        });
+      } else {
+        bottomRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
+      }
       return;
     }
     // On subsequent messages: auto-scroll only if near bottom
@@ -139,7 +185,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
         }
       }
     }
-  }, [decryptedMessages, loading]);
+  }, [decryptedMessages, loading, chat.id]);
 
   // Mark unread messages as read — only when page is visible
   useEffect(() => {
@@ -151,6 +197,16 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
       markMessagesRead(chat.id, unread.map((m) => m.id), currentUid);
     }
   }, [messages, currentUid, chat.id, pageVisible]);
+
+  // Scroll to a specific message index in the list
+  const scrollToMessageIndex = useCallback((index: number) => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const rows = container.querySelectorAll('.message-row');
+    if (rows[index]) {
+      rows[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, []);
 
   // Focus input
   useEffect(() => {
@@ -303,6 +359,12 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
             </button>
           </div>
         )}
+        {/* Search in chat */}
+        <button className="icon-btn" title="Search in chat" onClick={() => { setShowSearch(!showSearch); setTimeout(() => searchInputRef.current?.focus(), 100); }}>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+            <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+          </svg>
+        </button>
         {/* Group info button */}
         {chat.type === 'group' && onShowGroupInfo && (
           <button className="icon-btn" title="Group info" onClick={onShowGroupInfo}>
@@ -312,6 +374,69 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
           </button>
         )}
       </div>
+      {/* In-chat search bar */}
+      {showSearch && (
+        <div className="chat-search-bar">
+          <input
+            ref={searchInputRef}
+            type="text"
+            className="chat-search-input"
+            placeholder="Search in chat..."
+            value={searchQuery}
+            onChange={(e) => {
+              const q = e.target.value;
+              setSearchQuery(q);
+              if (!q.trim()) {
+                setSearchResults([]);
+                setSearchIndex(0);
+                return;
+              }
+              const lower = q.toLowerCase();
+              const hits = decryptedMessages
+                .map((m, i) => (m.text?.toLowerCase().includes(lower) ? i : -1))
+                .filter((i) => i >= 0);
+              setSearchResults(hits);
+              setSearchIndex(hits.length > 0 ? hits.length - 1 : 0);
+              // Scroll to last (most recent) match
+              if (hits.length > 0) scrollToMessageIndex(hits[hits.length - 1]);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setShowSearch(false);
+                setSearchQuery('');
+                setSearchResults([]);
+              }
+              if (e.key === 'Enter' && searchResults.length > 0) {
+                const next = (searchIndex - 1 + searchResults.length) % searchResults.length;
+                setSearchIndex(next);
+                scrollToMessageIndex(searchResults[next]);
+              }
+            }}
+          />
+          <span className="chat-search-count">
+            {searchResults.length > 0 ? `${searchResults.length - searchIndex}/${searchResults.length}` : searchQuery ? '0' : ''}
+          </span>
+          <button className="chat-search-nav" title="Previous" disabled={searchResults.length === 0} onClick={() => {
+            if (searchResults.length === 0) return;
+            const next = (searchIndex - 1 + searchResults.length) % searchResults.length;
+            setSearchIndex(next);
+            scrollToMessageIndex(searchResults[next]);
+          }}>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
+          </button>
+          <button className="chat-search-nav" title="Next" disabled={searchResults.length === 0} onClick={() => {
+            if (searchResults.length === 0) return;
+            const next = (searchIndex + 1) % searchResults.length;
+            setSearchIndex(next);
+            scrollToMessageIndex(searchResults[next]);
+          }}>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+          </button>
+          <button className="chat-search-nav" title="Close" onClick={() => { setShowSearch(false); setSearchQuery(''); setSearchResults([]); }}>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          </button>
+        </div>
+      )}
       <div className="messages-container" ref={messagesContainerRef}>
         {loading && <div className="loading-spinner">Loading messages...</div>}
         {!loading && decryptedMessages.length === 0 && (
@@ -326,6 +451,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
             isMine={msg.senderId === currentUid}
             showSender={chat.type === 'group'}
             memberCount={members.length}
+            highlight={searchQuery && msg.text?.toLowerCase().includes(searchQuery.toLowerCase()) ? searchQuery : undefined}
           />
         ))}
         <div ref={bottomRef} />

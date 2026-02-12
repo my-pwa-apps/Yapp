@@ -6,6 +6,7 @@ import {
   requestPermission,
   type NotificationPreferences,
 } from '../../hooks/useNotifications';
+import { getScrollBehaviorPref, setScrollBehaviorPref, type ScrollBehaviorPref } from './ChatWindow';
 
 interface Props {
   onClose: () => void;
@@ -15,6 +16,7 @@ interface Props {
 export const NotificationSettings: React.FC<Props> = ({ onClose, onPrefsChanged }) => {
   const [prefs, setPrefs] = useState<NotificationPreferences>(getNotificationPrefs());
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>(getPermissionState());
+  const [scrollBehavior, setScrollBehavior] = useState<ScrollBehaviorPref>(getScrollBehaviorPref());
 
   useEffect(() => {
     setPermission(getPermissionState());
@@ -44,7 +46,7 @@ export const NotificationSettings: React.FC<Props> = ({ onClose, onPrefsChanged 
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
         <div className="modal-header">
-          <h3>🔔 Notifications</h3>
+          <h3>⚙️ Settings</h3>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
         <div className="modal-body" style={{ padding: '16px 24px' }}>
@@ -126,6 +128,32 @@ export const NotificationSettings: React.FC<Props> = ({ onClose, onPrefsChanged 
               )}
             </>
           )}
+
+          {/* Divider */}
+          <div style={{ borderTop: '1px solid #2A3942', margin: '16px 0' }} />
+
+          {/* Chat behavior section */}
+          <h4 style={{ color: '#65a30d', fontSize: 14, margin: '0 0 12px', fontWeight: 600 }}>Chat Behavior</h4>
+          <div className="notif-setting-row">
+            <div className="notif-setting-info">
+              <span className="notif-setting-label">Open chats at</span>
+              <span className="notif-setting-desc">
+                {scrollBehavior === 'most-recent' ? 'Always scroll to the newest message' : 'Return to where you left off'}
+              </span>
+            </div>
+            <select
+              className="scroll-behavior-select"
+              value={scrollBehavior}
+              onChange={(e) => {
+                const val = e.target.value as ScrollBehaviorPref;
+                setScrollBehavior(val);
+                setScrollBehaviorPref(val);
+              }}
+            >
+              <option value="most-recent">Most recent</option>
+              <option value="left-off">Where I left off</option>
+            </select>
+          </div>
         </div>
       </div>
     </div>

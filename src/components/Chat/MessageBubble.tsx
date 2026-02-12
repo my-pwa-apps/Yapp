@@ -1,14 +1,27 @@
 import React, { useRef, useState } from 'react';
 import type { Message } from '../../types';
 
+/** Highlight matching substrings in text */
+function highlightText(text: string, query: string): React.ReactNode {
+  if (!query) return text;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const parts = text.split(new RegExp(`(${escaped})`, 'gi'));
+  return parts.map((part, i) =>
+    part.toLowerCase() === query.toLowerCase()
+      ? <mark key={i} className="search-highlight">{part}</mark>
+      : part
+  );
+}
+
 interface Props {
   message: Message;
   isMine: boolean;
   showSender: boolean;
   memberCount: number;
+  highlight?: string;
 }
 
-export const MessageBubble: React.FC<Props> = ({ message, isMine, showSender, memberCount }) => {
+export const MessageBubble: React.FC<Props> = ({ message, isMine, showSender, memberCount, highlight }) => {
   if (message.type === 'system') {
     return (
       <div className="message-row system">
@@ -66,7 +79,7 @@ export const MessageBubble: React.FC<Props> = ({ message, isMine, showSender, me
         return <VoicePlayer message={message} />;
 
       default:
-        return <div className="message-text">{message.text}</div>;
+        return <div className="message-text">{highlight ? highlightText(message.text || '', highlight) : message.text}</div>;
     }
   };
 

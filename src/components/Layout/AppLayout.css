@@ -2012,3 +2012,141 @@
   left: 2px;
 }
 
+/* ── Sidebar Search ── */
+.sidebar-search {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  background: #111B21;
+  border-bottom: 1px solid #2A3942;
+  position: relative;
+}
+
+.sidebar-search-icon {
+  position: absolute;
+  left: 20px;
+  color: #8696A0;
+  pointer-events: none;
+}
+
+.sidebar-search-input {
+  flex: 1;
+  background: #202C33;
+  border: none;
+  border-radius: 8px;
+  color: #E9EDEF;
+  padding: 8px 12px 8px 34px;
+  font-size: 14px;
+  outline: none;
+}
+
+.sidebar-search-input::placeholder {
+  color: #8696A0;
+}
+
+.sidebar-search-input:focus {
+  box-shadow: 0 0 0 1px #65a30d;
+}
+
+.sidebar-search-clear {
+  background: none;
+  border: none;
+  color: #8696A0;
+  cursor: pointer;
+  padding: 4px;
+  margin-left: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.sidebar-search-clear:hover {
+  color: #E9EDEF;
+}
+
+/* ── In-Chat Search Bar ── */
+.chat-search-bar {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  background: #202C33;
+  border-bottom: 1px solid #2A3942;
+  gap: 4px;
+}
+
+.chat-search-input {
+  flex: 1;
+  background: #2A3942;
+  border: none;
+  border-radius: 6px;
+  color: #E9EDEF;
+  padding: 6px 10px;
+  font-size: 14px;
+  outline: none;
+}
+
+.chat-search-input::placeholder {
+  color: #8696A0;
+}
+
+.chat-search-input:focus {
+  box-shadow: 0 0 0 1px #65a30d;
+}
+
+.chat-search-count {
+  color: #8696A0;
+  font-size: 12px;
+  min-width: 32px;
+  text-align: center;
+}
+
+.chat-search-nav {
+  background: none;
+  border: none;
+  color: #8696A0;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+}
+
+.chat-search-nav:hover:not(:disabled) {
+  color: #E9EDEF;
+  background: rgba(255,255,255,0.06);
+}
+
+.chat-search-nav:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* ── Search Highlight ── */
+.search-highlight {
+  background: rgba(101, 163, 13, 0.4);
+  color: #E9EDEF;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* ── Scroll Behavior Select ── */
+.scroll-behavior-select {
+  background: #2A3942;
+  color: #E9EDEF;
+  border: 1px solid #3B4A54;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+  min-width: 140px;
+}
+
+.scroll-behavior-select:focus {
+  border-color: #65a30d;
+}
+
+.scroll-behavior-select option {
+  background: #202C33;
+  color: #E9EDEF;
+}
+

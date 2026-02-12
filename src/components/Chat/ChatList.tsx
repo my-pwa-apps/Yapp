@@ -14,9 +14,10 @@ interface Props {
   currentUid: string;
   unreadCounts?: Record<string, number>;
   onSelect: (chat: Chat) => void;
+  searchFilter?: string;
 }
 
-export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid, unreadCounts = {}, onSelect }) => {
+export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid, unreadCounts = {}, onSelect, searchFilter }) => {
   const { cryptoKeys } = useAuth();
   const [memberProfiles, setMemberProfiles] = useState<Record<string, UserProfile>>({});
   const [decryptedPreviews, setDecryptedPreviews] = useState<Record<string, string>>({});
@@ -114,6 +115,23 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
 
+  // Apply search filter
+  const filteredChats = useMemo(() => {
+    if (!searchFilter?.trim()) return chats;
+    const q = searchFilter.toLowerCase();
+    return chats.filter((chat) => {
+      const name = getChatName(chat).toLowerCase();
+      if (name.includes(q)) return true;
+      // Also search last message preview
+      const previewKey = `${chat.id}:${chat.lastMessage?.timestamp}`;
+      const preview = (chat.lastMessage?.encrypted && decryptedPreviews[previewKey])
+        ? decryptedPreviews[previewKey]
+        : chat.lastMessage?.text;
+      if (preview?.toLowerCase().includes(q)) return true;
+      return false;
+    });
+  }, [chats, searchFilter, memberProfiles, decryptedPreviews]);
+
   if (loading) {
     return <div className="loading-spinner">Loading chats...</div>;
   }
@@ -131,7 +149,10 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
 
   return (
     <div className="chat-list">
-      {chats.map((chat) => (
+      {filteredChats.length === 0 && searchFilter?.trim() && (
+        <div className="empty-state"><p>No chats match "{searchFilter}"</p></div>
+      )}
+      {filteredChats.map((chat) => (
         <div
           key={chat.id}
           className={`chat-item ${chat.id === activeId ? 'active' : ''}`}
