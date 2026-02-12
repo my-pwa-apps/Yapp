@@ -189,7 +189,7 @@ export async function addGroupMember(chatId: string, uid: string, addedByName: s
 
 /** Remove member from group (admin action) */
 export async function removeGroupMember(chatId: string, uid: string, removedByName: string, memberName: string) {
-  const updates: Record<string, any> = {};
+  const updates: Record<string, null> = {};
   updates[`chats/${chatId}/members/${uid}`] = null;
   updates[`chats/${chatId}/admins/${uid}`] = null;
   await update(ref(db), updates);
@@ -208,7 +208,7 @@ export async function removeGroupMember(chatId: string, uid: string, removedByNa
 
 /** Leave group (self-removal) */
 export async function leaveGroup(chatId: string, uid: string, memberName: string) {
-  const updates: Record<string, any> = {};
+  const updates: Record<string, null> = {};
   updates[`chats/${chatId}/members/${uid}`] = null;
   updates[`chats/${chatId}/admins/${uid}`] = null;
   await update(ref(db), updates);
@@ -325,6 +325,7 @@ export async function deleteChat(chatId: string, currentUid: string) {
       senderName: 'System',
       text: `A member left the group`,
       timestamp: Date.now(),
+      readBy: {},
       type: 'system',
     });
   }

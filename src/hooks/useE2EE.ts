@@ -12,12 +12,7 @@ import {
   generateGroupKey,
   wrapGroupKeyForMember,
 } from './useCrypto';
-import type { Chat, Message } from '../types';
-
-export interface CryptoKeys {
-  privateKey: CryptoKey;
-  publicKey: CryptoKey;
-}
+import type { Chat, CryptoKeys, Message } from '../types';
 
 /**
  * Resolve the AES-GCM key for a chat (cached after first derivation).
@@ -108,6 +103,7 @@ export function useChatEncryption(
   keys: CryptoKeys | null
 ) {
   const [chatKey, setChatKey] = useState<CryptoKey | null>(null);
+  const [keyVersion, setKeyVersion] = useState(0);
   const resolvingRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -130,7 +126,7 @@ export function useChatEncryption(
       .catch(() => {
         resolvingRef.current = null;
       });
-  }, [chat?.id, currentUid, keys]);
+  }, [chat?.id, currentUid, keys, keyVersion]);
 
   /** Encrypt plaintext for the current chat. Returns null if E2EE is not available. */
   const encryptMessage = useCallback(
@@ -161,11 +157,14 @@ export function useChatEncryption(
     [chatKey]
   );
 
+  const refreshKey = useCallback(() => setKeyVersion(v => v + 1), []);
+
   return {
     chatKey,
     encryptMessage,
     decryptMessage,
     /** True when encryption is ready OR when the user simply has no keys (unencrypted fallback). */
     e2eeReady: !!chatKey || !keys,
+    refreshKey,
   };
 }

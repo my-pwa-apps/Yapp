@@ -24,7 +24,7 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
   const [decryptedPreviews, setDecryptedPreviews] = useState<Record<string, string>>({});
   const [contextMenu, setContextMenu] = useState<{ chatId: string; x: number; y: number } | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ type: 'clear' | 'delete'; chatId: string; label: string } | null>(null);
-  const longPressTimer = useRef<ReturnType<typeof setTimeout>>();
+  const longPressTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const longPressTriggered = useRef(false);
 
   // Compute a stable key of other-user UIDs to avoid re-subscribing on every chats update
@@ -62,21 +62,23 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
   // Decrypt encrypted lastMessage previews
   useEffect(() => {
     if (!cryptoKeys) return;
+    let cancelled = false;
     chats.forEach(async (chat) => {
       const lm = chat.lastMessage;
       if (!lm?.encrypted || !lm.ciphertext || !lm.iv) return;
-      // Skip if we already decrypted this exact message
       const cacheKey = `${chat.id}:${lm.timestamp}`;
-      if (decryptedPreviews[cacheKey]) return;
       try {
         const key = await resolveChatKey(chat, currentUid, cryptoKeys.privateKey);
-        if (!key) return;
+        if (cancelled || !key) return;
         const text = await e2eeDecrypt(lm.ciphertext, lm.iv, key);
-        setDecryptedPreviews((prev) => ({ ...prev, [cacheKey]: text }));
+        if (cancelled) return;
+        setDecryptedPreviews((prev) => prev[cacheKey] ? prev : { ...prev, [cacheKey]: text });
       } catch {
-        setDecryptedPreviews((prev) => ({ ...prev, [cacheKey]: '🔒 Encrypted' }));
+        if (cancelled) return;
+        setDecryptedPreviews((prev) => prev[cacheKey] ? prev : { ...prev, [cacheKey]: '🔒 Encrypted' });
       }
     });
+    return () => { cancelled = true; };
   }, [chats, cryptoKeys, currentUid]);
 
   const isSelfChat = (chat: Chat) => {

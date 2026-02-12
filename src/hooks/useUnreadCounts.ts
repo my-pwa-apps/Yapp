@@ -9,14 +9,16 @@ import type { Chat } from '../types';
  */
 export function useUnreadCounts(chats: Chat[], currentUid: string | undefined) {
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const chatIds = chats.map(c => c.id).join(',');
 
   useEffect(() => {
-    if (!currentUid || chats.length === 0) return;
+    if (!currentUid || !chatIds) return;
 
+    const ids = chatIds.split(',');
     const unsubs: (() => void)[] = [];
 
-    chats.forEach((chat) => {
-      const msgsRef = query(ref(db, `messages/${chat.id}`), limitToLast(50));
+    ids.forEach((chatId) => {
+      const msgsRef = query(ref(db, `messages/${chatId}`), limitToLast(50));
       const unsub = onValue(msgsRef, (snap) => {
         let unread = 0;
         snap.forEach((child) => {
@@ -30,15 +32,15 @@ export function useUnreadCounts(chats: Chat[], currentUid: string | undefined) {
           }
         });
         setCounts((prev) => {
-          if (prev[chat.id] === unread) return prev;
-          return { ...prev, [chat.id]: unread };
+          if (prev[chatId] === unread) return prev;
+          return { ...prev, [chatId]: unread };
         });
       });
       unsubs.push(unsub);
     });
 
     return () => unsubs.forEach((u) => u());
-  }, [chats.map((c) => c.id).join(','), currentUid]);
+  }, [chatIds, currentUid]);
 
   return counts;
 }

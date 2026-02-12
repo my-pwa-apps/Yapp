@@ -80,3 +80,8 @@ export interface ContactRequest {
   timestamp: number;
   status: 'pending' | 'accepted' | 'rejected';
 }
+
+export interface CryptoKeys {
+  privateKey: CryptoKey;
+  publicKey: CryptoKey;
+}

@@ -22,7 +22,7 @@ import {
   onDisconnect,
 } from 'firebase/database';
 import { auth, db } from '../firebase';
-import type { UserProfile } from '../types';
+import type { UserProfile, CryptoKeys } from '../types';
 import {
   generateKeyPair,
   exportPublicKey,
@@ -34,11 +34,6 @@ import {
   clearLocalKeys,
   clearChatKeyCache,
 } from '../hooks/useCrypto';
-
-export interface CryptoKeys {
-  privateKey: CryptoKey;
-  publicKey: CryptoKey;
-}
 
 interface AuthContextType {
   user: User | null;

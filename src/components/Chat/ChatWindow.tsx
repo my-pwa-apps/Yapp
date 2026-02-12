@@ -12,6 +12,7 @@ import { StickerPicker } from './StickerPicker';
 import { VoiceRecorder } from './VoiceRecorder';
 import { KeyRecoveryModal } from './KeyRecoveryModal';
 import type { Chat, UserProfile, Message } from '../../types';
+import { formatLastSeen } from '../../utils';
 
 // Scroll behavior preference
 const SCROLL_PREF_KEY = 'yapp_scroll_behavior';
@@ -40,11 +41,11 @@ interface Props {
 export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onBack, onStartCall, onShowGroupInfo }) => {
   const { cryptoKeys, needsKeyRecovery, recoverKeys } = useAuth();
   const { messages, loading } = useMessages(chat.id);
-  const { encryptMessage, decryptMessage, chatKey } = useChatEncryption(chat, currentUid, cryptoKeys);
+  const { encryptMessage, decryptMessage, chatKey, refreshKey } = useChatEncryption(chat, currentUid, cryptoKeys);
   const [enablingE2EE, setEnablingE2EE] = useState(false);
   const [showKeyRecovery, setShowKeyRecovery] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout>>();
+  const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const showToast = (msg: string) => {
     clearTimeout(toastTimer.current);
     setToastMsg(msg);
@@ -321,15 +322,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     if (isSelfChat) return 'Note to self';
     if (chat.type === 'direct' && otherProfile) {
       if (otherProfile.online) return 'online';
-      if (otherProfile.lastSeen) {
-        const d = new Date(otherProfile.lastSeen);
-        const now = new Date();
-        const diff = now.getTime() - d.getTime();
-        if (diff < 60000) return 'seen just now';
-        if (diff < 3600000) return `seen ${Math.floor(diff / 60000)}m ago`;
-        if (diff < 86400000) return `seen ${Math.floor(diff / 3600000)}h ago`;
-        return `seen ${d.toLocaleDateString()}`;
-      }
+      if (otherProfile.lastSeen) return formatLastSeen(otherProfile.lastSeen);
       return 'offline';
     }
     if (chat.type === 'group') {
@@ -441,11 +434,9 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
               }
               setEnablingE2EE(true);
               try {
-                const members = membersToArray(chat.members);
                 const ok = await enableGroupEncryption(chat.id, [currentUid, ...members.filter(m => m !== currentUid)], cryptoKeys);
                 if (ok) {
-                  // Force re-resolve chatKey
-                  window.location.reload();
+                  refreshKey();
                 } else {
                   showToast('Could not enable encryption. Some members may not have set up encryption keys.');
                 }

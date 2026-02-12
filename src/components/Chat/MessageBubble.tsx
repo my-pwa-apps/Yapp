@@ -21,7 +21,7 @@ interface Props {
   highlight?: string;
 }
 
-export const MessageBubble: React.FC<Props> = ({ message, isMine, showSender, memberCount, highlight }) => {
+export const MessageBubble = React.memo(function MessageBubble({ message, isMine, showSender, memberCount, highlight }: Props) {
   if (message.type === 'system') {
     return (
       <div className="message-row system">
@@ -106,7 +106,7 @@ export const MessageBubble: React.FC<Props> = ({ message, isMine, showSender, me
       </div>
     </div>
   );
-};
+});
 
 /* ── Inline voice player ── */
 const VoicePlayer: React.FC<{ message: Message }> = ({ message }) => {

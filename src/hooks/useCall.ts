@@ -375,15 +375,8 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
 
   // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      peerConnectionsRef.current.forEach((pc) => pc.close());
-      peerConnectionsRef.current.clear();
-      iceCandidateQueues.current.clear();
-      localStreamRef.current?.getTracks().forEach((t) => t.stop());
-      unsubscribersRef.current.forEach((unsub) => unsub());
-      unsubscribersRef.current = [];
-    };
-  }, []);
+    return () => { cleanup(); };
+  }, [cleanup]);
 
   return {
     callState,
