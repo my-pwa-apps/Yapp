@@ -36,7 +36,8 @@ export interface UseCallReturn {
   isVideoOff: boolean;
 }
 
-export function useCall(currentUid: string, currentName: string): UseCallReturn {
+export function useCall(currentUid: string, currentName: string, onMediaError?: (msg: string) => void): UseCallReturn {
+  const showError = onMediaError ?? ((msg: string) => { alert(msg); });
   const [callState, setCallState] = useState<CallState>('idle');
   const [callData, setCallData] = useState<CallData | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -191,7 +192,7 @@ export function useCall(currentUid: string, currentName: string): UseCallReturn 
       stream = await getMediaStream(callType);
     } catch (err) {
       console.error('[useCall] Cannot start call – media access denied:', err);
-      alert('Could not access camera/microphone. Please allow media permissions and try again.');
+      showError('Could not access camera/microphone. Please allow media permissions and try again.');
       return;
     }
     setLocalStream(stream);
@@ -272,7 +273,7 @@ export function useCall(currentUid: string, currentName: string): UseCallReturn 
       stream = await getMediaStream(callData.callType);
     } catch (err) {
       console.error('[useCall] Cannot accept call – media access denied:', err);
-      alert('Could not access camera/microphone. Please allow media permissions.');
+      showError('Could not access camera/microphone. Please allow media permissions.');
       rejectCall();
       return;
     }

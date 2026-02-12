@@ -3,9 +3,10 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 interface Props {
   onSend: (blob: Blob, duration: number) => void;
   onCancel: () => void;
+  onPermissionError?: (msg: string) => void;
 }
 
-export const VoiceRecorder: React.FC<Props> = ({ onSend, onCancel }) => {
+export const VoiceRecorder: React.FC<Props> = ({ onSend, onCancel, onPermissionError }) => {
   const [recording, setRecording] = useState(false);
   const [duration, setDuration] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -48,9 +49,10 @@ export const VoiceRecorder: React.FC<Props> = ({ onSend, onCancel }) => {
       }, 200);
     } catch {
       // Mic permission denied
+      if (onPermissionError) onPermissionError('Microphone access denied. Please allow microphone permission in your browser settings.');
       onCancel();
     }
-  }, [onCancel]);
+  }, [onCancel, onPermissionError]);
 
   const stopRecording = () => {
     if (mediaRecorderRef.current?.state === 'recording') {

@@ -23,7 +23,7 @@ import './AppLayout.css';
 export const AppLayout: React.FC = () => {
   const { user, profile, signOut, needsKeyRecovery, recoverKeys } = useAuth();
   const { chats, loading } = useChats(user?.uid);
-  const call = useCall(user?.uid ?? '', profile?.displayName ?? '');
+  const call = useCall(user?.uid ?? '', profile?.displayName ?? '', showToast);
   const contactRequests = useContactRequests(user?.uid);
   const { invites: groupInvites, joinRequests } = useGroupInvites(user?.uid);
   const { notifyMessage, notifyGroupInvite, notifyJoinRequest, notifyContactRequest, refreshPrefs } = useNotifications();
@@ -54,6 +54,13 @@ export const AppLayout: React.FC = () => {
   const [showSidebar, setShowSidebar] = useState(true);
   const [keyRecoveryDismissed, setKeyRecoveryDismissed] = useState(false);
   const [sidebarSearch, setSidebarSearch] = useState('');
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout>>();
+  const showToast = useCallback((msg: string) => {
+    clearTimeout(toastTimer.current);
+    setToastMsg(msg);
+    toastTimer.current = setTimeout(() => setToastMsg(null), 4000);
+  }, []);
 
   // Use ref so notification effect always reads current activeChat without re-running
   const activeChatRef = useRef(activeChat);
@@ -319,6 +326,11 @@ export const AppLayout: React.FC = () => {
           onRecover={recoverKeys}
           onSkip={() => setKeyRecoveryDismissed(true)}
         />
+      )}
+      {toastMsg && (
+        <div className="app-toast" onClick={() => setToastMsg(null)}>
+          {toastMsg}
+        </div>
       )}
     </div>
   );

@@ -606,6 +606,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
             setUploading(false);
           }}
           onCancel={() => setShowVoiceRecorder(false)}
+          onPermissionError={showToast}
         />
       ) : (
         <div className="compose-bar">
