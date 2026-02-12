@@ -6,6 +6,7 @@ import {
   set,
   push,
   update,
+  remove,
   query,
   orderByChild,
   equalTo,
@@ -285,4 +286,46 @@ export async function searchUsers(emailQuery: string, currentUid: string): Promi
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   const snap = await get(ref(db, `users/${uid}`));
   return snap.exists() ? (snap.val() as UserProfile) : null;
+}
+
+/** Clear all messages in a chat (reset) */
+export async function clearChatMessages(chatId: string) {
+  await remove(ref(db, `messages/${chatId}`));
+  // Remove lastMessage from chat
+  await update(ref(db, `chats/${chatId}`), { lastMessage: null });
+}
+
+/** Delete a chat — removes user from members; for direct chats also removes contacts */
+export async function deleteChat(chatId: string, currentUid: string) {
+  const chatSnap = await get(ref(db, `chats/${chatId}`));
+  if (!chatSnap.exists()) return;
+  const chat = chatSnap.val();
+
+  if (chat.type === 'direct') {
+    const memberKeys = Object.keys(chat.members || {});
+    const otherUid = memberKeys.find((m: string) => m !== currentUid);
+
+    // Remove the contact relationship both ways
+    if (otherUid && otherUid !== currentUid) {
+      await remove(ref(db, `contacts/${currentUid}/${otherUid}`));
+      await remove(ref(db, `contacts/${otherUid}/${currentUid}`));
+    }
+
+    // Delete the entire chat and its messages
+    await remove(ref(db, `chats/${chatId}`));
+    await remove(ref(db, `messages/${chatId}`));
+  } else {
+    // Group chat: leave the group (remove self from members)
+    await remove(ref(db, `chats/${chatId}/members/${currentUid}`));
+    // Post a system message
+    const msgRef = push(ref(db, `messages/${chatId}`));
+    await set(msgRef, {
+      chatId,
+      senderId: 'system',
+      senderName: 'System',
+      text: `A member left the group`,
+      timestamp: Date.now(),
+      type: 'system',
+    });
+  }
 }

@@ -216,6 +216,7 @@ export const AppLayout: React.FC = () => {
           currentUid={user?.uid ?? ''}
           unreadCounts={unreadCounts}
           onSelect={handleSelectChat}
+          onChatDeleted={() => setActiveChat(null)}
           searchFilter={sidebarSearch}
         />
       </aside>

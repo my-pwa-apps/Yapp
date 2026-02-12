@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../../firebase';
-import { membersToArray } from '../../hooks/useChats';
+import { membersToArray, clearChatMessages, deleteChat } from '../../hooks/useChats';
 import { useAuth } from '../../contexts/AuthContext';
 import { resolveChatKey } from '../../hooks/useE2EE';
 import { decrypt as e2eeDecrypt } from '../../hooks/useCrypto';
@@ -14,13 +14,18 @@ interface Props {
   currentUid: string;
   unreadCounts?: Record<string, number>;
   onSelect: (chat: Chat) => void;
+  onChatDeleted?: () => void;
   searchFilter?: string;
 }
 
-export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid, unreadCounts = {}, onSelect, searchFilter }) => {
+export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid, unreadCounts = {}, onSelect, onChatDeleted, searchFilter }) => {
   const { cryptoKeys } = useAuth();
   const [memberProfiles, setMemberProfiles] = useState<Record<string, UserProfile>>({});
   const [decryptedPreviews, setDecryptedPreviews] = useState<Record<string, string>>({});
+  const [contextMenu, setContextMenu] = useState<{ chatId: string; x: number; y: number } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ type: 'clear' | 'delete'; chatId: string; label: string } | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout>>();
+  const longPressTriggered = useRef(false);
 
   // Compute a stable key of other-user UIDs to avoid re-subscribing on every chats update
   const otherUidKey = useMemo(() => {
@@ -148,7 +153,7 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
   }
 
   return (
-    <div className="chat-list">
+    <div className="chat-list" onClick={() => setContextMenu(null)}>
       {filteredChats.length === 0 && searchFilter?.trim() && (
         <div className="empty-state"><p>No chats match "{searchFilter}"</p></div>
       )}
@@ -156,7 +161,25 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
         <div
           key={chat.id}
           className={`chat-item ${chat.id === activeId ? 'active' : ''}`}
-          onClick={() => onSelect(chat)}
+          onClick={() => { if (!longPressTriggered.current) onSelect(chat); }}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setContextMenu({ chatId: chat.id, x: e.clientX, y: e.clientY });
+          }}
+          onTouchStart={(e) => {
+            longPressTriggered.current = false;
+            const touch = e.touches[0];
+            longPressTimer.current = setTimeout(() => {
+              longPressTriggered.current = true;
+              setContextMenu({ chatId: chat.id, x: touch.clientX, y: touch.clientY });
+            }, 500);
+          }}
+          onTouchEnd={() => {
+            clearTimeout(longPressTimer.current);
+          }}
+          onTouchMove={() => {
+            clearTimeout(longPressTimer.current);
+          }}
         >
           <div className="avatar avatar-md">
             {(() => {
@@ -197,6 +220,53 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
           </div>
         </div>
       ))}
+
+      {/* Context menu */}
+      {contextMenu && (
+        <div
+          className="chat-context-menu"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button onClick={() => {
+            setConfirmAction({ type: 'clear', chatId: contextMenu.chatId, label: 'Clear all messages? This cannot be undone.' });
+            setContextMenu(null);
+          }}>
+            🗑️ Clear messages
+          </button>
+          <button onClick={() => {
+            const chat = chats.find(c => c.id === contextMenu.chatId);
+            const label = chat?.type === 'group' ? 'Leave this group?' : 'Delete this chat? You will need a new contact request to chat again.';
+            setConfirmAction({ type: 'delete', chatId: contextMenu.chatId, label });
+            setContextMenu(null);
+          }}>
+            ❌ {chats.find(c => c.id === contextMenu.chatId)?.type === 'group' ? 'Leave group' : 'Delete chat'}
+          </button>
+        </div>
+      )}
+
+      {/* Confirm dialog */}
+      {confirmAction && (
+        <div className="modal-overlay" onClick={() => setConfirmAction(null)}>
+          <div className="modal confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <p style={{ margin: '0 0 16px', color: 'var(--text-primary)', fontSize: '0.95rem' }}>{confirmAction.label}</p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="modal-btn secondary" onClick={() => setConfirmAction(null)}>Cancel</button>
+              <button className="modal-btn danger" onClick={async () => {
+                if (confirmAction.type === 'clear') {
+                  await clearChatMessages(confirmAction.chatId);
+                } else {
+                  await deleteChat(confirmAction.chatId, currentUid);
+                  onChatDeleted?.();
+                }
+                setConfirmAction(null);
+              }}>
+                {confirmAction.type === 'clear' ? 'Clear' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

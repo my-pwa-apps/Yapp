@@ -230,6 +230,37 @@
   letter-spacing: 0.5px;
 }
 
+/* Chat context menu */
+.chat-context-menu {
+  position: fixed;
+  z-index: 100;
+  background: var(--bg-header);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  padding: 4px 0;
+  min-width: 180px;
+}
+
+.chat-context-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.chat-context-menu button:hover {
+  background: var(--bg-hover);
+}
+
 /* ── Chat Window ── */
 .chat-window {
   flex: 1;
@@ -629,6 +660,34 @@
 .modal-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.modal-btn.secondary {
+  background: var(--bg-chat);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  margin-top: 0;
+  width: auto;
+}
+
+.modal-btn.secondary:hover {
+  background: var(--bg-hover);
+}
+
+.modal-btn.danger {
+  background: var(--danger);
+  color: #fff;
+  margin-top: 0;
+  width: auto;
+}
+
+.modal-btn.danger:hover {
+  opacity: 0.85;
+}
+
+.confirm-dialog {
+  max-width: 320px;
+  padding: 20px;
 }
 
 .modal-error {
