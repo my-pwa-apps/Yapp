@@ -27,7 +27,22 @@ export const AppLayout: React.FC = () => {
   const { invites: groupInvites, joinRequests } = useGroupInvites(user?.uid);
   const { notifyMessage, notifyGroupInvite, notifyJoinRequest, notifyContactRequest, refreshPrefs } = useNotifications();
   const unreadCounts = useUnreadCounts(chats, user?.uid);
+  const totalUnread = Object.values(unreadCounts).reduce((sum, n) => sum + n, 0);
   const notificationCount = contactRequests.length + groupInvites.length + joinRequests.length;
+
+  // Set app badge on installed PWA (Android, Windows, iOS)
+  useEffect(() => {
+    const badgeCount = totalUnread + notificationCount;
+    if ('setAppBadge' in navigator) {
+      if (badgeCount > 0) {
+        (navigator as any).setAppBadge(badgeCount).catch(() => {});
+      } else {
+        (navigator as any).clearAppBadge().catch(() => {});
+      }
+    }
+    // Also update document title with unread count
+    document.title = badgeCount > 0 ? `(${badgeCount}) Yappin'` : "Yappin'";
+  }, [totalUnread, notificationCount]);
   const [activeChat, setActiveChat] = useState<Chat | null>(null);
   const [showNewChat, setShowNewChat] = useState(false);
   const [showNewGroup, setShowNewGroup] = useState(false);
