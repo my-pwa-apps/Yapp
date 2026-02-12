@@ -304,10 +304,10 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
         const d = new Date(otherProfile.lastSeen);
         const now = new Date();
         const diff = now.getTime() - d.getTime();
-        if (diff < 60000) return 'last seen just now';
-        if (diff < 3600000) return `last seen ${Math.floor(diff / 60000)}m ago`;
-        if (diff < 86400000) return `last seen ${Math.floor(diff / 3600000)}h ago`;
-        return `last seen ${d.toLocaleDateString()}`;
+        if (diff < 60000) return 'seen just now';
+        if (diff < 3600000) return `seen ${Math.floor(diff / 60000)}m ago`;
+        if (diff < 86400000) return `seen ${Math.floor(diff / 3600000)}h ago`;
+        return `seen ${d.toLocaleDateString()}`;
       }
       return 'offline';
     }
@@ -351,6 +351,9 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
             ? <img src={otherProfile.photoURL} alt="" className="avatar-img" />
             : chatName.charAt(0).toUpperCase()
           }
+          {chat.type === 'direct' && !isSelfChat && otherProfile && (
+            <span className={`presence-badge ${otherProfile.online ? 'online' : 'offline'}`} />
+          )}
         </div>
         <div className="chat-header-info" onClick={() => {
           if (chat.type === 'group' && onShowGroupInfo) onShowGroupInfo();
@@ -365,9 +368,6 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
             )}
           </div>
           <div className="chat-header-status">
-            {chat.type === 'direct' && !isSelfChat && otherProfile && (
-              <span className={`presence-dot ${otherProfile.online ? 'online' : 'offline'}`} />
-            )}
             {getStatusText()}
           </div>
         </div>

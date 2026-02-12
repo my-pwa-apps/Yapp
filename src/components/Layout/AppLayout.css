@@ -243,26 +243,36 @@
 .chat-window-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 16px;
+  gap: 8px;
+  padding: 8px 10px;
   background: var(--bg-header);
-  min-height: 56px;
+  min-height: 52px;
 }
 
 .chat-header-info {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 
 .chat-header-name {
   color: var(--text-primary);
   font-weight: 500;
-  font-size: 1rem;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .chat-header-status {
   color: var(--text-secondary);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .back-btn {
@@ -429,11 +439,6 @@
   font-size: 0.75rem;
   color: var(--text-secondary);
   margin-top: 6px;
-}
-
-.chat-header-name {
-  display: flex;
-  align-items: center;
 }
 
 /* Enable E2EE button */
@@ -875,6 +880,24 @@
 
   .back-btn {
     display: flex;
+    padding: 6px;
+  }
+
+  .chat-window-header .avatar-md {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+
+  .chat-window-header .icon-btn {
+    padding: 6px;
+    min-width: 36px;
+    min-height: 36px;
+  }
+
+  .chat-window-header .icon-btn svg {
+    width: 20px;
+    height: 20px;
   }
 
   .messages-container {
@@ -2040,6 +2063,31 @@
 }
 
 .presence-dot.offline {
+  background: var(--text-muted);
+}
+
+/* Presence badge on avatar */
+.chat-header-avatar {
+  position: relative;
+}
+
+.presence-badge {
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-header);
+  box-sizing: border-box;
+}
+
+.presence-badge.online {
+  background: var(--accent);
+  box-shadow: 0 0 4px var(--accent-glow);
+}
+
+.presence-badge.offline {
   background: var(--text-muted);
 }
 
