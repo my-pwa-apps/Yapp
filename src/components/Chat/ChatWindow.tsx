@@ -57,6 +57,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
   // Smart scroll: track whether initial load is done for this chat
   const initialScrollDone = useRef(false);
   const prevMessageCount = useRef(0);
+  const currentChatIdRef = useRef(chat.id);
 
   // Swipe-back gesture refs
   const touchStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
@@ -139,15 +140,21 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     return () => { cancelled = true; };
   }, [messages, chatKey]);
 
-  // Save scroll position when leaving a chat
+  // Continuously save scroll position on scroll events
   useEffect(() => {
-    const prevChatId = chat.id;
-    return () => {
-      const el = messagesContainerRef.current;
-      if (el) {
-        savedScrollPositions.set(prevChatId, el.scrollTop);
-      }
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const chatId = chat.id;
+    const onScroll = () => {
+      savedScrollPositions.set(chatId, el.scrollTop);
     };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [chat.id]);
+
+  // Keep ref in sync for cleanup
+  useEffect(() => {
+    currentChatIdRef.current = chat.id;
   }, [chat.id]);
 
   // Reset scroll tracking on chat switch, close search
@@ -168,13 +175,17 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
       const scrollPref = getScrollBehaviorPref();
       const savedPos = savedScrollPositions.get(chat.id);
       if (scrollPref === 'left-off' && savedPos !== undefined) {
-        // Restore saved scroll position
+        // Use double-rAF to ensure DOM is fully laid out before restoring
         requestAnimationFrame(() => {
-          const el = messagesContainerRef.current;
-          if (el) el.scrollTop = savedPos;
+          requestAnimationFrame(() => {
+            const el = messagesContainerRef.current;
+            if (el) el.scrollTop = savedPos;
+          });
         });
       } else {
-        bottomRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
+        requestAnimationFrame(() => {
+          bottomRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
+        });
       }
       return;
     }
