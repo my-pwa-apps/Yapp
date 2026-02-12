@@ -23,7 +23,11 @@ export const MessageBubble: React.FC<Props> = ({ message, isMine, showSender, me
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const allRead = message.readBy && Object.keys(message.readBy).length >= memberCount;
+  // Read = at least one OTHER person has read it (not counting the sender)
+  const readByOthers = message.readBy
+    ? Object.keys(message.readBy).filter((uid) => uid !== message.senderId).length
+    : 0;
+  const isRead = readByOthers > 0;
 
   const renderContent = () => {
     switch (message.type) {
@@ -78,10 +82,10 @@ export const MessageBubble: React.FC<Props> = ({ message, isMine, showSender, me
         <div className="message-meta">
           <span className="message-time">{formatTime(message.timestamp)}</span>
           {isMine && (
-            allRead ? (
+            isRead ? (
               <span className="message-read">✓✓</span>
             ) : (
-              <span className="message-delivered">✓✓</span>
+              <span className="message-delivered">✓</span>
             )
           )}
         </div>

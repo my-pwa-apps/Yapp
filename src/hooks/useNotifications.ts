@@ -43,17 +43,28 @@ export async function requestPermission(): Promise<boolean> {
   return result === 'granted';
 }
 
-function showNotification(title: string, body: string, tag?: string, onClick?: () => void) {
-  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+async function showNotification(title: string, body: string, tag?: string, onClick?: () => void) {
+  if (Notification.permission !== 'granted') return;
 
-  const notification = new Notification(title, {
+  const options: NotificationOptions = {
     body,
     icon: '/Yapp/icons/icon-192x192.png',
     badge: '/Yapp/icons/icon-72x72.png',
     tag: tag || `yapp-${Date.now()}`,
     silent: false,
-  } as NotificationOptions);
+  };
 
+  // Use Service Worker registration for Android/mobile support
+  if ('serviceWorker' in navigator) {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification(title, options);
+      return;
+    } catch { /* fallback below */ }
+  }
+
+  // Fallback for desktop browsers
+  const notification = new Notification(title, options);
   if (onClick) {
     notification.onclick = () => {
       window.focus();
@@ -61,8 +72,6 @@ function showNotification(title: string, body: string, tag?: string, onClick?: (
       notification.close();
     };
   }
-
-  // Auto-close after 5 seconds
   setTimeout(() => notification.close(), 5000);
 }
 
