@@ -8,23 +8,35 @@ interface Props {
 
 export const MFASetup: React.FC<Props> = ({ onClose }) => {
   const { isMFAEnabled, enrollMFA, finalizeMFAEnrollment, unenrollMFA } = useAuth();
-  const [step, setStep] = useState<'start' | 'scan' | 'verify' | 'done'>('start');
+  const [step, setStep] = useState<'start' | 'reauth' | 'scan' | 'verify' | 'done'>('start');
   const [secret, setSecret] = useState<TotpSecret | null>(null);
   const [qrUrl, setQrUrl] = useState('');
   const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleEnable = async () => {
+    if (!password) {
+      setStep('reauth');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
-      const result = await enrollMFA();
+      const result = await enrollMFA(password);
       setSecret(result.secret);
       setQrUrl(result.qrUrl);
       setStep('scan');
     } catch (err: any) {
-      setError(err.message || 'Failed to start MFA enrollment. Make sure Identity Platform is enabled in Firebase.');
+      const code = err?.code;
+      if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+        setError('Incorrect password');
+      } else if (err?.message?.includes('UNSUPPORTED_FIRST_FACTOR') || err?.message?.includes('ADMIN_ONLY_OPERATION')) {
+        setError('TOTP MFA is not enabled in Firebase Console. Go to Authentication → Multi-factor → enable TOTP.');
+      } else {
+        setError(err.message || 'Failed to start MFA enrollment.');
+      }
     }
     setLoading(false);
   };
@@ -78,10 +90,34 @@ export const MFASetup: React.FC<Props> = ({ onClose }) => {
                   <button className="profile-action-btn secondary" onClick={onClose}>Cancel</button>
                 </div>
               ) : (
-                <button className="profile-action-btn" onClick={handleEnable} disabled={loading}>
-                  {loading ? 'Setting up...' : '🔐 Enable MFA'}
+                <button className="profile-action-btn" onClick={() => setStep('reauth')} disabled={loading}>
+                  🔐 Enable MFA
                 </button>
               )}
+            </>
+          )}
+
+          {step === 'reauth' && (
+            <>
+              <p style={{ color: '#E9EDEF', margin: '0 0 12px' }}>
+                Enter your password to continue:
+              </p>
+              <input
+                type="password"
+                className="modal-input"
+                placeholder="Current password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && password && handleEnable()}
+                autoFocus
+              />
+              {error && <p className="login-error" style={{ margin: '8px 0' }}>{error}</p>}
+              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <button className="profile-action-btn" onClick={handleEnable} disabled={loading || !password}>
+                  {loading ? 'Verifying...' : 'Continue'}
+                </button>
+                <button className="profile-action-btn secondary" onClick={() => { setStep('start'); setError(''); }}>Back</button>
+              </div>
             </>
           )}
 

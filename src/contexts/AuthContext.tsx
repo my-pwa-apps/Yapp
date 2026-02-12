@@ -37,7 +37,7 @@ interface AuthContextType {
   updatePhotoURL: (photoURL: string | null) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   // MFA
-  enrollMFA: () => Promise<{ secret: TotpSecret; qrUrl: string }>;
+  enrollMFA: (password: string) => Promise<{ secret: TotpSecret; qrUrl: string }>;
   finalizeMFAEnrollment: (secret: TotpSecret, verificationCode: string) => Promise<void>;
   unenrollMFA: () => Promise<void>;
   isMFAEnabled: boolean;
@@ -194,9 +194,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await firebaseUpdatePassword(user, newPassword);
   };
 
-  // MFA enrollment
-  const enrollMFA = async (): Promise<{ secret: TotpSecret; qrUrl: string }> => {
-    if (!user) throw new Error('Not signed in');
+  // MFA enrollment — requires reauthentication
+  const enrollMFA = async (password: string): Promise<{ secret: TotpSecret; qrUrl: string }> => {
+    if (!user || !user.email) throw new Error('Not signed in');
+    // Reauthenticate first — Firebase requires recent sign-in for MFA
+    const credential = EmailAuthProvider.credential(user.email, password);
+    await reauthenticateWithCredential(user, credential);
     const session = await multiFactor(user).getSession();
     const secret = await TotpMultiFactorGenerator.generateSecret(session);
     const qrUrl = secret.generateQrCodeUrl(user.email || 'user', "Yappin'");
