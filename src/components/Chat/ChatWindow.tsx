@@ -153,7 +153,10 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     }
     if (isSelfChat) return 'Note to self';
     if (chat.type === 'direct' && otherProfile) {
-      return otherProfile.online ? 'online' : 'offline';
+      if (otherProfile.online) {
+        return otherProfile.status || 'online';
+      }
+      return otherProfile.status || 'offline';
     }
     if (chat.type === 'group') {
       return `${members.length} members`;
@@ -178,7 +181,12 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
         </div>
         <div className="chat-header-info">
           <div className="chat-header-name">{chatName}</div>
-          <div className="chat-header-status">{getStatusText()}</div>
+          <div className="chat-header-status">
+            {chat.type === 'direct' && !isSelfChat && otherProfile && (
+              <span className={`presence-dot ${otherProfile.online ? 'online' : 'offline'}`} />
+            )}
+            {getStatusText()}
+          </div>
         </div>
         {/* Call buttons */}
         {onStartCall && (

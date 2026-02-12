@@ -1,0 +1,134 @@
+import { useEffect, useRef, useCallback } from 'react';
+
+export interface NotificationPreferences {
+  enabled: boolean;
+  messages: boolean;
+  groupInvites: boolean;
+  joinRequests: boolean;
+  contactRequests: boolean;
+}
+
+const PREFS_KEY = 'yapp_notification_prefs';
+
+const defaultPrefs: NotificationPreferences = {
+  enabled: true,
+  messages: true,
+  groupInvites: true,
+  joinRequests: true,
+  contactRequests: true,
+};
+
+export function getNotificationPrefs(): NotificationPreferences {
+  try {
+    const stored = localStorage.getItem(PREFS_KEY);
+    if (stored) return { ...defaultPrefs, ...JSON.parse(stored) };
+  } catch { /* ignore */ }
+  return { ...defaultPrefs };
+}
+
+export function saveNotificationPrefs(prefs: NotificationPreferences) {
+  localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+}
+
+export function getPermissionState(): NotificationPermission | 'unsupported' {
+  if (!('Notification' in window)) return 'unsupported';
+  return Notification.permission;
+}
+
+export async function requestPermission(): Promise<boolean> {
+  if (!('Notification' in window)) return false;
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission === 'denied') return false;
+  const result = await Notification.requestPermission();
+  return result === 'granted';
+}
+
+function showNotification(title: string, body: string, tag?: string, onClick?: () => void) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+  const notification = new Notification(title, {
+    body,
+    icon: '/Yapp/icons/icon-192x192.png',
+    badge: '/Yapp/icons/icon-72x72.png',
+    tag: tag || `yapp-${Date.now()}`,
+    silent: false,
+  } as NotificationOptions);
+
+  if (onClick) {
+    notification.onclick = () => {
+      window.focus();
+      onClick();
+      notification.close();
+    };
+  }
+
+  // Auto-close after 5 seconds
+  setTimeout(() => notification.close(), 5000);
+}
+
+/**
+ * Hook that provides notification functions.
+ * Checks preferences and permission before showing.
+ */
+export function useNotifications() {
+  const prefsRef = useRef<NotificationPreferences>(getNotificationPrefs());
+
+  // Refresh prefs on mount
+  useEffect(() => {
+    prefsRef.current = getNotificationPrefs();
+  }, []);
+
+  const refreshPrefs = useCallback(() => {
+    prefsRef.current = getNotificationPrefs();
+  }, []);
+
+  const notifyMessage = useCallback((senderName: string, text: string, chatId: string, onClick?: () => void) => {
+    const prefs = prefsRef.current;
+    if (!prefs.enabled || !prefs.messages) return;
+    if (document.hasFocus()) return; // Don't notify if app is focused
+    showNotification(
+      senderName,
+      text.length > 100 ? text.substring(0, 100) + '...' : text,
+      `msg-${chatId}`,
+      onClick
+    );
+  }, []);
+
+  const notifyGroupInvite = useCallback((groupName: string, invitedBy: string) => {
+    const prefs = prefsRef.current;
+    if (!prefs.enabled || !prefs.groupInvites) return;
+    showNotification(
+      'Group Invite',
+      `${invitedBy} invited you to "${groupName}"`,
+      `invite-${groupName}`
+    );
+  }, []);
+
+  const notifyJoinRequest = useCallback((groupName: string, fromName: string) => {
+    const prefs = prefsRef.current;
+    if (!prefs.enabled || !prefs.joinRequests) return;
+    showNotification(
+      'Join Request',
+      `${fromName} wants to join "${groupName}"`,
+      `join-${groupName}-${fromName}`
+    );
+  }, []);
+
+  const notifyContactRequest = useCallback((fromName: string, fromEmail: string) => {
+    const prefs = prefsRef.current;
+    if (!prefs.enabled || !prefs.contactRequests) return;
+    showNotification(
+      'Contact Request',
+      `${fromName} (${fromEmail}) wants to connect`,
+      `contact-${fromEmail}`
+    );
+  }, []);
+
+  return {
+    notifyMessage,
+    notifyGroupInvite,
+    notifyJoinRequest,
+    notifyContactRequest,
+    refreshPrefs,
+  };
+}

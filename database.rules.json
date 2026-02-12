@@ -29,6 +29,11 @@
       ".read": "auth != null",
       "$chatId": {
         ".write": "auth != null && (!data.exists() || data.child('members').child(auth.uid).exists())",
+        "members": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && data.parent().parent().child('pendingMembers').child($uid).child('type').val() === 'invite'"
+          }
+        },
         "pendingMembers": {
           "$uid": {
             ".write": "auth != null && (auth.uid === $uid || data.parent().parent().child('admins').child(auth.uid).exists() || data.parent().parent().child('members').child(auth.uid).exists())"
