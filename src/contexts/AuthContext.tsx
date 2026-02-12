@@ -74,15 +74,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [needsKeyRecovery, setNeedsKeyRecovery] = useState(false);
   const presenceUnsubRef = useRef<(() => void) | null>(null);
 
-  /** Load E2EE keys from IndexedDB (for page refresh) or flag recovery needed */
+  /** Store a Google-compatible key backup (encrypted with UID) in privateKeys/{uid} */
+  const ensureGoogleKeyBackup = async (uid: string, privateKey: CryptoKey) => {
+    try {
+      const gSnap = await get(ref(db, `privateKeys/${uid}`));
+      if (!gSnap.exists() || !gSnap.val().encryptedPrivateKey) {
+        const encPriv = await encryptPrivateKey(privateKey, uid);
+        await set(ref(db, `privateKeys/${uid}`), { encryptedPrivateKey: encPriv });
+      }
+    } catch (e) {
+      console.error('[E2EE] Failed to create Google key backup:', e);
+    }
+  };
+
+  /** Load E2EE keys from IndexedDB → Google backup → flag password recovery */
   const loadLocalCryptoKeys = async (uid: string) => {
     try {
       const local = await loadKeysLocally();
       if (local) {
         setCryptoKeys(local);
+        // Ensure Google backup exists
+        await ensureGoogleKeyBackup(uid, local.privateKey);
         return;
       }
-      // Check if user has keys in RTDB (needs password to decrypt)
+      // Try Google key backup (uid-encrypted) in privateKeys/{uid}
+      try {
+        const gSnap = await get(ref(db, `privateKeys/${uid}`));
+        if (gSnap.exists() && gSnap.val().encryptedPrivateKey) {
+          const privateKey = await decryptPrivateKey(gSnap.val().encryptedPrivateKey, uid);
+          const pubSnap = await get(ref(db, `users/${uid}/publicKey`));
+          if (pubSnap.exists()) {
+            const publicKey = await importPublicKey(pubSnap.val());
+            await saveKeysLocally(privateKey, publicKey);
+            setCryptoKeys({ privateKey, publicKey });
+            return;
+          }
+        }
+      } catch { /* Google backup not available or failed */ }
+      // Fall back: password-encrypted backup needs manual recovery
       const snap = await get(ref(db, `users/${uid}/encryptedPrivateKey`));
       if (snap.exists()) {
         setNeedsKeyRecovery(true);
@@ -104,6 +133,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await saveKeysLocally(privateKey, publicKey);
         setCryptoKeys({ privateKey, publicKey });
         setNeedsKeyRecovery(false);
+        // Also create Google key backup for future Google sign-ins
+        await ensureGoogleKeyBackup(uid, privateKey);
       } else {
         // Legacy user: generate keys
         await generateAndStoreKeys(uid, password);
@@ -123,6 +154,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await update(ref(db, `users/${uid}`), { publicKey: pubStr, encryptedPrivateKey: encPriv });
       await saveKeysLocally(keyPair.privateKey, keyPair.publicKey);
       setCryptoKeys({ privateKey: keyPair.privateKey, publicKey: keyPair.publicKey });
+      // Also create Google key backup
+      await ensureGoogleKeyBackup(uid, keyPair.privateKey);
     } catch (e) {
       console.error('[E2EE] Key generation failed:', e);
     }
@@ -220,14 +253,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     const cred = await signInWithPopup(auth, provider);
-    const userRef = ref(db, `users/${cred.user.uid}`);
+    const uid = cred.user.uid;
+    const userRef = ref(db, `users/${uid}`);
     const snap = await get(userRef);
+    const isNewUser = !snap.exists();
     if (snap.exists()) {
       await update(userRef, { online: true, lastSeen: serverTimestamp() });
       setProfile(snap.val() as UserProfile);
     } else {
       const newProfile: UserProfile = {
-        uid: cred.user.uid,
+        uid,
         displayName: cred.user.displayName || cred.user.email?.split('@')[0] || 'User',
         email: (cred.user.email || '').toLowerCase(),
         photoURL: cred.user.photoURL || null,
@@ -239,8 +274,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await set(userRef, newProfile);
       setProfile(newProfile);
     }
-    // Load E2EE keys from IndexedDB (or flag for recovery)
-    await loadLocalCryptoKeys(cred.user.uid);
+
+    // E2EE: Try IndexedDB first
+    try {
+      const local = await loadKeysLocally();
+      if (local) {
+        setCryptoKeys(local);
+        await ensureGoogleKeyBackup(uid, local.privateKey);
+        return;
+      }
+    } catch { /* IndexedDB unavailable */ }
+
+    // Try Google key backup from privateKeys/{uid}
+    try {
+      const gSnap = await get(ref(db, `privateKeys/${uid}`));
+      if (gSnap.exists() && gSnap.val().encryptedPrivateKey) {
+        const privateKey = await decryptPrivateKey(gSnap.val().encryptedPrivateKey, uid);
+        const pubSnap = await get(ref(db, `users/${uid}/publicKey`));
+        if (pubSnap.exists()) {
+          const publicKey = await importPublicKey(pubSnap.val());
+          await saveKeysLocally(privateKey, publicKey);
+          setCryptoKeys({ privateKey, publicKey });
+          return;
+        }
+      }
+    } catch (e) {
+      console.error('[E2EE] Google key recovery failed:', e);
+    }
+
+    // Check password-encrypted backup (needs manual recovery)
+    if (!isNewUser) {
+      const pkSnap = await get(ref(db, `users/${uid}/encryptedPrivateKey`));
+      if (pkSnap.exists()) {
+        setNeedsKeyRecovery(true);
+        return;
+      }
+    }
+
+    // No keys anywhere — generate fresh (encrypt backup with UID)
+    try {
+      const keyPair = await generateKeyPair();
+      const pubStr = await exportPublicKey(keyPair.publicKey);
+      const encPriv = await encryptPrivateKey(keyPair.privateKey, uid);
+      await update(ref(db, `users/${uid}`), { publicKey: pubStr });
+      await set(ref(db, `privateKeys/${uid}`), { encryptedPrivateKey: encPriv });
+      await saveKeysLocally(keyPair.privateKey, keyPair.publicKey);
+      setCryptoKeys({ privateKey: keyPair.privateKey, publicKey: keyPair.publicKey });
+    } catch (e) {
+      console.error('[E2EE] Key generation for Google user failed:', e);
+    }
   };
 
   const signUp = async (email: string, password: string, displayName: string) => {
@@ -255,6 +337,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       encPriv = await encryptPrivateKey(keyPair.privateKey, password);
       await saveKeysLocally(keyPair.privateKey, keyPair.publicKey);
       setCryptoKeys({ privateKey: keyPair.privateKey, publicKey: keyPair.publicKey });
+      // Also create Google key backup for future Google sign-ins
+      await ensureGoogleKeyBackup(cred.user.uid, keyPair.privateKey);
     } catch (e) {
       console.error('[E2EE] Key generation on signup failed:', e);
     }
