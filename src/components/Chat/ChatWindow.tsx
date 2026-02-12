@@ -29,6 +29,9 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
+  // Track whether the page is visible (tab/window active)
+  const [pageVisible, setPageVisible] = useState(!document.hidden);
+
   // Media picker state
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
@@ -68,20 +71,28 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     return () => unsub();
   }, [chat, currentUid, isSelfChat]);
 
+  // Listen for page visibility changes
+  useEffect(() => {
+    const handler = () => setPageVisible(!document.hidden);
+    document.addEventListener('visibilitychange', handler);
+    return () => document.removeEventListener('visibilitychange', handler);
+  }, []);
+
   // Scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Mark unread messages as read
+  // Mark unread messages as read — only when page is visible
   useEffect(() => {
+    if (!pageVisible) return;
     const unread = messages.filter(
       (m) => m.senderId !== currentUid && (!m.readBy || !m.readBy[currentUid])
     );
     if (unread.length > 0) {
       markMessagesRead(chat.id, unread.map((m) => m.id), currentUid);
     }
-  }, [messages, currentUid, chat.id]);
+  }, [messages, currentUid, chat.id, pageVisible]);
 
   // Focus input
   useEffect(() => {
