@@ -9,10 +9,11 @@ interface Props {
   loading: boolean;
   activeId: string | null;
   currentUid: string;
+  unreadCounts?: Record<string, number>;
   onSelect: (chat: Chat) => void;
 }
 
-export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid, onSelect }) => {
+export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid, unreadCounts = {}, onSelect }) => {
   const [memberProfiles, setMemberProfiles] = useState<Record<string, UserProfile>>({});
 
   // Live-listen to other users' profiles for realtime presence, name & photo updates
@@ -124,9 +125,14 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
               <span className="chat-item-badge">
                 {chat.type === 'group' && <span className="group-badge">GROUP</span>}
               </span>
-              {chat.lastMessage
-                ? `${chat.lastMessage.senderId === currentUid ? 'You' : chat.lastMessage.senderName}: ${chat.lastMessage.text}`
-                : 'No messages yet'}
+              <span className="chat-item-preview">
+                {chat.lastMessage
+                  ? `${chat.lastMessage.senderId === currentUid ? 'You' : chat.lastMessage.senderName}: ${chat.lastMessage.text}`
+                  : 'No messages yet'}
+              </span>
+              {(unreadCounts[chat.id] ?? 0) > 0 && (
+                <span className="unread-badge">{unreadCounts[chat.id]}</span>
+              )}
             </div>
           </div>
         </div>

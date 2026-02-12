@@ -73,19 +73,24 @@ function showNotification(title: string, body: string, tag?: string, onClick?: (
 export function useNotifications() {
   const prefsRef = useRef<NotificationPreferences>(getNotificationPrefs());
 
-  // Refresh prefs on mount
+  // Refresh prefs on mount and auto-request permission
   useEffect(() => {
     prefsRef.current = getNotificationPrefs();
+    // Auto-request permission on first load
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
   }, []);
 
   const refreshPrefs = useCallback(() => {
     prefsRef.current = getNotificationPrefs();
   }, []);
 
-  const notifyMessage = useCallback((senderName: string, text: string, chatId: string, onClick?: () => void) => {
+  const notifyMessage = useCallback((senderName: string, text: string, chatId: string, activeChatId?: string | null, onClick?: () => void) => {
     const prefs = prefsRef.current;
     if (!prefs.enabled || !prefs.messages) return;
-    if (document.hasFocus()) return; // Don't notify if app is focused
+    // Don't notify for the chat the user is currently viewing
+    if (activeChatId === chatId && document.hasFocus()) return;
     showNotification(
       senderName,
       text.length > 100 ? text.substring(0, 100) + '...' : text,

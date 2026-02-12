@@ -5,6 +5,7 @@ import { useCall } from '../../hooks/useCall';
 import { useContactRequests } from '../../hooks/useContactRequests';
 import { useGroupInvites } from '../../hooks/useGroupInvites';
 import { useNotifications } from '../../hooks/useNotifications';
+import { useUnreadCounts } from '../../hooks/useUnreadCounts';
 import { ChatList } from '../Chat/ChatList';
 import { ChatWindow } from '../Chat/ChatWindow';
 import { NewChatModal } from '../Chat/NewChatModal';
@@ -25,6 +26,7 @@ export const AppLayout: React.FC = () => {
   const contactRequests = useContactRequests(user?.uid);
   const { invites: groupInvites, joinRequests } = useGroupInvites(user?.uid);
   const { notifyMessage, notifyGroupInvite, notifyJoinRequest, notifyContactRequest, refreshPrefs } = useNotifications();
+  const unreadCounts = useUnreadCounts(chats, user?.uid);
   const notificationCount = contactRequests.length + groupInvites.length + joinRequests.length;
   const [activeChat, setActiveChat] = useState<Chat | null>(null);
   const [showNewChat, setShowNewChat] = useState(false);
@@ -51,7 +53,7 @@ export const AppLayout: React.FC = () => {
         const name = chat.type === 'group'
           ? `${chat.lastMessage.senderName} in ${chat.name || 'Group'}`
           : chat.lastMessage.senderName;
-        notifyMessage(name, chat.lastMessage.text, chat.id);
+        notifyMessage(name, chat.lastMessage.text, chat.id, activeChat?.id);
       }
     });
     const snap: Record<string, number> = {};
@@ -164,6 +166,7 @@ export const AppLayout: React.FC = () => {
           loading={loading}
           activeId={activeChat?.id ?? null}
           currentUid={user?.uid ?? ''}
+          unreadCounts={unreadCounts}
           onSelect={handleSelectChat}
         />
       </aside>
