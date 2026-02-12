@@ -1,20 +1,27 @@
 {
   "rules": {
+    ".read": false,
+    ".write": false,
+
     "users": {
       ".read": "auth != null",
       ".indexOn": ["email"],
       "$uid": {
-        ".write": "auth != null && auth.uid === $uid"
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['uid', 'displayName', 'email', 'online', 'lastSeen', 'createdAt'])"
       }
     },
+
     "contacts": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
         "$contactUid": {
-          ".write": "auth != null && (auth.uid === $uid || auth.uid === $contactUid)"
+          ".write": "auth != null && (auth.uid === $uid || auth.uid === $contactUid)",
+          ".validate": "newData.isBoolean()"
         }
       }
     },
+
     "contactRequests": {
       "$targetUid": {
         ".read": "auth != null && auth.uid === $targetUid",
@@ -25,6 +32,7 @@
         }
       }
     },
+
     "chats": {
       ".read": "auth != null",
       "$chatId": {
@@ -38,27 +46,38 @@
           "$uid": {
             ".write": "auth != null && (auth.uid === $uid || data.parent().parent().child('admins').child(auth.uid).exists() || data.parent().parent().child('members').child(auth.uid).exists())"
           }
+        },
+        "encryptedGroupKey": {
+          "$uid": {
+            ".validate": "newData.hasChildren(['wrappedKey', 'iv', 'wrappedBy'])"
+          }
         }
       }
     },
+
     "messages": {
       "$chatId": {
         ".read": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
         ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
+        ".indexOn": ["timestamp"],
         "$msgId": {
-          ".validate": "data.exists() || newData.child('senderId').val() === auth.uid || newData.child('senderId').val() === 'system'"
+          ".validate": "(data.exists() || newData.child('senderId').val() === auth.uid || newData.child('senderId').val() === 'system') && newData.hasChildren(['chatId', 'senderId', 'senderName', 'text', 'timestamp', 'type'])"
         }
       }
     },
+
     "calls": {
       ".read": "auth != null",
+      ".indexOn": ["status"],
       "$callId": {
-        ".write": "auth != null && (!data.exists() || data.child('participants').child(auth.uid).exists())"
+        ".write": "auth != null && (!data.exists() || data.child('participants').child(auth.uid).exists())",
+        ".validate": "newData.hasChildren(['chatId', 'callerId', 'callerName', 'callType', 'status', 'participants', 'createdAt'])"
       }
     },
+
     "callSignaling": {
       "$callId": {
-        ".read": "auth != null",
+        ".read": "auth != null && root.child('calls').child($callId).child('participants').child(auth.uid).exists()",
         ".write": "auth != null && root.child('calls').child($callId).child('participants').child(auth.uid).exists()"
       }
     }
