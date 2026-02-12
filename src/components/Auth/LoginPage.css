@@ -41,12 +41,14 @@
 
 .login-input {
   padding: 0.85rem 1rem;
-  border: 2px solid #e9edef;
+  border: 2px solid #d1d7db;
   border-radius: 10px;
   font-size: 1rem;
   outline: none;
   transition: border-color 0.2s;
   font-family: inherit;
+  background: #fff;
+  color: #111B21;
 }
 
 .login-input:focus {

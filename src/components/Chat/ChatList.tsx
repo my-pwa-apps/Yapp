@@ -186,7 +186,7 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
                       const displayText = (chat.lastMessage.encrypted && decryptedPreviews[previewKey])
                         ? decryptedPreviews[previewKey]
                         : chat.lastMessage.text;
-                      return `${sender}: ${displayText}`;
+                      return <>{chat.lastMessage.encrypted && <span className="e2ee-chat-lock" title="Encrypted">🔒 </span>}{sender}: {displayText}</>;
                     })()
                   : 'No messages yet'}
               </span>
