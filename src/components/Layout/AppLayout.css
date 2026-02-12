@@ -1735,3 +1735,144 @@
   to { transform: translateY(0); }
 }
 
+/* ── Group Info Panel ── */
+.group-members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.group-member-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 8px;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.group-member-item:hover {
+  background: #202C33;
+}
+
+.group-member-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.group-member-name {
+  color: #E9EDEF;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.group-member-status {
+  color: #8696A0;
+  font-size: 0.75rem;
+}
+
+.group-admin-badge {
+  display: inline-block;
+  background: #65a30d;
+  color: #fff;
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.group-action-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  font-weight: 700;
+  transition: background 0.2s, opacity 0.2s;
+  flex-shrink: 0;
+}
+
+.group-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.group-action-btn.remove {
+  background: #3b1616;
+  color: #ef4444;
+}
+
+.group-action-btn.remove:hover:not(:disabled) {
+  background: #ef4444;
+  color: #fff;
+}
+
+.group-action-btn.approve {
+  background: #1a2e1a;
+  color: #65a30d;
+}
+
+.group-action-btn.approve:hover:not(:disabled) {
+  background: #65a30d;
+  color: #fff;
+}
+
+/* ── Group Invite Banners ── */
+.group-invites-container {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 9998;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 380px;
+  width: calc(100% - 24px);
+}
+
+.group-invite-banner {
+  background: #1a2e1a;
+  border: 1px solid #65a30d;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: slideDown 0.3s ease-out;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.group-invite-info {
+  flex: 1;
+  color: #E9EDEF;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.group-invite-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.group-add-member {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+

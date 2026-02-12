@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useChats, membersToArray } from '../../hooks/useChats';
+import { useChats, membersToArray, approvePendingMember, rejectPendingMember } from '../../hooks/useChats';
 import { useCall } from '../../hooks/useCall';
 import { useContactRequests } from '../../hooks/useContactRequests';
+import { useGroupInvites } from '../../hooks/useGroupInvites';
 import { ChatList } from '../Chat/ChatList';
 import { ChatWindow } from '../Chat/ChatWindow';
 import { NewChatModal } from '../Chat/NewChatModal';
@@ -10,6 +11,7 @@ import { NewGroupModal } from '../Chat/NewGroupModal';
 import { ProfilePanel } from '../Chat/ProfilePanel';
 import { CallScreen } from '../Chat/CallScreen';
 import { ContactRequestsModal } from '../Chat/ContactRequestsModal';
+import { GroupInfoPanel } from '../Chat/GroupInfoPanel';
 import type { Chat } from '../../types';
 import { YappLogo } from '../YappLogo';
 import './AppLayout.css';
@@ -19,11 +21,13 @@ export const AppLayout: React.FC = () => {
   const { chats, loading } = useChats(user?.uid);
   const call = useCall(user?.uid ?? '', profile?.displayName ?? '');
   const contactRequests = useContactRequests(user?.uid);
+  const groupInvites = useGroupInvites(user?.uid);
   const [activeChat, setActiveChat] = useState<Chat | null>(null);
   const [showNewChat, setShowNewChat] = useState(false);
   const [showNewGroup, setShowNewGroup] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showRequests, setShowRequests] = useState(false);
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
 
   // On mobile, hide sidebar when chat is selected
@@ -109,6 +113,7 @@ export const AppLayout: React.FC = () => {
               const members = membersToArray(activeChat.members);
               call.startCall(activeChat.id, callType, members);
             }}
+            onShowGroupInfo={() => setShowGroupInfo(true)}
           />
         ) : (
           <div className="no-chat">
@@ -160,6 +165,46 @@ export const AppLayout: React.FC = () => {
             if (chat) handleSelectChat(chat);
           }}
         />
+      )}
+      {showGroupInfo && activeChat && activeChat.type === 'group' && (
+        <GroupInfoPanel
+          chat={activeChat}
+          currentUid={user?.uid ?? ''}
+          currentName={profile?.displayName ?? ''}
+          onClose={() => setShowGroupInfo(false)}
+          onLeft={() => { setShowGroupInfo(false); setActiveChat(null); setShowSidebar(true); }}
+        />
+      )}
+
+      {/* Group invite banners */}
+      {groupInvites.length > 0 && (
+        <div className="group-invites-container">
+          {groupInvites.map((inv) => (
+            <div key={inv.chatId} className="group-invite-banner">
+              <div className="group-invite-info">
+                <strong>{inv.invitedBy}</strong> invited you to <strong>{inv.chatName}</strong>
+              </div>
+              <div className="group-invite-actions">
+                <button
+                  className="group-action-btn approve"
+                  onClick={async () => {
+                    await approvePendingMember(inv.chatId, user!.uid, profile!.displayName, profile!.displayName);
+                  }}
+                >
+                  Accept
+                </button>
+                <button
+                  className="group-action-btn remove"
+                  onClick={async () => {
+                    await rejectPendingMember(inv.chatId, user!.uid);
+                  }}
+                >
+                  Decline
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       {/* Call overlay */}

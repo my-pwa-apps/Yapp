@@ -25,6 +25,15 @@ export interface Chat {
     timestamp: number;
   };
   typing?: Record<string, boolean>;
+  /** Pending join/invite requests: uid -> { type, fromName, timestamp } */
+  pendingMembers?: Record<string, PendingMember>;
+}
+
+export interface PendingMember {
+  type: 'invite' | 'request';  // invite = admin invited them, request = user asked to join
+  fromUid: string;             // who initiated (admin uid for invite, user uid for request)
+  fromName: string;
+  timestamp: number;
 }
 
 export interface Message {

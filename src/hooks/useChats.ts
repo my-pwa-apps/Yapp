@@ -18,6 +18,11 @@ export function membersToArray(members: Record<string, boolean> | undefined): st
   return members ? Object.keys(members) : [];
 }
 
+/** Helper: check if a user is an admin of a chat */
+export function isGroupAdmin(chat: Chat, uid: string): boolean {
+  return !!(chat.admins && chat.admins[uid]);
+}
+
 export function useChats(uid: string | undefined) {
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,7 +140,7 @@ export async function createGroupChat(
   return chatId;
 }
 
-/** Add member to group */
+/** Add member to group (direct add, no approval) */
 export async function addGroupMember(chatId: string, uid: string, addedByName: string) {
   await update(ref(db, `chats/${chatId}/members`), { [uid]: true });
 
@@ -149,6 +154,88 @@ export async function addGroupMember(chatId: string, uid: string, addedByName: s
     readBy: {},
     type: 'system',
   });
+}
+
+/** Remove member from group (admin action) */
+export async function removeGroupMember(chatId: string, uid: string, removedByName: string, memberName: string) {
+  const updates: Record<string, any> = {};
+  updates[`chats/${chatId}/members/${uid}`] = null;
+  updates[`chats/${chatId}/admins/${uid}`] = null;
+  await update(ref(db), updates);
+
+  const msgRef = push(ref(db, `messages/${chatId}`));
+  await set(msgRef, {
+    chatId,
+    senderId: 'system',
+    senderName: 'System',
+    text: `${removedByName} removed ${memberName}`,
+    timestamp: Date.now(),
+    readBy: {},
+    type: 'system',
+  });
+}
+
+/** Leave group (self-removal) */
+export async function leaveGroup(chatId: string, uid: string, memberName: string) {
+  const updates: Record<string, any> = {};
+  updates[`chats/${chatId}/members/${uid}`] = null;
+  updates[`chats/${chatId}/admins/${uid}`] = null;
+  await update(ref(db), updates);
+
+  const msgRef = push(ref(db, `messages/${chatId}`));
+  await set(msgRef, {
+    chatId,
+    senderId: 'system',
+    senderName: 'System',
+    text: `${memberName} left the group`,
+    timestamp: Date.now(),
+    readBy: {},
+    type: 'system',
+  });
+}
+
+/** Admin invites a user to the group — needs user's approval */
+export async function inviteToGroup(chatId: string, targetUid: string, adminUid: string, adminName: string) {
+  await update(ref(db, `chats/${chatId}/pendingMembers/${targetUid}`), {
+    type: 'invite',
+    fromUid: adminUid,
+    fromName: adminName,
+    timestamp: Date.now(),
+  });
+}
+
+/** User requests to join a group — needs admin approval */
+export async function requestToJoinGroup(chatId: string, uid: string, userName: string) {
+  await update(ref(db, `chats/${chatId}/pendingMembers/${uid}`), {
+    type: 'request',
+    fromUid: uid,
+    fromName: userName,
+    timestamp: Date.now(),
+  });
+}
+
+/** Approve a pending member (admin approves a join request, or user accepts an invite) */
+export async function approvePendingMember(chatId: string, uid: string, approverName: string, memberName: string) {
+  const updates: Record<string, any> = {};
+  updates[`chats/${chatId}/members/${uid}`] = true;
+  updates[`chats/${chatId}/pendingMembers/${uid}`] = null;
+  await update(ref(db), updates);
+
+  const msgRef = push(ref(db, `messages/${chatId}`));
+  await set(msgRef, {
+    chatId,
+    senderId: 'system',
+    senderName: 'System',
+    text: `${memberName} joined the group`,
+    timestamp: Date.now(),
+    readBy: {},
+    type: 'system',
+  });
+}
+
+/** Reject/decline a pending member */
+export async function rejectPendingMember(chatId: string, uid: string) {
+  await set(ref(db, `chats/${chatId}/pendingMembers/${uid}`), null);
 }
 
 /** Search users by email */

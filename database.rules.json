@@ -28,7 +28,12 @@
     "chats": {
       ".read": "auth != null",
       "$chatId": {
-        ".write": "auth != null && (!data.exists() || data.child('members').child(auth.uid).exists())"
+        ".write": "auth != null && (!data.exists() || data.child('members').child(auth.uid).exists())",
+        "pendingMembers": {
+          "$uid": {
+            ".write": "auth != null && (auth.uid === $uid || data.parent().parent().child('admins').child(auth.uid).exists() || data.parent().parent().child('members').child(auth.uid).exists())"
+          }
+        }
       }
     },
     "messages": {
