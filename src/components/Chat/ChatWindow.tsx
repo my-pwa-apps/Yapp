@@ -25,6 +25,9 @@ export function setScrollBehaviorPref(pref: ScrollBehaviorPref) {
   localStorage.setItem(SCROLL_PREF_KEY, pref);
 }
 
+// Module-level map so scroll positions survive component unmount/remount
+const savedScrollPositions = new Map<string, number>();
+
 interface Props {
   chat: Chat;
   currentUid: string;
@@ -40,6 +43,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
   const { encryptMessage, decryptMessage, chatKey } = useChatEncryption(chat, currentUid, cryptoKeys);
   const [enablingE2EE, setEnablingE2EE] = useState(false);
   const [showKeyRecovery, setShowKeyRecovery] = useState(false);
+  const [showUserDetail, setShowUserDetail] = useState(false);
   const [text, setText] = useState('');
   const [chatName, setChatName] = useState('');
   const [otherProfile, setOtherProfile] = useState<UserProfile | null>(null);
@@ -53,9 +57,6 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
   // Smart scroll: track whether initial load is done for this chat
   const initialScrollDone = useRef(false);
   const prevMessageCount = useRef(0);
-
-  // Scroll position persistence
-  const scrollPositions = useRef<Record<string, number>>({});
 
   // Swipe-back gesture refs
   const touchStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
@@ -144,7 +145,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     return () => {
       const el = messagesContainerRef.current;
       if (el) {
-        scrollPositions.current[prevChatId] = el.scrollTop;
+        savedScrollPositions.set(prevChatId, el.scrollTop);
       }
     };
   }, [chat.id]);
@@ -165,7 +166,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
       initialScrollDone.current = true;
       prevMessageCount.current = decryptedMessages.length;
       const scrollPref = getScrollBehaviorPref();
-      const savedPos = scrollPositions.current[chat.id];
+      const savedPos = savedScrollPositions.get(chat.id);
       if (scrollPref === 'left-off' && savedPos !== undefined) {
         // Restore saved scroll position
         requestAnimationFrame(() => {
@@ -287,10 +288,17 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     }
     if (isSelfChat) return 'Note to self';
     if (chat.type === 'direct' && otherProfile) {
-      if (otherProfile.online) {
-        return otherProfile.status || 'online';
+      if (otherProfile.online) return 'online';
+      if (otherProfile.lastSeen) {
+        const d = new Date(otherProfile.lastSeen);
+        const now = new Date();
+        const diff = now.getTime() - d.getTime();
+        if (diff < 60000) return 'last seen just now';
+        if (diff < 3600000) return `last seen ${Math.floor(diff / 60000)}m ago`;
+        if (diff < 86400000) return `last seen ${Math.floor(diff / 3600000)}h ago`;
+        return `last seen ${d.toLocaleDateString()}`;
       }
-      return otherProfile.status || 'offline';
+      return 'offline';
     }
     if (chat.type === 'group') {
       return `${members.length} members`;
@@ -324,13 +332,19 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
             <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
           </svg>
         </button>
-        <div className="avatar avatar-md">
+        <div className="avatar avatar-md chat-header-avatar" onClick={() => {
+          if (chat.type === 'group' && onShowGroupInfo) onShowGroupInfo();
+          else if (chat.type === 'direct' && !isSelfChat && otherProfile) setShowUserDetail(!showUserDetail);
+        }} style={{ cursor: 'pointer' }}>
           {otherProfile?.photoURL
             ? <img src={otherProfile.photoURL} alt="" className="avatar-img" />
             : chatName.charAt(0).toUpperCase()
           }
         </div>
-        <div className="chat-header-info">
+        <div className="chat-header-info" onClick={() => {
+          if (chat.type === 'group' && onShowGroupInfo) onShowGroupInfo();
+          else if (chat.type === 'direct' && !isSelfChat && otherProfile) setShowUserDetail(!showUserDetail);
+        }} style={{ cursor: 'pointer' }}>
           <div className="chat-header-name">
             {chatName}
             {chatKey && (
@@ -430,6 +444,34 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
           </button>
         )}
       </div>
+      {/* User detail popup */}
+      {showUserDetail && otherProfile && (
+        <div className="user-detail-popup">
+          <div className="user-detail-header">
+            <div className="avatar avatar-lg">
+              {otherProfile.photoURL
+                ? <img src={otherProfile.photoURL} alt="" className="avatar-img" />
+                : otherProfile.displayName.charAt(0).toUpperCase()
+              }
+            </div>
+            <button className="user-detail-close" onClick={() => setShowUserDetail(false)}>×</button>
+          </div>
+          <div className="user-detail-name">{otherProfile.displayName}</div>
+          <div className="user-detail-email">{otherProfile.email}</div>
+          {otherProfile.status && (
+            <div className="user-detail-status">"{otherProfile.status}"</div>
+          )}
+          <div className="user-detail-seen">
+            {otherProfile.online ? (
+              <span style={{ color: 'var(--accent)' }}>● Online</span>
+            ) : otherProfile.lastSeen ? (
+              <span>Last seen {new Date(otherProfile.lastSeen).toLocaleString()}</span>
+            ) : (
+              <span>Offline</span>
+            )}
+          </div>
+        </div>
+      )}
       {/* In-chat search bar */}
       {showSearch && (
         <div className="chat-search-bar">
