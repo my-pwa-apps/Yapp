@@ -7,6 +7,8 @@ import {
   type NotificationPreferences,
 } from '../../hooks/useNotifications';
 import { getScrollBehaviorPref, setScrollBehaviorPref, type ScrollBehaviorPref } from './ChatWindow';
+import { useAuth } from '../../contexts/AuthContext';
+import { KeyRecoveryModal } from './KeyRecoveryModal';
 
 interface Props {
   onClose: () => void;
@@ -14,9 +16,11 @@ interface Props {
 }
 
 export const NotificationSettings: React.FC<Props> = ({ onClose, onPrefsChanged }) => {
+  const { cryptoKeys, needsKeyRecovery, recoverKeys } = useAuth();
   const [prefs, setPrefs] = useState<NotificationPreferences>(getNotificationPrefs());
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>(getPermissionState());
   const [scrollBehavior, setScrollBehavior] = useState<ScrollBehaviorPref>(getScrollBehaviorPref());
+  const [showKeyRecovery, setShowKeyRecovery] = useState(false);
 
   useEffect(() => {
     setPermission(getPermissionState());
@@ -154,7 +158,36 @@ export const NotificationSettings: React.FC<Props> = ({ onClose, onPrefsChanged 
               <option value="left-off">Where I left off</option>
             </select>
           </div>
+
+          {/* Divider */}
+          <div style={{ borderTop: '1px solid var(--border)', margin: '16px 0' }} />
+
+          {/* Encryption section */}
+          <h4 style={{ color: 'var(--accent)', fontSize: 14, margin: '0 0 12px', fontWeight: 600 }}>Encryption</h4>
+          <div className="notif-setting-row">
+            <div className="notif-setting-info">
+              <span className="notif-setting-label">E2EE Keys</span>
+              <span className="notif-setting-desc">
+                {cryptoKeys
+                  ? '✅ Encryption keys are active'
+                  : needsKeyRecovery
+                    ? '⚠️ Keys need to be unlocked with your password'
+                    : '❌ No encryption keys — sign out and back in to generate'}
+              </span>
+            </div>
+            {!cryptoKeys && needsKeyRecovery && (
+              <button className="profile-action-btn" style={{ fontSize: 12, padding: '6px 12px' }} onClick={() => setShowKeyRecovery(true)}>
+                🔐 Unlock
+              </button>
+            )}
+          </div>
         </div>
+        {showKeyRecovery && (
+          <KeyRecoveryModal
+            onRecover={async (pw) => { await recoverKeys(pw); setShowKeyRecovery(false); }}
+            onSkip={() => setShowKeyRecovery(false)}
+          />
+        )}
       </div>
     </div>
   );

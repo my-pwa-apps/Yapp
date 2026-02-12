@@ -367,8 +367,10 @@
 /* E2EE lock icon next to chat name */
 .e2ee-header-lock {
   margin-left: 6px;
-  vertical-align: middle;
+  display: inline-flex;
+  align-items: center;
   flex-shrink: 0;
+  cursor: default;
 }
 
 .chat-header-name {
@@ -378,15 +380,11 @@
 
 /* Enable E2EE button */
 .enable-e2ee-btn {
-  opacity: 0.5;
+  opacity: 0.6;
   transition: opacity 0.2s;
 }
-.enable-e2ee-btn:hover:not(:disabled) {
+.enable-e2ee-btn:hover {
   opacity: 1;
-}
-.enable-e2ee-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.3;
 }
 
 .e2ee-enabling {
