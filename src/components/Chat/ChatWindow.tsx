@@ -65,6 +65,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
   const initialScrollDone = useRef(false);
   const prevMessageCount = useRef(0);
   const currentChatIdRef = useRef(chat.id);
+  const justSentRef = useRef(false);
 
   // Swipe-back gesture refs
   const touchStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
@@ -201,14 +202,21 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
       }
       return;
     }
-    // On subsequent messages: auto-scroll only if near bottom
+    // On subsequent messages: always scroll for own sends, only near-bottom for others
     if (decryptedMessages.length > prevMessageCount.current) {
       prevMessageCount.current = decryptedMessages.length;
-      const el = messagesContainerRef.current;
-      if (el) {
-        const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
-        if (isNearBottom) {
+      if (justSentRef.current) {
+        justSentRef.current = false;
+        requestAnimationFrame(() => {
           bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+        });
+      } else {
+        const el = messagesContainerRef.current;
+        if (el) {
+          const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
+          if (isNearBottom) {
+            bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+          }
         }
       }
     }
@@ -271,6 +279,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
   const handleSend = async () => {
     const trimmed = text.trim();
     if (!trimmed) return;
+    justSentRef.current = true;
     setText('');
     setTyping(chat.id, currentUid, false);
     // Encrypt if E2EE is available for this chat
@@ -583,6 +592,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
         <GifPicker
           onSelect={async (gifUrl) => {
             setShowGifPicker(false);
+            justSentRef.current = true;
             await sendMediaMessage(chat.id, currentUid, currentName, 'gif', gifUrl, '🎬 GIF');
           }}
           onClose={() => setShowGifPicker(false)}
@@ -592,6 +602,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
         <StickerPicker
           onSelect={async (emoji) => {
             setShowStickerPicker(false);
+            justSentRef.current = true;
             await sendMediaMessage(chat.id, currentUid, currentName, 'sticker', emoji, emoji);
           }}
           onClose={() => setShowStickerPicker(false)}
@@ -606,6 +617,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
             setUploading(true);
             try {
               const dataUrl = await blobToDataURL(blob);
+              justSentRef.current = true;
               await sendMediaMessage(chat.id, currentUid, currentName, 'voice', dataUrl, '🎤 Voice message', { voiceDuration: duration });
             } catch { /* ignore */ }
             setUploading(false);
@@ -663,6 +675,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
               setUploading(true);
               try {
                 const dataUrl = await compressImage(file);
+                justSentRef.current = true;
                 await sendMediaMessage(chat.id, currentUid, currentName, 'image', dataUrl, '📎 File');
               } catch { /* ignore */ }
               setUploading(false);
