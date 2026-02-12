@@ -54,7 +54,7 @@ export const AvatarPicker: React.FC<Props> = ({ currentPhotoURL, displayName, on
       <circle cx="128" cy="128" r="128" fill="url(#g)"/>
       <text x="128" y="148" text-anchor="middle" font-size="100">${avatar.emoji}</text>
     </svg>`;
-    const dataUrl = `data:image/svg+xml;base64,${btoa(svg)}`;
+    const dataUrl = `data:image/svg+xml,${encodeURIComponent(svg)}`;
     setSelected(dataUrl);
     await onSelect(dataUrl);
   };
