@@ -14,20 +14,7 @@ import { KeyRecoveryModal } from './KeyRecoveryModal';
 import type { Chat, UserProfile, Message } from '../../types';
 import { formatLastSeen } from '../../utils';
 
-// Scroll behavior preference
-const SCROLL_PREF_KEY = 'yapp_scroll_behavior';
-export type ScrollBehaviorPref = 'most-recent' | 'left-off';
-export function getScrollBehaviorPref(): ScrollBehaviorPref {
-  try {
-    return (localStorage.getItem(SCROLL_PREF_KEY) as ScrollBehaviorPref) || 'most-recent';
-  } catch { return 'most-recent'; }
-}
-export function setScrollBehaviorPref(pref: ScrollBehaviorPref) {
-  localStorage.setItem(SCROLL_PREF_KEY, pref);
-}
 
-// Module-level map so scroll positions survive component unmount/remount
-const savedScrollPositions = new Map<string, number>();
 
 interface Props {
   chat: Chat;
@@ -149,21 +136,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     return () => { cancelled = true; };
   }, [messages, chatKey]);
 
-  // Continuously save scroll position on scroll events
-  useEffect(() => {
-    const el = messagesContainerRef.current;
-    if (!el) return;
-    const chatId = chat.id;
-    const onScroll = () => {
-      savedScrollPositions.set(chatId, el.scrollTop);
-    };
-    el.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      // Save final scroll position when switching away
-      savedScrollPositions.set(chatId, el.scrollTop);
-      el.removeEventListener('scroll', onScroll);
-    };
-  }, [chat.id]);
+
 
   // Keep ref in sync for cleanup
   useEffect(() => {
@@ -180,27 +153,15 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     setSearchResults([]);
   }, [chat.id]);
 
-  // Scroll to bottom or saved position on initial load
+  // Scroll to bottom on initial load
   useEffect(() => {
     if (loading || decryptedMessages.length === 0) return;
     if (!initialScrollDone.current) {
       initialScrollDone.current = true;
       prevMessageCount.current = decryptedMessages.length;
-      const scrollPref = getScrollBehaviorPref();
-      const savedPos = savedScrollPositions.get(chat.id);
-      if (scrollPref === 'left-off' && savedPos !== undefined) {
-        // Use double-rAF to ensure DOM is fully laid out before restoring
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            const el = messagesContainerRef.current;
-            if (el) el.scrollTop = savedPos;
-          });
-        });
-      } else {
-        requestAnimationFrame(() => {
-          bottomRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
-        });
-      }
+      requestAnimationFrame(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
+      });
       return;
     }
     // On subsequent messages: always scroll for own sends, only near-bottom for others

@@ -6,7 +6,7 @@ import {
   requestPermission,
   type NotificationPreferences,
 } from '../../hooks/useNotifications';
-import { getScrollBehaviorPref, setScrollBehaviorPref, type ScrollBehaviorPref } from './ChatWindow';
+
 import { useAuth } from '../../contexts/AuthContext';
 import { KeyRecoveryModal } from './KeyRecoveryModal';
 
@@ -19,7 +19,7 @@ export const NotificationSettings: React.FC<Props> = ({ onClose, onPrefsChanged 
   const { cryptoKeys, needsKeyRecovery, recoverKeys } = useAuth();
   const [prefs, setPrefs] = useState<NotificationPreferences>(getNotificationPrefs());
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>(getPermissionState());
-  const [scrollBehavior, setScrollBehavior] = useState<ScrollBehaviorPref>(getScrollBehaviorPref());
+
   const [showKeyRecovery, setShowKeyRecovery] = useState(false);
 
   useEffect(() => {
@@ -132,32 +132,6 @@ export const NotificationSettings: React.FC<Props> = ({ onClose, onPrefsChanged 
               )}
             </>
           )}
-
-          {/* Divider */}
-          <div style={{ borderTop: '1px solid #2A3942', margin: '16px 0' }} />
-
-          {/* Chat behavior section */}
-          <h4 style={{ color: '#65a30d', fontSize: 14, margin: '0 0 12px', fontWeight: 600 }}>Chat Behavior</h4>
-          <div className="notif-setting-row">
-            <div className="notif-setting-info">
-              <span className="notif-setting-label">Open chats at</span>
-              <span className="notif-setting-desc">
-                {scrollBehavior === 'most-recent' ? 'Always scroll to the newest message' : 'Return to where you left off'}
-              </span>
-            </div>
-            <select
-              className="scroll-behavior-select"
-              value={scrollBehavior}
-              onChange={(e) => {
-                const val = e.target.value as ScrollBehaviorPref;
-                setScrollBehavior(val);
-                setScrollBehaviorPref(val);
-              }}
-            >
-              <option value="most-recent">Most recent</option>
-              <option value="left-off">Where I left off</option>
-            </select>
-          </div>
 
           {/* Divider */}
           <div style={{ borderTop: '1px solid var(--border)', margin: '16px 0' }} />
