@@ -5,6 +5,7 @@ import { useCall } from '../../hooks/useCall';
 import { useContactRequests } from '../../hooks/useContactRequests';
 import { useGroupInvites } from '../../hooks/useGroupInvites';
 import { useNotifications } from '../../hooks/useNotifications';
+import { registerFCMToken } from '../../fcm';
 import { useUnreadCounts } from '../../hooks/useUnreadCounts';
 import { ChatList } from '../Chat/ChatList';
 import { ChatWindow } from '../Chat/ChatWindow';
@@ -144,6 +145,13 @@ export const AppLayout: React.FC = () => {
     prevJoinRequestCountRef.current = joinRequests.length;
   }, [joinRequests, notifyJoinRequest]);
 
+  // Register FCM token for background push notifications
+  useEffect(() => {
+    if (user?.uid) {
+      registerFCMToken(user.uid).catch(() => {});
+    }
+  }, [user?.uid]);
+
   // On mobile, hide sidebar when chat is selected
   const handleSelectChat = useCallback((chat: Chat) => {
     setActiveChat(chat);
@@ -156,6 +164,18 @@ export const AppLayout: React.FC = () => {
     setShowSidebar(true);
     setActiveChat(null);
   }, []);
+
+  // Handle notification click — open the right chat when user taps a push notification
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === 'OPEN_CHAT' && event.data.chatId) {
+        const chat = chats.find((c) => c.id === event.data.chatId);
+        if (chat) handleSelectChat(chat);
+      }
+    };
+    navigator.serviceWorker?.addEventListener('message', handler);
+    return () => navigator.serviceWorker?.removeEventListener('message', handler);
+  }, [chats, handleSelectChat]);
 
   // Keep activeChat in sync with live data
   useEffect(() => {

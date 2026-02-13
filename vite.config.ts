@@ -61,6 +61,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        importScripts: ['/Yapp/push-sw.js'],
         navigateFallback: '/Yapp/offline.html',
         navigateFallbackAllowlist: [/^\/Yapp\//],
         runtimeCaching: [

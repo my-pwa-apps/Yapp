@@ -48,8 +48,8 @@ async function showNotification(title: string, body: string, tag?: string, onCli
 
   const options: NotificationOptions = {
     body,
-    icon: '/Yapp/icons/icon-192x192.png',
-    badge: '/Yapp/icons/icon-72x72.png',
+    icon: '/Yapp/icons/icon-192.png',
+    badge: '/Yapp/icons/icon-192.png',
     tag: tag || `yapp-${Date.now()}`,
     silent: false,
   };
