@@ -43,7 +43,7 @@ export async function requestPermission(): Promise<boolean> {
   return result === 'granted';
 }
 
-async function showNotification(title: string, body: string, tag?: string, onClick?: () => void) {
+async function showNotification(title: string, body: string, tag?: string, data?: { chatId?: string; type?: string }, onClick?: () => void) {
   if (Notification.permission !== 'granted') return;
 
   const options: NotificationOptions = {
@@ -52,6 +52,7 @@ async function showNotification(title: string, body: string, tag?: string, onCli
     badge: '/Yapp/icons/icon-192.png',
     tag: tag || `yapp-${Date.now()}`,
     silent: false,
+    data,
   };
 
   // Use Service Worker registration for Android/mobile support
@@ -104,6 +105,7 @@ export function useNotifications() {
       senderName,
       text.length > 100 ? text.substring(0, 100) + '...' : text,
       `msg-${chatId}`,
+      { chatId, type: 'message' },
       onClick
     );
   }, []);
@@ -114,7 +116,8 @@ export function useNotifications() {
     showNotification(
       'Group Invite',
       `${invitedBy} invited you to "${groupName}"`,
-      `invite-${groupName}`
+      `invite-${groupName}`,
+      { type: 'groupInvite' }
     );
   }, []);
 
@@ -124,7 +127,8 @@ export function useNotifications() {
     showNotification(
       'Join Request',
       `${fromName} wants to join "${groupName}"`,
-      `join-${groupName}-${fromName}`
+      `join-${groupName}-${fromName}`,
+      { type: 'joinRequest' }
     );
   }, []);
 
@@ -134,7 +138,8 @@ export function useNotifications() {
     showNotification(
       'Contact Request',
       `${fromName} (${fromEmail}) wants to connect`,
-      `contact-${fromEmail}`
+      `contact-${fromEmail}`,
+      { type: 'contactRequest' }
     );
   }, []);
 

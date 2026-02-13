@@ -5,7 +5,6 @@ import { useCall } from '../../hooks/useCall';
 import { useContactRequests } from '../../hooks/useContactRequests';
 import { useGroupInvites } from '../../hooks/useGroupInvites';
 import { useNotifications } from '../../hooks/useNotifications';
-import { registerFCMToken } from '../../fcm';
 import { useUnreadCounts } from '../../hooks/useUnreadCounts';
 import { ChatList } from '../Chat/ChatList';
 import { ChatWindow } from '../Chat/ChatWindow';
@@ -145,13 +144,6 @@ export const AppLayout: React.FC = () => {
     }
     prevJoinRequestCountRef.current = joinRequests.length;
   }, [joinRequests, notifyJoinRequest]);
-
-  // Register FCM token for background push notifications
-  useEffect(() => {
-    if (user?.uid) {
-      registerFCMToken(user.uid).catch(() => {});
-    }
-  }, [user?.uid]);
 
   // On mobile, hide sidebar when chat is selected
   const handleSelectChat = useCallback((chat: Chat) => {
