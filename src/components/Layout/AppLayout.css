@@ -397,14 +397,6 @@
   margin-top: 1px;
 }
 
-.e2ee-lock {
-  font-size: 0.65rem;
-  opacity: 0.7;
-  color: var(--accent-hover);
-  display: inline-flex;
-  align-items: center;
-}
-
 /* E2EE lock icon next to chat name */
 .e2ee-header-lock {
   margin-left: 6px;
