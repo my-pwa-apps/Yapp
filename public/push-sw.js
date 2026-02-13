@@ -19,13 +19,13 @@ self.addEventListener('push', (event) => {
   const body = notification.body || data.body || '';
 
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
       // If the app is focused and this is a message notification, the in-app RTDB
       // listener already shows it — skip duplicate.
       const isFocused = clients.some((c) => c.visibilityState === 'visible');
       if (isFocused && data.type === 'message') return;
 
-      return self.registration.showNotification(title, {
+      await self.registration.showNotification(title, {
         body,
         icon: '/Yapp/icons/icon-192.png',
         badge: '/Yapp/icons/icon-192.png',
@@ -35,6 +35,12 @@ self.addEventListener('push', (event) => {
         renotify: true,
         requireInteraction: false,
       });
+
+      // Update app icon badge count (works on Android & iOS installed PWAs)
+      if ('setAppBadge' in self.navigator) {
+        const notifications = await self.registration.getNotifications();
+        self.navigator.setAppBadge(notifications.length).catch(() => {});
+      }
     })
   );
 });
@@ -46,7 +52,18 @@ self.addEventListener('notificationclick', (event) => {
   const urlPath = '/Yapp/';
 
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+    (async () => {
+      // Update badge count after dismissing this notification
+      if ('setAppBadge' in self.navigator) {
+        const remaining = await self.registration.getNotifications();
+        if (remaining.length > 0) {
+          self.navigator.setAppBadge(remaining.length).catch(() => {});
+        } else {
+          self.navigator.clearAppBadge().catch(() => {});
+        }
+      }
+
+      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
       // Focus an existing app window if one is open
       for (const client of clients) {
         if (client.url.includes('/Yapp/') && 'focus' in client) {
@@ -60,6 +77,6 @@ self.addEventListener('notificationclick', (event) => {
       }
       // No window open — launch a new one
       return self.clients.openWindow(urlPath);
-    })
+    })()
   );
 });
