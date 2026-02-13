@@ -91,7 +91,11 @@ export const onNewMessage = onValueCreated(
       ? `${msg.senderName} in ${chatData?.name || 'Group'}`
       : msg.senderName;
 
-    const body = msg.text.length > 100 ? msg.text.substring(0, 100) + '…' : msg.text;
+    // Don't leak encrypted placeholder text in push notifications
+    const isEncrypted = msg.text === '🔒 Encrypted message' || (msg as Record<string, unknown>).encrypted === true;
+    const body = isEncrypted
+      ? 'New message'
+      : (msg.text.length > 100 ? msg.text.substring(0, 100) + '…' : msg.text);
 
     const tokens = await getTokensForUsers(memberUids);
     await sendPush(tokens, {

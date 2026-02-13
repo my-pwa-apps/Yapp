@@ -104,7 +104,8 @@ export const AppLayout: React.FC = () => {
         const name = chat.type === 'group'
           ? `${chat.lastMessage.senderName} in ${chat.name || 'Group'}`
           : chat.lastMessage.senderName;
-        notifyMessage(name, chat.lastMessage.text, chat.id, activeChatRef.current?.id);
+        const text = chat.lastMessage.encrypted ? 'New message' : chat.lastMessage.text;
+        notifyMessage(name, text, chat.id, activeChatRef.current?.id);
       }
     });
     const snap: Record<string, number> = {};

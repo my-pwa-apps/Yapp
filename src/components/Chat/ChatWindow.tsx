@@ -53,6 +53,25 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
   const initialScrollDone = useRef(false);
   const prevMessageCount = useRef(0);
   const currentChatIdRef = useRef(chat.id);
+
+  // Scroll to bottom when mobile virtual keyboard opens/closes
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    let prevHeight = vv.height;
+    const onResize = () => {
+      const shrunk = vv.height < prevHeight;
+      prevHeight = vv.height;
+      if (shrunk) {
+        // Keyboard opened — scroll to latest message
+        requestAnimationFrame(() => {
+          bottomRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
+        });
+      }
+    };
+    vv.addEventListener('resize', onResize);
+    return () => vv.removeEventListener('resize', onResize);
+  }, []);
   const justSentRef = useRef(false);
 
   // Swipe-back gesture refs
