@@ -48,25 +48,25 @@ export const NotificationSettings: React.FC<Props> = ({ onClose, onPrefsChanged 
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
+      <div className="modal modal-sm" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>⚙️ Settings</h3>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
-        <div className="modal-body" style={{ padding: '16px 24px' }}>
+        <div className="modal-body modal-body-pad">
           {permission === 'unsupported' ? (
-            <p style={{ color: '#E9EDEF' }}>
+            <p className="text-primary">
               Your browser does not support notifications.
             </p>
           ) : permission === 'denied' ? (
             <div>
-              <p style={{ color: '#E9EDEF', margin: '0 0 8px' }}>
+              <p className="text-primary mb-8">
                 Notifications are blocked by your browser. Please enable them in your browser settings.
               </p>
             </div>
           ) : permission !== 'granted' ? (
-            <div style={{ marginBottom: 16 }}>
-              <p style={{ color: '#E9EDEF', margin: '0 0 12px' }}>
+            <div className="mb-16">
+              <p className="text-primary mb-12">
                 Allow notifications to get alerts for new messages and requests.
               </p>
               <button className="profile-action-btn" onClick={handleRequestPermission}>
@@ -134,10 +134,10 @@ export const NotificationSettings: React.FC<Props> = ({ onClose, onPrefsChanged 
           )}
 
           {/* Divider */}
-          <div style={{ borderTop: '1px solid var(--border)', margin: '16px 0' }} />
+          <div className="border-top my-16" />
 
           {/* Encryption section */}
-          <h4 style={{ color: 'var(--accent)', fontSize: 14, margin: '0 0 12px', fontWeight: 600 }}>Encryption</h4>
+          <h4 className="text-accent section-title">Encryption</h4>
           <div className="notif-setting-row">
             <div className="notif-setting-info">
               <span className="notif-setting-label">E2EE Keys</span>
@@ -150,7 +150,7 @@ export const NotificationSettings: React.FC<Props> = ({ onClose, onPrefsChanged 
               </span>
             </div>
             {!cryptoKeys && needsKeyRecovery && (
-              <button className="profile-action-btn" style={{ fontSize: 12, padding: '6px 12px' }} onClick={() => setShowKeyRecovery(true)}>
+              <button className="profile-action-btn btn-unlock" onClick={() => setShowKeyRecovery(true)}>
                 🔐 Unlock
               </button>
             )}

@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import type { Message } from '../../types';
+import { formatDuration } from '../../utils';
 
 /** Highlight matching substrings in text */
 function highlightText(text: string, query: string): React.ReactNode {
@@ -124,12 +125,6 @@ const VoicePlayer: React.FC<{ message: Message }> = ({ message }) => {
     setPlaying(!playing);
   };
 
-  const formatDur = (s: number) => {
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60);
-    return `${m}:${sec.toString().padStart(2, '0')}`;
-  };
-
   return (
     <div className="voice-message">
       <button className="voice-play-btn" onClick={toggle}>
@@ -147,7 +142,7 @@ const VoicePlayer: React.FC<{ message: Message }> = ({ message }) => {
         <div className="voice-progress" style={{ width: `${progress}%` }} />
       </div>
       <span className="voice-duration">
-        {formatDur(message.voiceDuration || 0)}
+        {formatDuration(message.voiceDuration || 0)}
       </span>
       <audio
         ref={audioRef}

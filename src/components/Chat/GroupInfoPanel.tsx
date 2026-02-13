@@ -136,7 +136,7 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
     <div className="profile-overlay" onClick={onClose}>
       <div className="profile-panel" onClick={(e) => e.stopPropagation()}>
         <div className="profile-header">
-          <button className="back-btn" onClick={onClose} style={{ display: 'flex' }}>
+          <button className="back-btn d-flex" onClick={onClose}>
             <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
               <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
             </svg>
@@ -213,7 +213,7 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
                         <span className="group-member-name">{p?.displayName || pm.fromName}</span>
                         <span className="group-member-status">Wants to join</span>
                       </div>
-                      <div style={{ display: 'flex', gap: 4 }}>
+                      <div className="d-flex gap-4">
                         <button
                           className="group-action-btn approve"
                           onClick={() => handleApprove(uid)}
@@ -278,7 +278,7 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
               <div className="profile-section-label">Add Member</div>
               {showAddMember ? (
                 <div className="group-add-member">
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div className="d-flex gap-8">
                     <input
                       className="modal-input"
                       placeholder="Search by email"
@@ -288,16 +288,15 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
                       autoFocus
                     />
                     <button
-                      className="profile-action-btn"
+                      className="profile-action-btn nowrap"
                       onClick={handleSearch}
                       disabled={searching}
-                      style={{ whiteSpace: 'nowrap' }}
                     >
                       {searching ? '...' : 'Search'}
                     </button>
                   </div>
                   {searchResults.map((user) => (
-                    <div key={user.uid} className="group-member-item" style={{ marginTop: 8 }}>
+                    <div key={user.uid} className="group-member-item mt-8">
                       <div className="avatar avatar-sm">
                         {user.photoURL
                           ? <img src={user.photoURL} alt="" className="avatar-img" />
@@ -319,14 +318,13 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
                     </div>
                   ))}
                   {searchResults.length === 0 && searchEmail && !searching && (
-                    <p style={{ color: '#8696A0', fontSize: '0.85rem', marginTop: 8 }}>
+                    <p className="text-secondary text-sm mt-8">
                       No users found (or already members)
                     </p>
                   )}
                   <button
-                    className="profile-action-btn secondary"
+                    className="profile-action-btn secondary mt-8"
                     onClick={() => { setShowAddMember(false); setSearchResults([]); setSearchEmail(''); }}
-                    style={{ marginTop: 8 }}
                   >
                     Cancel
                   </button>
@@ -340,10 +338,9 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
           )}
 
           {/* Leave group */}
-          <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid #2A3942' }}>
+          <div className="mt-24 pt-16 border-top">
             <button
-              className="profile-action-btn"
-              style={{ background: '#dc2626', width: '100%' }}
+              className="profile-action-btn btn-danger"
               onClick={handleLeave}
               disabled={actionLoading === 'leave'}
             >

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../firebase';
+import type { PendingMember } from '../types';
 
 export interface GroupInvite {
   chatId: string;
@@ -47,7 +48,7 @@ export function useGroupInvites(uid: string | undefined) {
 
         // Join requests for groups the current user admins
         if (val.admins && val.admins[uid]) {
-          Object.entries(val.pendingMembers).forEach(([pUid, pm]: [string, any]) => {
+          (Object.entries(val.pendingMembers) as [string, PendingMember][]).forEach(([pUid, pm]) => {
             if (pm.type === 'request') {
               req.push({
                 chatId: child.key!,

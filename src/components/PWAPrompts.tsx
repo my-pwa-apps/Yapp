@@ -66,7 +66,7 @@ export const PWAPrompts: React.FC = () => {
             <span className="pwa-banner-icon">📲</span>
             <div>
               <strong>Install Yappin'</strong>
-              <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#8696A0' }}>Add to your home screen for the best experience</p>
+              <p className="pwa-banner-desc">Add to your home screen for the best experience</p>
             </div>
           </div>
           <div className="pwa-banner-actions">
@@ -83,7 +83,7 @@ export const PWAPrompts: React.FC = () => {
             <span className="pwa-banner-icon">🔄</span>
             <div>
               <strong>Update Available</strong>
-              <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#8696A0' }}>A new version of Yappin' is ready</p>
+              <p className="pwa-banner-desc">A new version of Yappin' is ready</p>
             </div>
           </div>
           <div className="pwa-banner-actions">

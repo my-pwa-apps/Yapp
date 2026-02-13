@@ -3,7 +3,7 @@ import { ref, onValue } from 'firebase/database';
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMessages, sendMessage, sendMediaMessage, markMessagesRead, setTyping } from '../../hooks/useMessages';
-import { getUserProfile, membersToArray } from '../../hooks/useChats';
+import { membersToArray } from '../../hooks/useChats';
 import { compressImage, blobToDataURL } from '../../hooks/useMediaUpload';
 import { useChatEncryption, enableGroupEncryption } from '../../hooks/useE2EE';
 import { MessageBubble } from './MessageBubble';
@@ -318,10 +318,10 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
             <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
           </svg>
         </button>
-        <div className="avatar avatar-md chat-header-avatar" onClick={() => {
+        <div className="avatar avatar-md chat-header-avatar cursor-pointer" onClick={() => {
           if (chat.type === 'group' && onShowGroupInfo) onShowGroupInfo();
           else if (chat.type === 'direct' && !isSelfChat && otherProfile) setShowUserDetail(!showUserDetail);
-        }} style={{ cursor: 'pointer' }}>
+        }}>
           {otherProfile?.photoURL
             ? <img src={otherProfile.photoURL} alt="" className="avatar-img" />
             : chatName.charAt(0).toUpperCase()
@@ -330,10 +330,10 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
             <span className={`presence-badge ${otherProfile.online ? 'online' : 'offline'}`} />
           )}
         </div>
-        <div className="chat-header-info" onClick={() => {
+        <div className="chat-header-info cursor-pointer" onClick={() => {
           if (chat.type === 'group' && onShowGroupInfo) onShowGroupInfo();
           else if (chat.type === 'direct' && !isSelfChat && otherProfile) setShowUserDetail(!showUserDetail);
-        }} style={{ cursor: 'pointer' }}>
+        }}>
           <div className="chat-header-name">
             {chatName}
             {chatKey && (
@@ -447,7 +447,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
           )}
           <div className="user-detail-seen">
             {otherProfile.online ? (
-              <span style={{ color: 'var(--accent)' }}>● Online</span>
+              <span className="text-accent">● Online</span>
             ) : otherProfile.lastSeen ? (
               <span>Last seen {new Date(otherProfile.lastSeen).toLocaleString()}</span>
             ) : (

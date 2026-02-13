@@ -93,10 +93,9 @@ export const NewGroupModal: React.FC<Props> = ({ currentUser, onClose, onGroupCr
             onKeyDown={(e) => e.key === 'Enter' && handleAddMember()}
           />
           <button
-            className="modal-btn"
+            className="modal-btn modal-btn-muted"
             onClick={handleAddMember}
             disabled={searching || !email.trim()}
-            style={{ background: '#2A3942', color: '#E9EDEF' }}
           >
             {searching ? 'Searching...' : 'Add Member'}
           </button>

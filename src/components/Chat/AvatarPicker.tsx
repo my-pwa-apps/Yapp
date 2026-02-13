@@ -131,7 +131,7 @@ export const AvatarPicker: React.FC<Props> = ({ currentPhotoURL, displayName, on
           />
 
           {/* Default avatars grid */}
-          <p style={{ color: '#8696A0', fontSize: '0.85rem', marginBottom: 12 }}>Or choose a default:</p>
+          <p className="text-secondary text-sm mb-12">Or choose a default:</p>
           <div className="default-avatars-grid">
             {DEFAULT_AVATARS.map((avatar) => (
               <button
@@ -141,7 +141,7 @@ export const AvatarPicker: React.FC<Props> = ({ currentPhotoURL, displayName, on
                 onClick={() => handleDefaultSelect(avatar)}
                 title={avatar.emoji}
               >
-                <span style={{ fontSize: '1.6rem' }}>{avatar.emoji}</span>
+                <span className="emoji-lg">{avatar.emoji}</span>
               </button>
             ))}
           </div>

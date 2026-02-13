@@ -1690,12 +1690,6 @@
   padding: 24px 0;
 }
 
-.modal-success {
-  color: var(--accent);
-  font-size: 0.85rem;
-  margin: 6px 0;
-}
-
 /* ── Avatar image inside .avatar ── */
 .avatar-img,
 .profile-avatar-img {
@@ -2379,4 +2373,94 @@
 }
 
 
+
+
+/* ── Utilities ── */
+.cursor-pointer { cursor: pointer; }
+.text-accent { color: var(--accent); }
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-sm { font-size: 0.85rem; }
+.text-xs { font-size: 0.8rem; }
+.d-flex { display: flex; }
+.gap-4 { gap: 4px; }
+.gap-8 { gap: 8px; }
+.w-100 { width: 100%; }
+.nowrap { white-space: nowrap; }
+.modal-sm { max-width: 420px; }
+.modal-body-pad { padding: 16px 24px; }
+.mb-8 { margin-bottom: 8px; }
+.mb-12 { margin-bottom: 12px; }
+.mb-16 { margin-bottom: 16px; }
+.mt-8 { margin-top: 8px; }
+.mt-16 { margin-top: 16px; }
+.mt-24 { margin-top: 24px; }
+.my-16 { margin-top: 16px; margin-bottom: 16px; }
+.pt-16 { padding-top: 16px; }
+.border-top { border-top: 1px solid var(--border); }
+.section-title { font-size: 14px; margin-bottom: 12px; font-weight: 600; }
+.btn-unlock { font-size: 12px; padding: 6px 12px; }
+
+/* ── App loading screen ── */
+.app-loading {
+  height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-app);
+  color: var(--text-secondary);
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Secondary modal button ── */
+.modal-btn-secondary {
+  background: var(--bg-input);
+  color: var(--text-secondary);
+}
+
+/* ── Danger / leave-group button ── */
+.btn-danger {
+  background: #dc2626;
+  width: 100%;
+}
+
+/* ── Group invite avatar ── */
+.avatar-group-invite {
+  background: var(--accent);
+}
+
+/* ── Add-member button ── */
+.modal-btn-muted {
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+
+/* ── PWA banner description ── */
+.pwa-banner-desc {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* ── Edit pencil icon ── */
+.edit-hint {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+/* ── Avatar round ── */
+.rounded-full { border-radius: 50%; }
+
+/* ── Emoji font sizing ── */
+.emoji-lg { font-size: 1.6rem; }
+
+/* ── Small confirm button (profile edits) ── */
+.send-btn-sm {
+  width: 36px;
+  height: 36px;
+}
+
+/* ── Avatar change overlay label ── */
+.avatar-change-label { font-size: 0.7rem; }
 

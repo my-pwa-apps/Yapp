@@ -29,7 +29,7 @@ export const KeyRecoveryModal: React.FC<Props> = ({ onRecover, onSkip }) => {
           <h3>🔐 Unlock Encryption</h3>
         </div>
         <div className="modal-body">
-          <p style={{ color: '#8696A0', marginBottom: 16, fontSize: 14 }}>
+          <p className="text-secondary mb-16" style={{ fontSize: 14 }}>
             Enter your Yappin' password to unlock your encrypted messages on this device.
           </p>
           <input
@@ -50,9 +50,8 @@ export const KeyRecoveryModal: React.FC<Props> = ({ onRecover, onSkip }) => {
             {loading ? 'Unlocking...' : 'Unlock'}
           </button>
           <button
-            className="modal-btn"
+            className="modal-btn modal-btn-secondary mt-8"
             onClick={onSkip}
-            style={{ background: '#2A3942', color: '#8696A0', marginTop: 8 }}
           >
             Skip (messages won't be decrypted)
           </button>

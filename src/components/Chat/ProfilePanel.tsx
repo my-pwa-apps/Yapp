@@ -59,7 +59,7 @@ export const ProfilePanel: React.FC<Props> = ({ profile, onClose }) => {
     <div className="profile-overlay" onClick={onClose}>
       <div className="profile-panel" onClick={(e) => e.stopPropagation()}>
         <div className="profile-header">
-          <button className="back-btn" onClick={onClose} style={{ display: 'flex' }}>
+          <button className="back-btn d-flex" onClick={onClose}>
             <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
               <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
             </svg>
@@ -82,14 +82,14 @@ export const ProfilePanel: React.FC<Props> = ({ profile, onClose }) => {
               <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
                 <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
               </svg>
-              <span style={{ fontSize: '0.7rem' }}>CHANGE</span>
+              <span className="avatar-change-label">CHANGE</span>
             </div>
           </div>
 
           <div className="profile-field">
             <label>Your Name</label>
             {editingName ? (
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div className="d-flex gap-8">
                 <input
                   className="modal-input"
                   value={displayName}
@@ -98,13 +98,13 @@ export const ProfilePanel: React.FC<Props> = ({ profile, onClose }) => {
                   autoFocus
                   maxLength={30}
                 />
-                <button className="send-btn" onClick={async () => { if (displayName.trim()) { await updateDisplayName(displayName.trim()); setEditingName(false); } }} style={{ width: 36, height: 36 }}>
+                <button className="send-btn send-btn-sm" onClick={async () => { if (displayName.trim()) { await updateDisplayName(displayName.trim()); setEditingName(false); } }}>
                   ✓
                 </button>
               </div>
             ) : (
-              <p onClick={() => setEditingName(true)} style={{ cursor: 'pointer' }} title="Click to edit">
-                {profile.displayName} <span style={{ fontSize: '0.75rem', color: '#8696A0' }}>✏️</span>
+              <p onClick={() => setEditingName(true)} className="cursor-pointer" title="Click to edit">
+                {profile.displayName} <span className="edit-hint">✏️</span>
               </p>
             )}
           </div>
@@ -117,7 +117,7 @@ export const ProfilePanel: React.FC<Props> = ({ profile, onClose }) => {
           <div className="profile-field">
             <label>About</label>
             {editing ? (
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div className="d-flex gap-8">
                 <input
                   className="modal-input"
                   value={status}
@@ -125,12 +125,12 @@ export const ProfilePanel: React.FC<Props> = ({ profile, onClose }) => {
                   onKeyDown={(e) => e.key === 'Enter' && handleSaveStatus()}
                   autoFocus
                 />
-                <button className="send-btn" onClick={handleSaveStatus} style={{ width: 36, height: 36 }}>
+                <button className="send-btn send-btn-sm" onClick={handleSaveStatus}>
                   ✓
                 </button>
               </div>
             ) : (
-              <p onClick={() => setEditing(true)} style={{ cursor: 'pointer' }} title="Click to edit">
+              <p onClick={() => setEditing(true)} className="cursor-pointer" title="Click to edit">
                 {profile.status}
               </p>
             )}
@@ -156,7 +156,7 @@ export const ProfilePanel: React.FC<Props> = ({ profile, onClose }) => {
               />
               {pwError && <p className="login-error" style={{ margin: '4px 0' }}>{pwError}</p>}
               {pwSuccess && <p className="modal-success">{pwSuccess}</p>}
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div className="d-flex gap-8">
                 <button type="submit" className="profile-action-btn" disabled={pwLoading}>
                   {pwLoading ? 'Changing...' : 'Change Password'}
                 </button>

@@ -10,16 +10,7 @@ const AppInner: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{
-        height: '100dvh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#111B21',
-        color: '#667781',
-        flexDirection: 'column',
-        gap: '1rem',
-      }}>
+      <div className="app-loading">
         <YappLogo size={64} />
         <div>Loading...</div>
       </div>

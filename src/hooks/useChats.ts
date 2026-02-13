@@ -10,7 +10,6 @@ import {
   query,
   orderByChild,
   equalTo,
-  serverTimestamp,
 } from 'firebase/database';
 import { db } from '../firebase';
 import type { Chat, UserProfile } from '../types';
@@ -28,6 +27,20 @@ export function membersToArray(members: Record<string, boolean> | undefined): st
 /** Helper: check if a user is an admin of a chat */
 export function isGroupAdmin(chat: Chat, uid: string): boolean {
   return !!(chat.admins && chat.admins[uid]);
+}
+
+/** Post a system message to a chat */
+async function sendSystemMessage(chatId: string, text: string) {
+  const msgRef = push(ref(db, `messages/${chatId}`));
+  await set(msgRef, {
+    chatId,
+    senderId: 'system',
+    senderName: 'System',
+    text,
+    timestamp: Date.now(),
+    readBy: {},
+    type: 'system',
+  });
 }
 
 export function useChats(uid: string | undefined) {
@@ -156,17 +169,7 @@ export async function createGroupChat(
     }
   }
 
-  // Send system message
-  const msgRef = push(ref(db, `messages/${chatId}`));
-  await set(msgRef, {
-    chatId,
-    senderId: 'system',
-    senderName: 'System',
-    text: `${currentUser.displayName} created the group "${name}"`,
-    timestamp: Date.now(),
-    readBy: {},
-    type: 'system',
-  });
+  await sendSystemMessage(chatId, `${currentUser.displayName} created the group "${name}"`);
 
   return chatId;
 }
@@ -174,17 +177,7 @@ export async function createGroupChat(
 /** Add member to group (direct add, no approval) */
 export async function addGroupMember(chatId: string, uid: string, addedByName: string) {
   await update(ref(db, `chats/${chatId}/members`), { [uid]: true });
-
-  const msgRef = push(ref(db, `messages/${chatId}`));
-  await set(msgRef, {
-    chatId,
-    senderId: 'system',
-    senderName: 'System',
-    text: `${addedByName} added a new member`,
-    timestamp: Date.now(),
-    readBy: {},
-    type: 'system',
-  });
+  await sendSystemMessage(chatId, `${addedByName} added a new member`);
 }
 
 /** Remove member from group (admin action) */
@@ -193,17 +186,7 @@ export async function removeGroupMember(chatId: string, uid: string, removedByNa
   updates[`chats/${chatId}/members/${uid}`] = null;
   updates[`chats/${chatId}/admins/${uid}`] = null;
   await update(ref(db), updates);
-
-  const msgRef = push(ref(db, `messages/${chatId}`));
-  await set(msgRef, {
-    chatId,
-    senderId: 'system',
-    senderName: 'System',
-    text: `${removedByName} removed ${memberName}`,
-    timestamp: Date.now(),
-    readBy: {},
-    type: 'system',
-  });
+  await sendSystemMessage(chatId, `${removedByName} removed ${memberName}`);
 }
 
 /** Leave group (self-removal) */
@@ -212,17 +195,7 @@ export async function leaveGroup(chatId: string, uid: string, memberName: string
   updates[`chats/${chatId}/members/${uid}`] = null;
   updates[`chats/${chatId}/admins/${uid}`] = null;
   await update(ref(db), updates);
-
-  const msgRef = push(ref(db, `messages/${chatId}`));
-  await set(msgRef, {
-    chatId,
-    senderId: 'system',
-    senderName: 'System',
-    text: `${memberName} left the group`,
-    timestamp: Date.now(),
-    readBy: {},
-    type: 'system',
-  });
+  await sendSystemMessage(chatId, `${memberName} left the group`);
 }
 
 /** Admin invites a user to the group — needs user's approval */
@@ -250,17 +223,7 @@ export async function approvePendingMember(chatId: string, uid: string, approver
   // Write members and pendingMembers separately so security rules at each path are evaluated correctly
   await set(ref(db, `chats/${chatId}/members/${uid}`), true);
   await set(ref(db, `chats/${chatId}/pendingMembers/${uid}`), null);
-
-  const msgRef = push(ref(db, `messages/${chatId}`));
-  await set(msgRef, {
-    chatId,
-    senderId: 'system',
-    senderName: 'System',
-    text: `${memberName} joined the group`,
-    timestamp: Date.now(),
-    readBy: {},
-    type: 'system',
-  });
+  await sendSystemMessage(chatId, `${memberName} joined the group`);
 }
 
 /** Reject/decline a pending member */
@@ -317,16 +280,6 @@ export async function deleteChat(chatId: string, currentUid: string) {
   } else {
     // Group chat: leave the group (remove self from members)
     await remove(ref(db, `chats/${chatId}/members/${currentUid}`));
-    // Post a system message
-    const msgRef = push(ref(db, `messages/${chatId}`));
-    await set(msgRef, {
-      chatId,
-      senderId: 'system',
-      senderName: 'System',
-      text: `A member left the group`,
-      timestamp: Date.now(),
-      readBy: {},
-      type: 'system',
-    });
+    await sendSystemMessage(chatId, 'A member left the group');
   }
 }

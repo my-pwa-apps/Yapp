@@ -8,7 +8,7 @@
       ".indexOn": ["email"],
       "$uid": {
         ".write": "auth != null && auth.uid === $uid",
-        ".validate": "newData.hasChildren(['uid', 'displayName', 'email', 'online', 'lastSeen', 'createdAt'])"
+        ".validate": "newData.hasChildren(['uid', 'displayName', 'email', 'online', 'lastSeen', 'createdAt']) && newData.child('uid').val() === $uid && newData.child('displayName').isString() && newData.child('email').isString() && newData.child('online').isBoolean() && (newData.child('lastSeen').isNumber() || newData.child('lastSeen').child('.sv').val() === 'timestamp') && newData.child('createdAt').isNumber()"
       }
     },
 
@@ -28,7 +28,7 @@
         "$senderUid": {
           ".read": "auth != null && auth.uid === $senderUid",
           ".write": "auth != null && (auth.uid === $senderUid || auth.uid === $targetUid)",
-          ".validate": "newData.hasChildren(['from', 'fromName', 'fromEmail', 'to', 'timestamp', 'status'])"
+          ".validate": "newData.hasChildren(['from', 'fromName', 'fromEmail', 'to', 'timestamp', 'status']) && newData.child('from').val() === $senderUid && newData.child('to').val() === $targetUid && newData.child('fromName').isString() && newData.child('fromEmail').isString() && newData.child('timestamp').isNumber() && newData.child('status').val() === 'pending'"
         }
       }
     },
@@ -37,16 +37,23 @@
       ".read": "auth != null",
       "$chatId": {
         ".write": "auth != null && (!data.exists() || data.child('members').child(auth.uid).exists())",
+        ".validate": "!newData.exists() || (newData.hasChildren(['type', 'members', 'createdBy', 'createdAt']) && (newData.child('type').val() === 'direct' || newData.child('type').val() === 'group') && newData.child('createdBy').isString() && newData.child('createdAt').isNumber())",
         "members": {
           "$uid": {
-            ".write": "auth != null && auth.uid === $uid && data.parent().parent().child('pendingMembers').child($uid).child('type').val() === 'invite'",
-            ".validate": "newData.val() === true"
+            ".write": "auth != null && ((auth.uid === $uid && data.exists() && !newData.exists()) || (auth.uid === $uid && !data.exists() && newData.val() === true && data.parent().parent().child('pendingMembers').child($uid).child('type').val() === 'invite') || data.parent().parent().child('admins').child(auth.uid).exists())",
+            ".validate": "!newData.exists() || newData.val() === true"
+          }
+        },
+        "admins": {
+          "$uid": {
+            ".write": "auth != null && (!data.parent().parent().exists() || data.parent().child(auth.uid).exists() || (auth.uid === $uid && !newData.exists()))",
+            ".validate": "!newData.exists() || newData.val() === true"
           }
         },
         "pendingMembers": {
           "$uid": {
             ".write": "auth != null && (auth.uid === $uid || data.parent().parent().child('admins').child(auth.uid).exists() || data.parent().parent().child('members').child(auth.uid).exists())",
-            ".validate": "newData.hasChildren(['type', 'fromUid', 'fromName', 'timestamp'])"
+            ".validate": "newData.hasChildren(['type', 'fromUid', 'fromName', 'timestamp']) && (newData.child('type').val() === 'invite' || newData.child('type').val() === 'request') && newData.child('fromUid').isString() && newData.child('fromName').isString() && newData.child('timestamp').isNumber()"
           }
         },
         "typing": {
@@ -68,7 +75,7 @@
         ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
         ".indexOn": ["timestamp"],
         "$msgId": {
-          ".validate": "(data.exists() || newData.child('senderId').val() === auth.uid || newData.child('senderId').val() === 'system') && newData.hasChildren(['chatId', 'senderId', 'senderName', 'text', 'timestamp', 'type'])",
+          ".validate": "newData.hasChildren(['chatId', 'senderId', 'senderName', 'text', 'timestamp', 'type']) && newData.child('chatId').val() === $chatId && newData.child('senderName').isString() && newData.child('text').isString() && newData.child('timestamp').isNumber() && (newData.child('type').val() === 'text' || newData.child('type').val() === 'image' || newData.child('type').val() === 'gif' || newData.child('type').val() === 'sticker' || newData.child('type').val() === 'voice' || newData.child('type').val() === 'system') && (data.exists() ? newData.child('senderId').val() === data.child('senderId').val() : (newData.child('senderId').val() === auth.uid || newData.child('senderId').val() === 'system'))",
           "readBy": {
             "$uid": {
               ".validate": "auth.uid === $uid && newData.val() === true"
@@ -83,9 +90,9 @@
       ".indexOn": ["status"],
       "$callId": {
         ".write": "auth != null && (!data.exists() || data.child('participants').child(auth.uid).exists())",
-        ".validate": "newData.hasChildren(['chatId', 'callerId', 'callerName', 'callType', 'status', 'participants', 'createdAt'])",
+        ".validate": "newData.hasChildren(['chatId', 'callerId', 'callerName', 'callType', 'status', 'participants', 'createdAt']) && newData.child('chatId').isString() && newData.child('callerName').isString() && (newData.child('callType').val() === 'audio' || newData.child('callType').val() === 'video') && (newData.child('status').val() === 'ringing' || newData.child('status').val() === 'active' || newData.child('status').val() === 'ended') && newData.child('participants').child(auth.uid).exists() && newData.child('createdAt').isNumber()",
         "callerId": {
-          ".validate": "!data.exists() && newData.val() === auth.uid"
+          ".validate": "(data.exists() && newData.val() === data.val()) || (!data.exists() && newData.val() === auth.uid)"
         }
       }
     },
@@ -101,7 +108,7 @@
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
         ".write": "auth != null && auth.uid === $uid",
-        ".validate": "newData.hasChildren(['encryptedPrivateKey'])"
+        ".validate": "newData.hasChildren(['encryptedPrivateKey']) && newData.child('encryptedPrivateKey').hasChildren(['ciphertext', 'iv', 'salt'])"
       }
     }
   }

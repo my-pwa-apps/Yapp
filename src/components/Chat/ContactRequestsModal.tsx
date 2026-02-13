@@ -140,7 +140,7 @@ export const ContactRequestsModal: React.FC<Props> = ({
                   <div className="notification-section-label">Group Invites</div>
                   {groupInvites.map((inv) => (
                     <div key={inv.chatId} className="contact-request-item">
-                      <div className="avatar avatar-sm" style={{ background: '#65a30d' }}>
+                      <div className="avatar avatar-sm avatar-group-invite">
                         👥
                       </div>
                       <div className="user-result-info">

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { formatDuration } from '../../utils';
 
 interface Props {
   onSend: (blob: Blob, duration: number) => void;
@@ -90,12 +91,6 @@ export const VoiceRecorder: React.FC<Props> = ({ onSend, onCancel, onPermissionE
       if (audioUrl) URL.revokeObjectURL(audioUrl);
     };
   }, [audioUrl]);
-
-  const formatDuration = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  };
 
   return (
     <div className="voice-recorder">

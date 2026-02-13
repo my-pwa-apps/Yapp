@@ -232,17 +232,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    try {
-      const cred = await signInWithEmailAndPassword(auth, email, password);
-      const userRef = ref(db, `users/${cred.user.uid}`);
-      await update(userRef, { online: true, lastSeen: serverTimestamp() });
-      const snap = await get(userRef);
-      setProfile(snap.val() as UserProfile);
-      // Recover E2EE keys
-      await recoverKeysFromRTDB(cred.user.uid, password);
-    } catch (err: any) {
-      throw err;
-    }
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    const userRef = ref(db, `users/${cred.user.uid}`);
+    await update(userRef, { online: true, lastSeen: serverTimestamp() });
+    const snap = await get(userRef);
+    setProfile(snap.val() as UserProfile);
+    // Recover E2EE keys
+    await recoverKeysFromRTDB(cred.user.uid, password);
   };
 
   const signInWithGoogle = async () => {
