@@ -9,7 +9,7 @@ interface Props {
 }
 
 export const ProfilePanel: React.FC<Props> = ({ profile, onClose }) => {
-  const { updateStatus, updateDisplayName, updatePhotoURL, changePassword } = useAuth();
+  const { updateStatus, updateDisplayName, updatePhotoURL, changePassword, signOut } = useAuth();
   const [editing, setEditing] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [displayName, setDisplayName] = useState(profile.displayName);
@@ -170,6 +170,13 @@ export const ProfilePanel: React.FC<Props> = ({ profile, onClose }) => {
               🔑 Change Password
             </button>
           )}
+
+          {/* Sign out */}
+          <div className="mt-24 pt-16 border-top">
+            <button className="profile-action-btn btn-danger" onClick={signOut}>
+              🚪 Sign Out
+            </button>
+          </div>
         </div>
       </div>
 

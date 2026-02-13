@@ -64,6 +64,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
   const [searchResults, setSearchResults] = useState<number[]>([]);
   const [searchIndex, setSearchIndex] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [messagesScrollable, setMessagesScrollable] = useState(false);
 
   // Track whether the page is visible (tab/window active)
   const [pageVisible, setPageVisible] = useState(!document.hidden);
@@ -152,6 +153,26 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     setSearchQuery('');
     setSearchResults([]);
   }, [chat.id]);
+
+  // Detect when messages container overflows
+  useEffect(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const check = () => setMessagesScrollable(el.scrollHeight > el.clientHeight);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [decryptedMessages.length]);
+
+  // Close search when messages no longer need scrolling
+  useEffect(() => {
+    if (!messagesScrollable) {
+      setShowSearch(false);
+      setSearchQuery('');
+      setSearchResults([]);
+    }
+  }, [messagesScrollable]);
 
   // Scroll to bottom on initial load
   useEffect(() => {
@@ -413,12 +434,14 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
         {enablingE2EE && (
           <span className="e2ee-enabling" title="Enabling encryption...">🔄</span>
         )}
-        {/* Search in chat */}
-        <button className="icon-btn" title="Search in chat" onClick={() => { setShowSearch(!showSearch); setTimeout(() => searchInputRef.current?.focus(), 100); }}>
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-            <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-          </svg>
-        </button>
+        {/* Search in chat — only when messages overflow */}
+        {messagesScrollable && (
+          <button className="icon-btn" title="Search in chat" onClick={() => { setShowSearch(!showSearch); setTimeout(() => searchInputRef.current?.focus(), 100); }}>
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+            </svg>
+          </button>
+        )}
         {/* Group info button */}
         {chat.type === 'group' && onShowGroupInfo && (
           <button className="icon-btn" title="Group info" onClick={onShowGroupInfo}>
