@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import type { Message } from '../../types';
-import { formatDuration } from '../../utils';
+import { formatDuration, formatMessageTime } from '../../utils';
 
 /** Highlight matching substrings in text */
 function highlightText(text: string, query: string): React.ReactNode {
@@ -30,12 +30,6 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isMine
       </div>
     );
   }
-
-  const formatTime = (ts: number | undefined) => {
-    if (!ts) return '';
-    const date = new Date(ts);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
 
   // Read = at least one OTHER person has read it (not counting the sender)
   const readByOthers = message.readBy
@@ -94,7 +88,7 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isMine
         )}
         {renderContent()}
         <div className="message-meta">
-          <span className="message-time">{formatTime(message.timestamp)}</span>
+          <span className="message-time">{formatMessageTime(message.timestamp)}</span>
           {isMine && (
             isRead ? (
               <span className="message-read">✓✓</span>

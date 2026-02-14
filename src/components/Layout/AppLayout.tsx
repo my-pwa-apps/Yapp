@@ -35,6 +35,9 @@ export const AppLayout: React.FC = () => {
     toastTimer.current = setTimeout(() => setToastMsg(null), 4000);
   }, []);
 
+  // Clean up toast timer on unmount
+  useEffect(() => () => clearTimeout(toastTimer.current), []);
+
   const call = useCall(user?.uid ?? '', profile?.displayName ?? '', showToast);
   const contactRequests = useContactRequests(user?.uid);
   const { invites: groupInvites, joinRequests } = useGroupInvites(user?.uid);
@@ -50,10 +53,11 @@ export const AppLayout: React.FC = () => {
   useEffect(() => {
     const badgeCount = totalUnread + notificationCount;
     if ('setAppBadge' in navigator) {
+      const nav = navigator as Navigator & { setAppBadge(count: number): Promise<void>; clearAppBadge(): Promise<void> };
       if (badgeCount > 0) {
-        (navigator as any).setAppBadge(badgeCount).catch(() => {});
+        nav.setAppBadge(badgeCount).catch(() => {});
       } else {
-        (navigator as any).clearAppBadge().catch(() => {});
+        nav.clearAppBadge().catch(() => {});
       }
     }
     // Also update document title with unread count
@@ -155,9 +159,9 @@ export const AppLayout: React.FC = () => {
 
   // Notify on new contact requests
   useEffect(() => {
-    if (contactRequests.length > prevContactReqCountRef.current && prevContactReqCountRef.current >= 0) {
+    if (contactRequests.length > prevContactReqCountRef.current && prevContactReqCountRef.current > 0) {
       const newest = contactRequests[contactRequests.length - 1];
-      if (newest && prevContactReqCountRef.current > 0) {
+      if (newest) {
         notifyContactRequest(newest.fromName, newest.fromEmail);
       }
     }
@@ -166,9 +170,9 @@ export const AppLayout: React.FC = () => {
 
   // Notify on new group invites
   useEffect(() => {
-    if (groupInvites.length > prevGroupInviteCountRef.current && prevGroupInviteCountRef.current >= 0) {
+    if (groupInvites.length > prevGroupInviteCountRef.current && prevGroupInviteCountRef.current > 0) {
       const newest = groupInvites[groupInvites.length - 1];
-      if (newest && prevGroupInviteCountRef.current > 0) {
+      if (newest) {
         notifyGroupInvite(newest.chatName, newest.invitedBy);
       }
     }
@@ -177,9 +181,9 @@ export const AppLayout: React.FC = () => {
 
   // Notify on new join requests
   useEffect(() => {
-    if (joinRequests.length > prevJoinRequestCountRef.current && prevJoinRequestCountRef.current >= 0) {
+    if (joinRequests.length > prevJoinRequestCountRef.current && prevJoinRequestCountRef.current > 0) {
       const newest = joinRequests[joinRequests.length - 1];
-      if (newest && prevJoinRequestCountRef.current > 0) {
+      if (newest) {
         notifyJoinRequest(newest.chatName, newest.fromName);
       }
     }
@@ -199,26 +203,31 @@ export const AppLayout: React.FC = () => {
     setActiveChat(null);
   }, []);
 
+  // Use refs for stable service worker handler to avoid re-registering on every render
+  const callRef = useRef(call);
+  callRef.current = call;
+  const chatsRef = useRef(chats);
+  chatsRef.current = chats;
+
   // Handle notification click — open the right chat or answer/decline a call
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       if (event.data?.type === 'OPEN_CHAT' && event.data.chatId) {
-        const chat = chats.find((c) => c.id === event.data.chatId);
+        const chat = chatsRef.current.find((c) => c.id === event.data.chatId);
         if (chat) handleSelectChat(chat);
       } else if (event.data?.type === 'ANSWER_CALL') {
-        // Auto-accept the incoming call when user taps "Answer" on the notification
-        if (call.callState === 'incoming') {
-          call.acceptCall();
+        if (callRef.current.callState === 'incoming') {
+          callRef.current.acceptCall();
         }
       } else if (event.data?.type === 'DECLINE_CALL') {
-        if (call.callState === 'incoming') {
-          call.rejectCall();
+        if (callRef.current.callState === 'incoming') {
+          callRef.current.rejectCall();
         }
       }
     };
     navigator.serviceWorker?.addEventListener('message', handler);
     return () => navigator.serviceWorker?.removeEventListener('message', handler);
-  }, [chats, handleSelectChat, call.callState, call.acceptCall, call.rejectCall]);
+  }, [handleSelectChat]);
 
   // Handle cold-start: if app was opened via notification with ?answerCall= param
   useEffect(() => {
@@ -232,9 +241,12 @@ export const AppLayout: React.FC = () => {
   }, [call.callState, call.callData, call.acceptCall]);
 
   // Keep activeChat in sync with live data
+  const activeChatIdRef = useRef(activeChat?.id);
+  activeChatIdRef.current = activeChat?.id;
   useEffect(() => {
-    if (activeChat) {
-      const updated = chats.find((c) => c.id === activeChat.id);
+    const id = activeChatIdRef.current;
+    if (id) {
+      const updated = chats.find((c) => c.id === id);
       if (updated) setActiveChat(updated);
     }
   }, [chats]);
@@ -245,7 +257,7 @@ export const AppLayout: React.FC = () => {
       {/* Sidebar */}
       <aside className={`sidebar ${showSidebar ? 'visible' : ''}`}>
         <header className="sidebar-header">
-          <div className="sidebar-user" onClick={() => setShowProfile(true)}>
+          <div className="sidebar-user" onClick={() => setShowProfile(true)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowProfile(true); } }} aria-label="Open profile">
             <div className="avatar avatar-sm">
               {profile?.photoURL
                 ? <img src={profile.photoURL} alt="" className="avatar-img" />
@@ -255,17 +267,17 @@ export const AppLayout: React.FC = () => {
             <span className="sidebar-username">{profile?.displayName}</span>
           </div>
           <div className="sidebar-actions">
-            <button className="icon-btn" title="New group" onClick={() => setShowNewGroup(true)}>
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-                <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
-              </svg>
-            </button>
-            <button className="icon-btn" title="New chat" onClick={() => setShowNewChat(true)}>
+            <button className="icon-btn" title="New chat" aria-label="New chat" onClick={() => setShowNewChat(true)}>
               <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
                 <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12zM11 5h2v4h4v2h-4v4h-2v-4H7V9h4z"/>
               </svg>
             </button>
-            <button className="icon-btn requests-btn" title="Notifications" onClick={() => setShowRequests(true)}>
+            <button className="icon-btn" title="New group" aria-label="New group" onClick={() => setShowNewGroup(true)}>
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+              </svg>
+            </button>
+            <button className="icon-btn requests-btn" title="Notifications" aria-label="Notifications" onClick={() => setShowRequests(true)}>
               <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
                 <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/>
               </svg>
@@ -273,7 +285,7 @@ export const AppLayout: React.FC = () => {
                 <span className="requests-badge">{notificationCount}</span>
               )}
             </button>
-            <button className="icon-btn" title="Settings" onClick={() => setShowNotifSettings(true)}>
+            <button className="icon-btn" title="Settings" aria-label="Settings" onClick={() => setShowNotifSettings(true)}>
               <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
                 <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
               </svg>
@@ -295,7 +307,7 @@ export const AppLayout: React.FC = () => {
             onChange={(e) => setSidebarSearch(e.target.value)}
           />
           {sidebarSearch && (
-            <button className="sidebar-search-clear" onClick={() => setSidebarSearch('')}>
+            <button className="sidebar-search-clear" onClick={() => setSidebarSearch('')} title="Clear search" aria-label="Clear search">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
             </button>
           )}
@@ -349,15 +361,16 @@ export const AppLayout: React.FC = () => {
       </div>
 
       {/* Bottom navigation */}
-      <nav className="bottom-nav">
+      <nav className="bottom-nav" aria-label="Main navigation">
         <div className="bottom-nav-logo">
           <YappLogo size={28} />
         </div>
         <button
           className={`bottom-nav-item ${appMode === 'chat' ? 'active' : ''}`}
           onClick={() => setAppMode('chat')}
+          aria-current={appMode === 'chat' ? 'page' : undefined}
         >
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true">
             <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/>
           </svg>
           <span>Chats</span>
@@ -368,8 +381,9 @@ export const AppLayout: React.FC = () => {
         <button
           className={`bottom-nav-item ${appMode === 'feed' ? 'active' : ''}`}
           onClick={() => setAppMode('feed')}
+          aria-current={appMode === 'feed' ? 'page' : undefined}
         >
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true">
             <path d="M18 11v2h4v-2h-4zm-2 6.61c.96.71 2.21 1.65 3.2 2.39.4-.53.8-1.07 1.2-1.6-.99-.74-2.24-1.68-3.2-2.4-.4.54-.8 1.08-1.2 1.61zM20.4 5.6c-.4-.53-.8-1.07-1.2-1.6-.99.74-2.24 1.68-3.2 2.4.4.53.8 1.07 1.2 1.6.96-.72 2.21-1.65 3.2-2.4zM4 9c-1.1 0-2 .9-2 2v2c0 1.1.9 2 2 2h1l5 3V6L5 9H4zm11.5 3c0-1.33-.58-2.53-1.5-3.35v6.69c.92-.81 1.5-2.01 1.5-3.34z"/>
           </svg>
           <span>Yapps</span>
@@ -377,9 +391,9 @@ export const AppLayout: React.FC = () => {
       </nav>
 
       {/* Modals */}
-      {showNewChat && (
+      {showNewChat && profile && (
         <NewChatModal
-          currentUser={profile!}
+          currentUser={profile}
           existingChats={chats}
           onClose={() => setShowNewChat(false)}
           onChatCreated={(chatId) => {
@@ -389,9 +403,9 @@ export const AppLayout: React.FC = () => {
           }}
         />
       )}
-      {showNewGroup && (
+      {showNewGroup && profile && (
         <NewGroupModal
-          currentUser={profile!}
+          currentUser={profile}
           onClose={() => setShowNewGroup(false)}
           onGroupCreated={(chatId) => {
             setShowNewGroup(false);
@@ -400,15 +414,15 @@ export const AppLayout: React.FC = () => {
           }}
         />
       )}
-      {showProfile && (
+      {showProfile && profile && (
         <ProfilePanel
-          profile={profile!}
+          profile={profile}
           onClose={() => setShowProfile(false)}
         />
       )}
-      {showRequests && (
+      {showRequests && profile && (
         <ContactRequestsModal
-          currentUser={profile!}
+          currentUser={profile}
           requests={contactRequests}
           groupInvites={groupInvites}
           joinRequests={joinRequests}

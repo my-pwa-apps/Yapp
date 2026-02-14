@@ -175,7 +175,7 @@ export async function createGroupChat(
   return chatId;
 }
 
-/** Add member to group (direct add, no approval) */
+/** Add member to group (direct add, no approval) — currently unused but kept for future admin panel */
 export async function addGroupMember(chatId: string, uid: string, addedByName: string) {
   await update(ref(db, `chats/${chatId}/members`), { [uid]: true });
   await sendSystemMessage(chatId, `${addedByName} added a new member`);

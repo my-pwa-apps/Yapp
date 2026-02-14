@@ -4,6 +4,10 @@ import { LoginPage } from './components/Auth/LoginPage';
 import { AppLayout } from './components/Layout/AppLayout';
 import { PWAPrompts } from './components/PWAPrompts';
 import { YappLogo } from './components/YappLogo';
+import { preloadProfanityList } from './utils/contentFilter';
+
+// Pre-load profanity word lists in background
+preloadProfanityList();
 
 const AppInner: React.FC = () => {
   const { user, loading } = useAuth();

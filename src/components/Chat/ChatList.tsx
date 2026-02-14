@@ -5,6 +5,7 @@ import { membersToArray, clearChatMessages, deleteChat } from '../../hooks/useCh
 import { useAuth } from '../../contexts/AuthContext';
 import { resolveChatKey } from '../../hooks/useE2EE';
 import { decrypt as e2eeDecrypt } from '../../hooks/useCrypto';
+import { formatChatListTime } from '../../utils';
 import type { Chat, UserProfile } from '../../types';
 
 interface Props {
@@ -108,20 +109,6 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
     return { type: 'initial' as const, letter: name.charAt(0).toUpperCase() };
   };
 
-  const formatTime = (ts: number | undefined) => {
-    if (!ts) return '';
-    const date = new Date(ts);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    if (diff < 86400000 && now.getDate() === date.getDate()) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-    if (diff < 86400000 * 7) {
-      return date.toLocaleDateString([], { weekday: 'short' });
-    }
-    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-  };
-
   // Apply search filter
   const filteredChats = useMemo(() => {
     if (!searchFilter?.trim()) return chats;
@@ -196,7 +183,7 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
                 {getChatName(chat)}
               </span>
               <span className="chat-item-time">
-                {chat.lastMessage ? formatTime(chat.lastMessage.timestamp) : ''}
+                {chat.lastMessage ? formatChatListTime(chat.lastMessage.timestamp) : ''}
               </span>
             </div>
             <div className="chat-item-last">
@@ -227,14 +214,14 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
       {contextMenu && (
         <div
           className="chat-context-menu"
-          style={{ top: contextMenu.y, left: contextMenu.x }}
+          style={{ top: Math.min(contextMenu.y, window.innerHeight - 120), left: Math.min(contextMenu.x, window.innerWidth - 200) }}
           onClick={(e) => e.stopPropagation()}
         >
           <button onClick={() => {
             setConfirmAction({ type: 'clear', chatId: contextMenu.chatId, label: 'Clear all messages? This cannot be undone.' });
             setContextMenu(null);
           }}>
-            🗑️ Clear messages
+            Clear messages
           </button>
           <button onClick={() => {
             const chat = chats.find(c => c.id === contextMenu.chatId);
@@ -242,7 +229,7 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
             setConfirmAction({ type: 'delete', chatId: contextMenu.chatId, label });
             setContextMenu(null);
           }}>
-            ❌ {chats.find(c => c.id === contextMenu.chatId)?.type === 'group' ? 'Leave group' : 'Delete chat'}
+            {chats.find(c => c.id === contextMenu.chatId)?.type === 'group' ? 'Leave group' : 'Delete chat'}
           </button>
         </div>
       )}

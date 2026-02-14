@@ -74,8 +74,11 @@ export const VoiceRecorder: React.FC<Props> = ({ onSend, onCancel, onPermissionE
     onCancel();
   };
 
-  // Start recording immediately on mount
+  // Start recording immediately on mount (only once)
+  const startedRef = useRef(false);
   useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
     startRecording();
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -83,7 +86,7 @@ export const VoiceRecorder: React.FC<Props> = ({ onSend, onCancel, onPermissionE
         mediaRecorderRef.current.stop();
       }
     };
-  }, [startRecording]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Revoke blob URL on unmount to prevent memory leaks
   useEffect(() => {

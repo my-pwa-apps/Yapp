@@ -65,7 +65,7 @@ const YappVoicePlayer: React.FC<{ src: string; duration?: number }> = ({ src, du
   );
 };
 
-export const YappCard: React.FC<Props> = ({ yapp, currentUser, onOpenThread, onOpenProfile, showReplyContext, depth = 0, defaultExpanded }) => {
+const YappCardInner: React.FC<Props> = ({ yapp, currentUser, onOpenThread, onOpenProfile, showReplyContext, depth = 0, defaultExpanded }) => {
   const liked = useYappLikes(yapp.id, currentUser.uid);
   const [busy, setBusy] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -129,7 +129,7 @@ export const YappCard: React.FC<Props> = ({ yapp, currentUser, onOpenThread, onO
             <span className="yapp-card-time">{formatRelativeTime(yapp.timestamp)}</span>
             {isOwn && (
               <div className="yapp-card-menu" onClick={(e) => e.stopPropagation()}>
-                <button className="icon-btn yapp-menu-btn" onClick={() => setShowMenu(!showMenu)}>
+                <button className="icon-btn yapp-menu-btn" onClick={() => setShowMenu(!showMenu)} title="More options" aria-label="More options">
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
                 </button>
                 {showMenu && (
@@ -260,3 +260,5 @@ const InlineReplies: React.FC<{
     </div>
   );
 };
+
+export const YappCard = React.memo(YappCardInner);

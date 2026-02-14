@@ -18,6 +18,8 @@ export function compressImage(file: File | Blob, maxSize = 800): Promise<string>
   return new Promise((resolve, reject) => {
     const img = new Image();
     const reader = new FileReader();
+    // Preserve PNG transparency, compress everything else as JPEG
+    const isPng = file.type === 'image/png';
     reader.onload = (e) => {
       img.src = e.target?.result as string;
     };
@@ -31,10 +33,10 @@ export function compressImage(file: File | Blob, maxSize = 800): Promise<string>
       }
       canvas.width = width;
       canvas.height = height;
-      const ctx = canvas.getContext('2d')!;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('Canvas 2D context unavailable')); return; }
       ctx.drawImage(img, 0, 0, width, height);
-      // Return as data URL string directly
-      resolve(canvas.toDataURL('image/jpeg', 0.7));
+      resolve(isPng ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', 0.7));
     };
     img.onerror = reject;
     reader.onerror = reject;

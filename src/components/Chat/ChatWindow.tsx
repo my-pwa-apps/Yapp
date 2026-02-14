@@ -38,6 +38,9 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     setToastMsg(msg);
     toastTimer.current = setTimeout(() => setToastMsg(null), 4000);
   };
+
+  // Clean up toast timer on unmount
+  useEffect(() => () => clearTimeout(toastTimer.current), []);
   const [showUserDetail, setShowUserDetail] = useState(false);
   const [text, setText] = useState('');
   const [chatName, setChatName] = useState('');
@@ -54,7 +57,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
   const prevMessageCount = useRef(0);
   const currentChatIdRef = useRef(chat.id);
 
-  // Scroll to bottom when mobile virtual keyboard opens/closes
+  // Scroll to bottom when mobile virtual keyboard opens/closes + keep compose bar in view
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
@@ -68,10 +71,14 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
           bottomRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
         });
       }
+      // Also keep compose input in view
+      requestAnimationFrame(() => {
+        inputRef.current?.scrollIntoView({ block: 'nearest' });
+      });
     };
     vv.addEventListener('resize', onResize);
     return () => vv.removeEventListener('resize', onResize);
-  }, []);
+  }, [])
   const justSentRef = useRef(false);
 
   // Swipe-back gesture refs
@@ -177,7 +184,12 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     setShowSearch(false);
     setSearchQuery('');
     setSearchResults([]);
-  }, [chat.id]);
+    return () => {
+      // Clear typing indicator when leaving this chat
+      setTyping(chat.id, currentUid, false);
+      clearTimeout(typingTimeoutRef.current);
+    };
+  }, [chat.id, currentUid]);
 
   // Detect when messages container overflows
   useEffect(() => {
@@ -256,20 +268,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     inputRef.current?.focus();
   }, [chat.id]);
 
-  // On mobile, scroll compose bar into view when virtual keyboard opens
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const onResize = () => {
-      // When keyboard opens, visual viewport height shrinks
-      // Scroll the compose input into view
-      requestAnimationFrame(() => {
-        inputRef.current?.scrollIntoView({ block: 'nearest' });
-      });
-    };
-    vv.addEventListener('resize', onResize);
-    return () => vv.removeEventListener('resize', onResize);
-  }, []);
+
 
   // Close attach menu on outside click (delayed to avoid catching the opening click)
   useEffect(() => {

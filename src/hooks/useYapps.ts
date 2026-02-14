@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ref,
   onValue,
@@ -15,6 +15,7 @@ import {
 } from 'firebase/database';
 import { db } from '../firebase';
 import type { Yapp } from '../types';
+import { isBlocked } from './useBlockedUsers';
 
 /* ─── Feed hook ─── */
 
@@ -172,6 +173,19 @@ export function useFollowerCount(uid: string | undefined) {
   return count;
 }
 
+export function useFollowingCount(uid: string | undefined) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (!uid) return;
+    const ref_ = ref(db, `yappFollowing/${uid}`);
+    const unsub = onValue(ref_, (snap) => setCount(snap.size));
+    return () => unsub();
+  }, [uid]);
+
+  return count;
+}
+
 /* ─── Actions ─── */
 
 export async function postYapp(
@@ -195,15 +209,15 @@ export async function postYapp(
     likeCount: 0,
     replyCount: 0,
     reyappCount: 0,
+    ...(mediaURL && { mediaURL }),
+    ...(mediaType && { mediaType }),
+    ...(voiceDuration != null && { voiceDuration }),
   };
-  if (mediaURL) (yapp as any).mediaURL = mediaURL;
-  if (mediaType) (yapp as any).mediaType = mediaType;
-  if (voiceDuration != null) (yapp as any).voiceDuration = voiceDuration;
   if (parentId) {
-    (yapp as any).parentId = parentId;
+    yapp.parentId = parentId;
     // Increment reply count on parent
     const parentRef = ref(db, `yapps/${parentId}/replyCount`);
-    runTransaction(parentRef, (current) => (current || 0) + 1);
+    await runTransaction(parentRef, (current) => (current || 0) + 1);
   }
   await set(newRef, { ...yapp, id: newRef.key! });
   return newRef.key!;
@@ -214,7 +228,7 @@ export async function deleteYapp(yappId: string, parentId?: string): Promise<voi
   await remove(ref(db, `yappLikes/${yappId}`));
   if (parentId) {
     const parentRef = ref(db, `yapps/${parentId}/replyCount`);
-    runTransaction(parentRef, (current) => Math.max((current || 1) - 1, 0));
+    await runTransaction(parentRef, (current) => Math.max((current || 1) - 1, 0));
   }
 }
 
@@ -224,10 +238,10 @@ export async function toggleLike(yappId: string, uid: string): Promise<void> {
   const countRef = ref(db, `yapps/${yappId}/likeCount`);
   if (snap.exists()) {
     await remove(likeRef);
-    runTransaction(countRef, (current) => Math.max((current || 1) - 1, 0));
+    await runTransaction(countRef, (current) => Math.max((current || 1) - 1, 0));
   } else {
     await set(likeRef, true);
-    runTransaction(countRef, (current) => (current || 0) + 1);
+    await runTransaction(countRef, (current) => (current || 0) + 1);
   }
 }
 
@@ -246,13 +260,16 @@ export async function reyapp(
   });
   // Increment reyapp count on original
   const countRef = ref(db, `yapps/${yapp.id}/reyappCount`);
-  runTransaction(countRef, (current) => (current || 0) + 1);
+  await runTransaction(countRef, (current) => (current || 0) + 1);
   return id;
 }
 
-export async function followUser(uid: string, targetUid: string): Promise<void> {
+export async function followUser(uid: string, targetUid: string): Promise<boolean> {
+  const blocked = await isBlocked(uid, targetUid);
+  if (blocked) return false;
   await set(ref(db, `yappFollowing/${uid}/${targetUid}`), true);
   await set(ref(db, `yappFollowers/${targetUid}/${uid}`), true);
+  return true;
 }
 
 export async function unfollowUser(uid: string, targetUid: string): Promise<void> {

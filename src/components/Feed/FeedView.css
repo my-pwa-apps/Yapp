@@ -99,7 +99,6 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
 }
 
 /* ── Composer in feed ── */
@@ -157,6 +156,24 @@
 
 .yapp-composer-input::placeholder {
   color: var(--text-muted);
+}
+
+.yapp-content-warning {
+  background: rgba(220, 38, 38, 0.15);
+  color: #fca5a5;
+  font-size: 0.82rem;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  margin-bottom: 4px;
+}
+
+@media (prefers-color-scheme: light) {
+  .yapp-content-warning {
+    background: rgba(220, 38, 38, 0.08);
+    color: #dc2626;
+    border-color: rgba(220, 38, 38, 0.2);
+  }
 }
 
 .yapp-composer-media-preview {
@@ -651,7 +668,6 @@
 .yapp-thread-scroll {
   flex: 1;
   overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
 }
 
 .yapp-thread-main {
@@ -779,7 +795,41 @@
 .yapp-profile-feed {
   flex: 1;
   overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+}
+
+.yapp-profile-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.yapp-btn-danger {
+  background: #dc2626;
+  color: white;
+}
+
+.yapp-btn-danger:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.yapp-profile-blocked-msg {
+  width: 100%;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 8px 0 0;
+  font-style: italic;
+}
+
+.block-confirm-text {
+  margin-bottom: 16px;
+  color: var(--text-secondary);
+}
+
+.block-confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 /* ── Bottom Navigation ── */

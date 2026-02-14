@@ -10,6 +10,7 @@ import { db } from '../firebase';
 import type { ContactRequest, UserProfile } from '../types';
 import { sendPushToUsers } from '../utils/sendPushNotification';
 import { findOrCreateDirectChat } from './useChats';
+import { isBlocked } from './useBlockedUsers';
 
 /**
  * Hook that listens for incoming contact requests for the current user.
@@ -44,7 +45,11 @@ export function useContactRequests(uid: string | undefined) {
 export async function sendContactRequest(
   currentUser: UserProfile,
   targetUser: UserProfile
-): Promise<'sent' | 'already_sent' | 'already_contacts'> {
+): Promise<'sent' | 'already_sent' | 'already_contacts' | 'blocked'> {
+  // Check if either user has blocked the other
+  const blocked = await isBlocked(currentUser.uid, targetUser.uid);
+  if (blocked) return 'blocked';
+
   // Check if already contacts
   const contactSnap = await get(ref(db, `contacts/${currentUser.uid}/${targetUser.uid}`));
   if (contactSnap.exists()) return 'already_contacts';

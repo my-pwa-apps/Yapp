@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useYapps, useFollowing, useContacts, followUser, postYapp } from '../../hooks/useYapps';
 import { useYappsSettings } from '../../hooks/useYappsSettings';
+import { useBlockedUsers, useBlockedByUsers } from '../../hooks/useBlockedUsers';
 import { YappCard } from './YappCard';
 import { YappComposer } from './YappComposer';
 import { YappThread } from './YappThread';
@@ -18,6 +19,8 @@ export const FeedView: React.FC<Props> = ({ currentUser }) => {
   const following = useFollowing(currentUser.uid);
   const contacts = useContacts(currentUser.uid);
   const { settings: yappsSettings, loading: settingsLoading } = useYappsSettings(currentUser.uid);
+  const blockedUsers = useBlockedUsers(currentUser.uid);
+  const blockedBy = useBlockedByUsers(currentUser.uid);
   const [showSettings, setShowSettings] = useState(false);
   const [threadStack, setThreadStack] = useState<Yapp[]>([]);
   const [profileUid, setProfileUid] = useState<string | null>(null);
@@ -26,11 +29,11 @@ export const FeedView: React.FC<Props> = ({ currentUser }) => {
   useEffect(() => {
     if (settingsLoading || !yappsSettings.autoFollowContacts || contacts.size === 0) return;
     contacts.forEach((contactUid) => {
-      if (!following.has(contactUid)) {
+      if (!following.has(contactUid) && !blockedUsers.has(contactUid) && !blockedBy.has(contactUid)) {
         followUser(currentUser.uid, contactUid);
       }
     });
-  }, [contacts, settingsLoading, yappsSettings.autoFollowContacts]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [contacts, settingsLoading, yappsSettings.autoFollowContacts, following, currentUser.uid, blockedUsers, blockedBy]);
 
   const threadYapp = threadStack.length > 0 ? threadStack[threadStack.length - 1] : null;
 
@@ -38,10 +41,14 @@ export const FeedView: React.FC<Props> = ({ currentUser }) => {
   const popThread = () => setThreadStack((prev) => prev.length <= 1 ? [] : prev.slice(0, -1));
 
   const filteredYapps = useMemo(() => {
-    let result = yapps.filter((y) => following.has(y.authorId) || y.authorId === currentUser.uid);
+    let result = yapps.filter((y) => {
+      // Exclude blocked users (both directions)
+      if (blockedUsers.has(y.authorId) || blockedBy.has(y.authorId)) return false;
+      return following.has(y.authorId) || y.authorId === currentUser.uid;
+    });
     if (!yappsSettings.showReyapps) result = result.filter((y) => !y.reyappOf);
     return result;
-  }, [yapps, following, currentUser.uid, yappsSettings.showReyapps]);
+  }, [yapps, following, currentUser.uid, yappsSettings.showReyapps, blockedUsers, blockedBy]);
 
   const handlePost = async (text: string, mediaURL?: string, mediaType?: 'image' | 'gif' | 'sticker' | 'voice', voiceDuration?: number) => {
     await postYapp(currentUser.uid, currentUser.displayName, currentUser.photoURL, text, mediaURL, mediaType, undefined, voiceDuration);
@@ -55,6 +62,7 @@ export const FeedView: React.FC<Props> = ({ currentUser }) => {
         currentUser={currentUser}
         onBack={() => setProfileUid(null)}
         onOpenThread={(y) => { setProfileUid(null); pushThread(y); }}
+        onOpenProfile={(uid) => setProfileUid(uid)}
       />
     );
   }

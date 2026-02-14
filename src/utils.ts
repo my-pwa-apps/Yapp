@@ -27,3 +27,24 @@ export function formatRelativeTime(timestamp: number): string {
   if (diff < 604_800_000) return `${Math.floor(diff / 86_400_000)}d`;
   return new Date(timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
+
+/** Format a timestamp as HH:MM for message bubbles */
+export function formatMessageTime(ts: number | undefined): string {
+  if (!ts) return '';
+  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+/** Format a timestamp for chat list sidebar: time today, weekday this week, else short date */
+export function formatChatListTime(ts: number | undefined): string {
+  if (!ts) return '';
+  const date = new Date(ts);
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  if (diff < 86_400_000 && now.getDate() === date.getDate()) {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+  if (diff < 86_400_000 * 7) {
+    return date.toLocaleDateString([], { weekday: 'short' });
+  }
+  return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}

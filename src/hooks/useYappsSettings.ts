@@ -56,7 +56,3 @@ export function useYappsSettings(uid: string | undefined) {
 export async function saveYappsSettings(uid: string, settings: YappsSettings): Promise<void> {
   await set(ref(db, `yappsSettings/${uid}`), settings);
 }
-
-export function getDefaultSettings(): YappsSettings {
-  return { ...defaultSettings };
-}

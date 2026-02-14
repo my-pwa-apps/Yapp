@@ -70,7 +70,7 @@ export const NewGroupModal: React.FC<Props> = ({ currentUser, onClose, onGroupCr
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={onClose} onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>New Group</h3>

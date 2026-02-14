@@ -1,13 +1,15 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../../firebase';
 import {
   useUserYapps,
   useFollowing,
   useFollowerCount,
+  useFollowingCount,
   followUser,
   unfollowUser,
 } from '../../hooks/useYapps';
+import { useBlockedUsers, useBlockedByUsers, blockUser, unblockUser } from '../../hooks/useBlockedUsers';
 import { YappCard } from './YappCard';
 import type { Yapp, UserProfile as UserProfileType } from '../../types';
 
@@ -16,15 +18,22 @@ interface Props {
   currentUser: UserProfileType;
   onBack: () => void;
   onOpenThread?: (yapp: Yapp) => void;
+  onOpenProfile?: (uid: string) => void;
 }
 
-export const YappProfile: React.FC<Props> = ({ uid, currentUser, onBack, onOpenThread }) => {
+export const YappProfile: React.FC<Props> = ({ uid, currentUser, onBack, onOpenThread, onOpenProfile }) => {
   const [profile, setProfile] = useState<UserProfileType | null>(null);
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false);
   const { yapps, loading } = useUserYapps(uid);
   const following = useFollowing(currentUser.uid);
   const followerCount = useFollowerCount(uid);
+  const followingCount = useFollowingCount(uid);
+  const blockedUsers = useBlockedUsers(currentUser.uid);
+  const blockedBy = useBlockedByUsers(currentUser.uid);
   const isFollowing = following.has(uid);
   const isSelf = uid === currentUser.uid;
+  const isBlockedByMe = blockedUsers.has(uid);
+  const isBlockedByThem = blockedBy.has(uid);
 
   useEffect(() => {
     const userRef = ref(db, `users/${uid}`);
@@ -35,6 +44,7 @@ export const YappProfile: React.FC<Props> = ({ uid, currentUser, onBack, onOpenT
   }, [uid]);
 
   const handleToggleFollow = async () => {
+    if (isBlockedByMe || isBlockedByThem) return;
     if (isFollowing) {
       await unfollowUser(currentUser.uid, uid);
     } else {
@@ -42,12 +52,25 @@ export const YappProfile: React.FC<Props> = ({ uid, currentUser, onBack, onOpenT
     }
   };
 
+  const handleToggleBlock = async () => {
+    if (isBlockedByMe) {
+      await unblockUser(currentUser.uid, uid);
+    } else {
+      setShowBlockConfirm(true);
+    }
+  };
+
+  const confirmBlock = async () => {
+    await blockUser(currentUser.uid, uid);
+    setShowBlockConfirm(false);
+  };
+
   if (!profile) return <div className="feed-loading">Loading profile...</div>;
 
   return (
     <div className="yapp-user-profile">
       <header className="yapp-profile-header">
-        <button className="icon-btn" onClick={onBack}>
+        <button className="icon-btn" onClick={onBack} title="Back" aria-label="Back">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
         </button>
         <h2>{profile.displayName}</h2>
@@ -65,18 +88,54 @@ export const YappProfile: React.FC<Props> = ({ uid, currentUser, onBack, onOpenT
           <div className="yapp-profile-stats">
             <span><strong>{yapps.length}</strong> Yapps</span>
             <span><strong>{followerCount}</strong> Followers</span>
-            <span><strong>{following.size}</strong> Following</span>
+            <span><strong>{followingCount}</strong> Following</span>
           </div>
         </div>
         {!isSelf && (
-          <button
-            className={`yapp-btn ${isFollowing ? 'yapp-btn-secondary' : 'yapp-btn-primary'}`}
-            onClick={handleToggleFollow}
-          >
-            {isFollowing ? 'Unfollow' : 'Follow'}
-          </button>
+          <div className="yapp-profile-actions">
+            {!isBlockedByMe && !isBlockedByThem && (
+              <button
+                className={`yapp-btn ${isFollowing ? 'yapp-btn-secondary' : 'yapp-btn-primary'}`}
+                onClick={handleToggleFollow}
+              >
+                {isFollowing ? 'Unfollow' : 'Follow'}
+              </button>
+            )}
+            <button
+              className={`yapp-btn ${isBlockedByMe ? 'yapp-btn-danger' : 'yapp-btn-secondary'}`}
+              onClick={handleToggleBlock}
+            >
+              {isBlockedByMe ? 'Unblock' : 'Block'}
+            </button>
+          </div>
+        )}
+        {isBlockedByThem && !isBlockedByMe && (
+          <p className="yapp-profile-blocked-msg">You cannot interact with this user.</p>
         )}
       </div>
+
+      {/* Block confirmation modal */}
+      {showBlockConfirm && (
+        <div className="modal-overlay" onClick={() => setShowBlockConfirm(false)}>
+          <div className="modal modal-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Block {profile?.displayName}?</h3>
+              <button className="modal-close" onClick={() => setShowBlockConfirm(false)}>×</button>
+            </div>
+            <div className="modal-body modal-body-pad">
+              <p className="block-confirm-text">
+                They won't be able to follow you, send you contact requests, or see your yapps.
+                They will also be removed from your contacts and followers.
+              </p>
+              <div className="block-confirm-actions">
+                <button className="yapp-btn yapp-btn-secondary" onClick={() => setShowBlockConfirm(false)}>Cancel</button>
+                <button className="yapp-btn yapp-btn-danger" onClick={confirmBlock}>Block</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="yapp-profile-feed">
         {loading ? (
           <div className="feed-loading">Loading yapps...</div>
@@ -91,6 +150,7 @@ export const YappProfile: React.FC<Props> = ({ uid, currentUser, onBack, onOpenT
               yapp={y}
               currentUser={currentUser}
               onOpenThread={onOpenThread}
+              onOpenProfile={onOpenProfile}
             />
           ))
         )}

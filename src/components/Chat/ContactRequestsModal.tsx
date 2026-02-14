@@ -87,7 +87,7 @@ export const ContactRequestsModal: React.FC<Props> = ({
   const totalCount = requests.length + groupInvites.length + joinRequests.length;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={onClose} onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>Notifications</h3>

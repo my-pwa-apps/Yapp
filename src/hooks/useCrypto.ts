@@ -15,11 +15,18 @@ const AES_LENGTH = 256;
 const DB_NAME = 'yapp-e2ee';
 const STORE = 'keys';
 
+let cachedDB: IDBDatabase | null = null;
+
 function openDB(): Promise<IDBDatabase> {
+  if (cachedDB) return Promise.resolve(cachedDB);
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, 1);
     req.onupgradeneeded = () => req.result.createObjectStore(STORE);
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      cachedDB = req.result;
+      cachedDB.onclose = () => { cachedDB = null; };
+      resolve(cachedDB);
+    };
     req.onerror = () => reject(req.error);
   });
 }

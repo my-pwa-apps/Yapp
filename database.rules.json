@@ -12,6 +12,26 @@
       }
     },
 
+    "blockedUsers": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "$blockedUid": {
+          ".validate": "!newData.exists() || newData.val() === true"
+        }
+      }
+    },
+
+    "blockedBy": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$blockerUid": {
+          ".write": "auth != null && auth.uid === $blockerUid",
+          ".validate": "!newData.exists() || newData.val() === true"
+        }
+      }
+    },
+
     "contacts": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
@@ -27,7 +47,7 @@
         ".read": "auth != null && auth.uid === $targetUid",
         "$senderUid": {
           ".read": "auth != null && auth.uid === $senderUid",
-          ".write": "auth != null && (auth.uid === $senderUid || auth.uid === $targetUid)",
+          ".write": "auth != null && (auth.uid === $senderUid || auth.uid === $targetUid) && (!newData.exists() || (!root.child('blockedUsers').child($targetUid).child($senderUid).exists() && !root.child('blockedUsers').child($senderUid).child($targetUid).exists()))",
           ".validate": "newData.hasChildren(['from', 'fromName', 'fromEmail', 'to', 'timestamp', 'status']) && newData.child('from').val() === $senderUid && newData.child('to').val() === $targetUid && newData.child('fromName').isString() && newData.child('fromEmail').isString() && newData.child('timestamp').isNumber() && newData.child('status').val() === 'pending'"
         }
       }
@@ -124,18 +144,18 @@
       ".indexOn": ["timestamp", "authorId", "parentId"],
       "$yappId": {
         ".write": "auth != null && (!data.exists() || data.child('authorId').val() === auth.uid)",
-        ".validate": "newData.hasChildren(['id', 'authorId', 'authorName', 'text', 'timestamp', 'likeCount', 'replyCount', 'reyappCount']) && newData.child('authorId').isString() && newData.child('authorName').isString() && newData.child('text').isString() && newData.child('timestamp').isNumber() && newData.child('likeCount').isNumber() && newData.child('replyCount').isNumber() && newData.child('reyappCount').isNumber()",
+        ".validate": "newData.hasChildren(['id', 'authorId', 'authorName', 'text', 'timestamp', 'likeCount', 'replyCount', 'reyappCount']) && (data.exists() || newData.child('authorId').val() === auth.uid) && newData.child('authorId').isString() && newData.child('authorName').isString() && newData.child('text').isString() && newData.child('timestamp').isNumber() && newData.child('likeCount').isNumber() && newData.child('replyCount').isNumber() && newData.child('reyappCount').isNumber()",
         "likeCount": {
           ".write": "auth != null",
-          ".validate": "newData.isNumber()"
+          ".validate": "newData.isNumber() && (newData.val() === data.val() + 1 || newData.val() === data.val() - 1 || !data.exists())"
         },
         "replyCount": {
           ".write": "auth != null",
-          ".validate": "newData.isNumber()"
+          ".validate": "newData.isNumber() && (newData.val() === data.val() + 1 || newData.val() === data.val() - 1 || !data.exists())"
         },
         "reyappCount": {
           ".write": "auth != null",
-          ".validate": "newData.isNumber()"
+          ".validate": "newData.isNumber() && (newData.val() === data.val() + 1 || newData.val() === data.val() - 1 || !data.exists())"
         }
       }
     },
@@ -153,7 +173,10 @@
     "yappFollowing": {
       "$uid": {
         ".read": "auth != null",
-        ".write": "auth != null && auth.uid === $uid"
+        ".write": "auth != null && auth.uid === $uid",
+        "$targetUid": {
+          ".validate": "!newData.exists() || (newData.val() === true && !root.child('blockedUsers').child($uid).child($targetUid).exists() && !root.child('blockedUsers').child($targetUid).child($uid).exists())"
+        }
       }
     },
 
@@ -162,7 +185,7 @@
         ".read": "auth != null",
         "$followerUid": {
           ".write": "auth != null && auth.uid === $followerUid",
-          ".validate": "!newData.exists() || newData.val() === true"
+          ".validate": "!newData.exists() || (newData.val() === true && !root.child('blockedUsers').child($uid).child($followerUid).exists() && !root.child('blockedUsers').child($followerUid).child($uid).exists())"
         }
       }
     },

@@ -26,7 +26,7 @@ export const KeyRecoveryModal: React.FC<Props> = ({ onRecover, onSkip }) => {
     <div className="modal-overlay">
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>🔐 Unlock Encryption</h3>
+          <h3>Unlock Encryption</h3>
         </div>
         <div className="modal-body">
           <p className="text-secondary mb-16" style={{ fontSize: 14 }}>

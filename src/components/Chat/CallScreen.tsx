@@ -154,7 +154,7 @@ export const CallScreen: React.FC<Props> = ({
               </div>
               <div className="call-name">{callData?.callerName || 'Unknown'}</div>
               <div className="call-type-label">
-                {isVideo ? '📹 Video call' : '📞 Audio call'}
+                {isVideo ? 'Video call' : 'Audio call'}
               </div>
             </>
           )}

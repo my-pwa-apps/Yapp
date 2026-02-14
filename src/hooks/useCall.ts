@@ -327,7 +327,6 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
       // Update callData with new participants
       setCallData((prev) => prev ? { ...prev, participants } : prev);
     });
-    unsubscribersRef.current.push(unsubParticipants);
 
     return () => unsubParticipants();
   }, [callState, currentUid, flushIceCandidates]);
@@ -395,7 +394,7 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
       }
     });
     unsubscribersRef.current.push(unsubStatus);
-  };
+  }; // eslint-disable-line react-hooks/exhaustive-deps
 
   const rejectCall = () => {
     if (callIdRef.current) {

@@ -114,11 +114,11 @@ export const AvatarPicker: React.FC<Props> = ({ currentPhotoURL, displayName, on
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
             >
-              📷 {uploading ? 'Uploading...' : 'Upload Photo'}
+              {uploading ? 'Uploading...' : 'Upload Photo'}
             </button>
             {selected && (
               <button className="avatar-action-btn remove" onClick={handleRemove}>
-                🗑️ Remove
+                Remove
               </button>
             )}
           </div>

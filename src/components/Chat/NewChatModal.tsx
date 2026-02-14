@@ -75,6 +75,8 @@ export const NewChatModal: React.FC<Props> = ({ currentUser, existingChats, onCl
         setResults([]);
       } else if (result === 'already_sent') {
         setError('Request already sent — waiting for them to accept');
+      } else if (result === 'blocked') {
+        setError('Cannot send request to this user');
       } else if (result === 'already_contacts') {
         // They're already contacts or reverse-request was auto-accepted — open chat
         const chatId = await findOrCreateDirectChat(currentUser, user.uid);
@@ -87,7 +89,7 @@ export const NewChatModal: React.FC<Props> = ({ currentUser, existingChats, onCl
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={onClose} onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>New Chat</h3>
@@ -145,7 +147,7 @@ export const NewChatModal: React.FC<Props> = ({ currentUser, existingChats, onCl
                 Invite them to join Yappin'!
               </p>
               <button className="modal-btn invite-btn" onClick={handleInvite}>
-                📨 Send Invite
+                Send Invite
               </button>
             </div>
           )}

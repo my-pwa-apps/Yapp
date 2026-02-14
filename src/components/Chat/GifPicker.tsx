@@ -10,7 +10,6 @@ interface GifResult {
   images: {
     fixed_height: { url: string; width: string; height: string };
     fixed_height_still: { url: string };
-    original: { url: string };
   };
 }
 
@@ -42,6 +41,9 @@ export const GifPicker: React.FC<Props> = ({ onSelect, onClose }) => {
 
   useEffect(() => {
     fetchGifs('');
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [fetchGifs]);
 
   const handleSearch = (val: string) => {

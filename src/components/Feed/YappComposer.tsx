@@ -3,6 +3,7 @@ import { compressImage, blobToDataURL } from '../../hooks/useMediaUpload';
 import { GifPicker } from '../Chat/GifPicker';
 import { StickerPicker } from '../Chat/StickerPicker';
 import { VoiceRecorder } from '../Chat/VoiceRecorder';
+import { checkContent } from '../../utils/contentFilter';
 
 interface Props {
   onPost: (text: string, mediaURL?: string, mediaType?: 'image' | 'gif' | 'sticker' | 'voice', voiceDuration?: number) => Promise<void>;
@@ -17,6 +18,7 @@ export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, 
   const [mediaURL, setMediaURL] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'gif' | 'sticker' | 'voice' | null>(null);
   const [sending, setSending] = useState(false);
+  const [contentWarning, setContentWarning] = useState('');
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
@@ -29,8 +31,18 @@ export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, 
   const handlePost = async () => {
     const trimmed = text.trim();
     if (!trimmed && !mediaURL) return;
+    setContentWarning('');
     setSending(true);
     try {
+      // Content moderation check
+      if (trimmed) {
+        const result = await checkContent(trimmed);
+        if (!result.clean) {
+          setContentWarning('Your post contains inappropriate language. Please revise it before posting.');
+          setSending(false);
+          return;
+        }
+      }
       await onPost(trimmed, mediaURL ?? undefined, mediaType ?? undefined, voiceDuration);
       setText('');
       setMediaURL(null);
@@ -65,6 +77,12 @@ export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, 
 
   const handleStickerSelect = async (emoji: string) => {
     setShowStickerPicker(false);
+    // Content moderation check for sticker text
+    const result = await checkContent(emoji);
+    if (!result.clean) {
+      setContentWarning(result.flaggedWords.length > 0 ? `Flagged: ${result.flaggedWords.join(', ')}` : 'This sticker was flagged by our content filter.');
+      return;
+    }
     setSending(true);
     try {
       await onPost(emoji, emoji, 'sticker');
@@ -112,15 +130,18 @@ export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, 
         className="yapp-composer-input"
         placeholder={placeholder || "What's on your mind? Start yappin'..."}
         value={text}
-        onChange={(e) => setText(e.target.value.slice(0, charLimit))}
+        onChange={(e) => { setText(e.target.value.slice(0, charLimit)); setContentWarning(''); }}
         onKeyDown={handleKeyDown}
         autoFocus={autoFocus}
         rows={compact ? 2 : 3}
       />
+      {contentWarning && (
+        <div className="yapp-content-warning">{contentWarning}</div>
+      )}
       {mediaURL && (
         <div className="yapp-composer-media-preview">
           <img src={mediaURL} alt="attachment" />
-          <button className="yapp-composer-media-remove" onClick={() => { setMediaURL(null); setMediaType(null); }}>
+          <button className="yapp-composer-media-remove" onClick={() => { setMediaURL(null); setMediaType(null); }} title="Remove attachment" aria-label="Remove attachment">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
           </button>
         </div>
