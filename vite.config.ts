@@ -13,7 +13,7 @@ export default defineConfig({
         id: '/Yapp/',
         name: "Yappin'",
         short_name: "Yappin'",
-        description: "Yappin' is a modern chat app. Send messages, GIFs, stickers, photos, and voice messages. Make audio and video calls. Keep yappin' man!",
+        description: "Yappin' is a modern chat & social app. Send messages, post yapps, share GIFs, stickers, photos, and voice messages. Make audio and video calls. Keep yappin' man!",
         theme_color: '#65a30d',
         background_color: '#111B21',
         display: 'standalone',

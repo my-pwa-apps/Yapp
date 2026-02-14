@@ -1,5 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="64" fill="#075E54"/>
-  <text x="256" y="320" text-anchor="middle" font-family="Arial Black, sans-serif" font-size="256" font-weight="bold" fill="white">Y</text>
-  <circle cx="380" cy="130" r="52" fill="#25D366"/>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#a3e635"/>
+      <stop offset="1" stop-color="#65a30d"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#g)"/>
+  <path d="M274.67 148C334.67 148 384 197.33 384 257.33C384 317.33 334.67 366.67 274.67 366.67H200L150.67 417.33V366.67C129.33 353.33 114.67 337.33 114.67 257.33C114.67 197.33 165.33 148 224 148H274.67Z" fill="white"/>
+  <path d="M205.33 209.33L240 257.33L274.67 209.33" stroke="#65a30d" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <line x1="240" y1="257.33" x2="240" y2="305.33" stroke="#65a30d" stroke-width="24" stroke-linecap="round"/>
+  <circle cx="320" cy="188" r="18.67" fill="white" opacity="0.6"/>
+  <circle cx="349.33" cy="228" r="13.33" fill="white" opacity="0.4"/>
+  <circle cx="368" cy="268" r="10.67" fill="white" opacity="0.3"/>
 </svg>

@@ -37,9 +37,32 @@ self.addEventListener('push', function (event) {
 
 self.addEventListener('notificationclick', function (event) {
   event.notification.close();
+  var data = event.notification.data || {};
+  var isCall = data.type === 'call';
 
-  // If user clicked "Decline", just close
-  if (event.action === 'decline') return;
+  // If user clicked "Decline" on a call, tell the app to reject it
+  if (event.action === 'decline' && isCall) {
+    event.waitUntil(
+      self.clients
+        .matchAll({ type: 'window', includeUncontrolled: true })
+        .then(function (clientList) {
+          for (var i = 0; i < clientList.length; i++) {
+            if (clientList[i].url.indexOf('/Yapp') !== -1) {
+              clientList[i].postMessage({ type: 'DECLINE_CALL', callId: data.callId });
+            }
+          }
+        })
+    );
+    return;
+  }
+
+  // Determine the message to send to the app after focusing/opening
+  var msg = null;
+  if (isCall && (event.action === 'answer' || !event.action)) {
+    msg = { type: 'ANSWER_CALL', callId: data.callId };
+  } else if (data.chatId) {
+    msg = { type: 'OPEN_CHAT', chatId: data.chatId };
+  }
 
   event.waitUntil(
     self.clients
@@ -49,11 +72,16 @@ self.addEventListener('notificationclick', function (event) {
         for (var i = 0; i < clientList.length; i++) {
           var client = clientList[i];
           if (client.url.indexOf('/Yapp') !== -1 && 'focus' in client) {
+            if (msg) client.postMessage(msg);
             return client.focus();
           }
         }
-        // Otherwise open a new one
-        return self.clients.openWindow('/Yapp/');
+        // Otherwise open a new one — pass action as URL param so the app can pick it up
+        var url = '/Yapp/';
+        if (msg && msg.type === 'ANSWER_CALL') {
+          url += '?answerCall=' + encodeURIComponent(msg.callId);
+        }
+        return self.clients.openWindow(url);
       })
   );
 });

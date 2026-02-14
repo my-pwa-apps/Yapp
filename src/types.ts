@@ -85,3 +85,26 @@ export interface CryptoKeys {
   privateKey: CryptoKey;
   publicKey: CryptoKey;
 }
+
+/* ── Yapps (social feed) ── */
+
+export interface Yapp {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorPhotoURL: string | null;
+  text: string;
+  mediaURL?: string;
+  mediaType?: 'image' | 'gif';
+  timestamp: number;
+  likeCount: number;
+  replyCount: number;
+  reyappCount: number;
+  /** If this yapp is a reply, the parent yapp id */
+  parentId?: string;
+  /** If this is a reyapp (retweet), the original yapp id */
+  reyappOf?: string;
+  /** Display name of who reyapped it */
+  reyappByUid?: string;
+  reyappByName?: string;
+}

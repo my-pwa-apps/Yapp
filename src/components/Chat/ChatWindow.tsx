@@ -85,8 +85,8 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [messagesScrollable, setMessagesScrollable] = useState(false);
 
-  // Track whether the page is visible (tab/window active)
-  const [pageVisible, setPageVisible] = useState(!document.hidden);
+  // Track whether the page is visible AND focused (tab active + window focused)
+  const [pageVisible, setPageVisible] = useState(!document.hidden && document.hasFocus());
 
   // Media picker state
   const [showAttachMenu, setShowAttachMenu] = useState(false);
@@ -127,11 +127,17 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     return () => unsub();
   }, [chat, currentUid, isSelfChat]);
 
-  // Listen for page visibility changes
+  // Listen for page visibility and focus changes
   useEffect(() => {
-    const handler = () => setPageVisible(!document.hidden);
-    document.addEventListener('visibilitychange', handler);
-    return () => document.removeEventListener('visibilitychange', handler);
+    const update = () => setPageVisible(!document.hidden && document.hasFocus());
+    document.addEventListener('visibilitychange', update);
+    window.addEventListener('focus', update);
+    window.addEventListener('blur', update);
+    return () => {
+      document.removeEventListener('visibilitychange', update);
+      window.removeEventListener('focus', update);
+      window.removeEventListener('blur', update);
+    };
   }, []);
 
   // Decrypt encrypted messages

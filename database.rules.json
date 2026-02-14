@@ -117,6 +117,54 @@
         ".read": "auth != null",
         ".write": "auth != null && auth.uid === $uid"
       }
+    },
+
+    "yapps": {
+      ".read": "auth != null",
+      ".indexOn": ["timestamp", "authorId", "parentId"],
+      "$yappId": {
+        ".write": "auth != null && (!data.exists() || data.child('authorId').val() === auth.uid)",
+        ".validate": "newData.hasChildren(['id', 'authorId', 'authorName', 'text', 'timestamp', 'likeCount', 'replyCount', 'reyappCount']) && newData.child('authorId').isString() && newData.child('authorName').isString() && newData.child('text').isString() && newData.child('timestamp').isNumber() && newData.child('likeCount').isNumber() && newData.child('replyCount').isNumber() && newData.child('reyappCount').isNumber()",
+        "likeCount": {
+          ".write": "auth != null",
+          ".validate": "newData.isNumber()"
+        },
+        "replyCount": {
+          ".write": "auth != null",
+          ".validate": "newData.isNumber()"
+        },
+        "reyappCount": {
+          ".write": "auth != null",
+          ".validate": "newData.isNumber()"
+        }
+      }
+    },
+
+    "yappLikes": {
+      ".read": "auth != null",
+      "$yappId": {
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "!newData.exists() || newData.val() === true"
+        }
+      }
+    },
+
+    "yappFollowing": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    "yappFollowers": {
+      "$uid": {
+        ".read": "auth != null",
+        "$followerUid": {
+          ".write": "auth != null && auth.uid === $followerUid",
+          ".validate": "!newData.exists() || newData.val() === true"
+        }
+      }
     }
   }
 }

@@ -1,5 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
-  <rect width="192" height="192" rx="32" fill="#075E54"/>
-  <text x="96" y="122" text-anchor="middle" font-family="Arial Black, sans-serif" font-size="96" font-weight="bold" fill="white">Y</text>
-  <circle cx="142" cy="50" r="20" fill="#25D366"/>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="192" y2="192" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#a3e635"/>
+      <stop offset="1" stop-color="#65a30d"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" fill="url(#g)"/>
+  <path d="M103 55.5C125.5 55.5 144 74 144 96.5C144 119 125.5 137.5 103 137.5H75L56.5 156.5V137.5C48.5 132.5 43 125.5 43 96.5C43 74 62 55.5 84 55.5H103Z" fill="white"/>
+  <path d="M77 77.25L90 95.25L103 77.25" stroke="#65a30d" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <line x1="90" y1="95.25" x2="90" y2="113.25" stroke="#65a30d" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="120" cy="70.5" r="7" fill="white" opacity="0.6"/>
+  <circle cx="131" cy="85.5" r="5" fill="white" opacity="0.4"/>
+  <circle cx="138" cy="100.5" r="4" fill="white" opacity="0.3"/>
 </svg>

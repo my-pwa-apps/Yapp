@@ -17,6 +17,7 @@ import { ContactRequestsModal } from '../Chat/ContactRequestsModal';
 import { GroupInfoPanel } from '../Chat/GroupInfoPanel';
 import { NotificationSettings } from '../Chat/NotificationSettings';
 import { KeyRecoveryModal } from '../Chat/KeyRecoveryModal';
+import { FeedView } from '../Feed/FeedView';
 import type { Chat, UserProfile } from '../../types';
 import { YappLogo } from '../YappLogo';
 import './AppLayout.css';
@@ -58,6 +59,7 @@ export const AppLayout: React.FC = () => {
     // Also update document title with unread count
     document.title = badgeCount > 0 ? `(${badgeCount}) Yappin'` : "Yappin'";
   }, [totalUnread, notificationCount]);
+  const [appMode, setAppMode] = useState<'chat' | 'feed'>('chat');
   const [activeChat, setActiveChat] = useState<Chat | null>(null);
   const [showNewChat, setShowNewChat] = useState(false);
   const [showNewGroup, setShowNewGroup] = useState(false);
@@ -197,17 +199,37 @@ export const AppLayout: React.FC = () => {
     setActiveChat(null);
   }, []);
 
-  // Handle notification click — open the right chat when user taps a push notification
+  // Handle notification click — open the right chat or answer/decline a call
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       if (event.data?.type === 'OPEN_CHAT' && event.data.chatId) {
         const chat = chats.find((c) => c.id === event.data.chatId);
         if (chat) handleSelectChat(chat);
+      } else if (event.data?.type === 'ANSWER_CALL') {
+        // Auto-accept the incoming call when user taps "Answer" on the notification
+        if (call.callState === 'incoming') {
+          call.acceptCall();
+        }
+      } else if (event.data?.type === 'DECLINE_CALL') {
+        if (call.callState === 'incoming') {
+          call.rejectCall();
+        }
       }
     };
     navigator.serviceWorker?.addEventListener('message', handler);
     return () => navigator.serviceWorker?.removeEventListener('message', handler);
-  }, [chats, handleSelectChat]);
+  }, [chats, handleSelectChat, call.callState, call.acceptCall, call.rejectCall]);
+
+  // Handle cold-start: if app was opened via notification with ?answerCall= param
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const answerCallId = params.get('answerCall');
+    if (answerCallId && call.callState === 'incoming' && call.callData?.id === answerCallId) {
+      call.acceptCall();
+      // Clean up the URL param
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [call.callState, call.callData, call.acceptCall]);
 
   // Keep activeChat in sync with live data
   useEffect(() => {
@@ -218,7 +240,8 @@ export const AppLayout: React.FC = () => {
   }, [chats]);
 
   return (
-    <div className="app-layout">
+    <div className={`app-layout ${appMode === 'feed' ? 'app-mode-feed' : 'app-mode-chat'}`}>
+      <div className="app-layout-body">
       {/* Sidebar */}
       <aside className={`sidebar ${showSidebar ? 'visible' : ''}`}>
         <header className="sidebar-header">
@@ -316,6 +339,39 @@ export const AppLayout: React.FC = () => {
           </div>
         )}
       </main>
+
+      {/* Feed area */}
+      {appMode === 'feed' && profile && (
+        <div className="feed-main">
+          <FeedView currentUser={profile} />
+        </div>
+      )}
+      </div>
+
+      {/* Bottom navigation */}
+      <nav className="bottom-nav">
+        <button
+          className={`bottom-nav-item ${appMode === 'chat' ? 'active' : ''}`}
+          onClick={() => setAppMode('chat')}
+        >
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+            <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/>
+          </svg>
+          <span>Chats</span>
+          {(totalUnread + notificationCount) > 0 && (
+            <span className="bottom-nav-badge">{totalUnread + notificationCount}</span>
+          )}
+        </button>
+        <button
+          className={`bottom-nav-item ${appMode === 'feed' ? 'active' : ''}`}
+          onClick={() => setAppMode('feed')}
+        >
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+            <path d="M18 11v2h4v-2h-4zm-2 6.61c.96.71 2.21 1.65 3.2 2.39.4-.53.8-1.07 1.2-1.6-.99-.74-2.24-1.68-3.2-2.4-.4.54-.8 1.08-1.2 1.61zM20.4 5.6c-.4-.53-.8-1.07-1.2-1.6-.99.74-2.24 1.68-3.2 2.4.4.53.8 1.07 1.2 1.6.96-.72 2.21-1.65 3.2-2.4zM4 9c-1.1 0-2 .9-2 2v2c0 1.1.9 2 2 2h1l5 3V6L5 9H4zm11.5 3c0-1.33-.58-2.53-1.5-3.35v6.69c.92-.81 1.5-2.01 1.5-3.34z"/>
+          </svg>
+          <span>Yapps</span>
+        </button>
+      </nav>
 
       {/* Modals */}
       {showNewChat && (

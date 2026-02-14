@@ -1,9 +1,17 @@
 /* ── Layout ── */
 .app-layout {
   display: flex;
-  height: 100dvh;
+  flex-direction: column;
+  height: 100%;
   overflow: hidden;
   background: var(--bg-app);
+}
+
+.app-layout-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
 }
 
 /* ── Sidebar ── */
@@ -509,7 +517,7 @@
   align-items: flex-end;
   gap: 8px;
   padding: 10px 16px;
-  padding-bottom: max(10px, env(safe-area-inset-bottom));
+  padding-bottom: 10px;
   background: var(--bg-header);
   flex-shrink: 0;
 }
@@ -568,7 +576,7 @@
   align-items: center;
   justify-content: center;
   z-index: 100;
-  padding: 1rem;
+  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
 }
 
 .modal {
@@ -1416,6 +1424,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 .call-overlay.audio-call {
@@ -1452,8 +1461,8 @@
 
 .call-local-video {
   position: absolute;
-  top: 20px;
-  right: 20px;
+  top: max(20px, env(safe-area-inset-top));
+  right: max(20px, env(safe-area-inset-right));
   width: 160px;
   height: 120px;
   border-radius: 12px;
@@ -1534,7 +1543,7 @@
 
 .call-controls {
   position: absolute;
-  bottom: 40px;
+  bottom: max(40px, env(safe-area-inset-bottom, 0px) + 20px);
   display: flex;
   gap: 20px;
   z-index: 10;
