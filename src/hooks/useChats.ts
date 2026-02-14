@@ -192,11 +192,12 @@ export async function removeGroupMember(chatId: string, uid: string, removedByNa
 
 /** Leave group (self-removal) */
 export async function leaveGroup(chatId: string, uid: string, memberName: string) {
+  // Send system message BEFORE removing member (write rule requires membership)
+  await sendSystemMessage(chatId, `${memberName} left the group`);
   const updates: Record<string, null> = {};
   updates[`chats/${chatId}/members/${uid}`] = null;
   updates[`chats/${chatId}/admins/${uid}`] = null;
   await update(ref(db), updates);
-  await sendSystemMessage(chatId, `${memberName} left the group`);
 }
 
 /** Admin invites a user to the group — needs user's approval */
@@ -297,12 +298,12 @@ export async function deleteChat(chatId: string, currentUid: string) {
       await remove(ref(db, `contacts/${otherUid}/${currentUid}`));
     }
 
-    // Delete the entire chat and its messages
-    await remove(ref(db, `chats/${chatId}`));
+    // Delete messages first (write rule requires chat membership), then chat
     await remove(ref(db, `messages/${chatId}`));
+    await remove(ref(db, `chats/${chatId}`));
   } else {
-    // Group chat: leave the group (remove self from members)
-    await remove(ref(db, `chats/${chatId}/members/${currentUid}`));
+    // Group chat: send system message first (write rule requires membership), then leave
     await sendSystemMessage(chatId, 'A member left the group');
+    await remove(ref(db, `chats/${chatId}/members/${currentUid}`));
   }
 }

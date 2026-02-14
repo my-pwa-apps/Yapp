@@ -30,13 +30,13 @@ export function formatRelativeTime(timestamp: number): string {
 
 /** Format a timestamp as HH:MM for message bubbles */
 export function formatMessageTime(ts: number | undefined): string {
-  if (!ts) return '';
+  if (ts == null) return '';
   return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 /** Format a timestamp for chat list sidebar: time today, weekday this week, else short date */
 export function formatChatListTime(ts: number | undefined): string {
-  if (!ts) return '';
+  if (ts == null) return '';
   const date = new Date(ts);
   const now = new Date();
   const diff = now.getTime() - date.getTime();

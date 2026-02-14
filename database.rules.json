@@ -144,7 +144,7 @@
       ".indexOn": ["timestamp", "authorId", "parentId"],
       "$yappId": {
         ".write": "auth != null && (!data.exists() || data.child('authorId').val() === auth.uid)",
-        ".validate": "newData.hasChildren(['id', 'authorId', 'authorName', 'text', 'timestamp', 'likeCount', 'replyCount', 'reyappCount']) && (data.exists() || newData.child('authorId').val() === auth.uid) && newData.child('authorId').isString() && newData.child('authorName').isString() && newData.child('text').isString() && newData.child('timestamp').isNumber() && newData.child('likeCount').isNumber() && newData.child('replyCount').isNumber() && newData.child('reyappCount').isNumber()",
+        ".validate": "newData.hasChildren(['id', 'authorId', 'authorName', 'text', 'timestamp', 'likeCount', 'replyCount', 'reyappCount', 'privacy']) && (data.exists() || newData.child('authorId').val() === auth.uid) && newData.child('authorId').isString() && newData.child('authorName').isString() && newData.child('text').isString() && newData.child('timestamp').isNumber() && newData.child('likeCount').isNumber() && newData.child('replyCount').isNumber() && newData.child('reyappCount').isNumber() && (newData.child('privacy').val() === 'public' || newData.child('privacy').val() === 'contacts')",
         "likeCount": {
           ".write": "auth != null",
           ".validate": "newData.isNumber() && (newData.val() === data.val() + 1 || newData.val() === data.val() - 1 || !data.exists())"
@@ -163,6 +163,7 @@
     "yappLikes": {
       ".read": "auth != null",
       "$yappId": {
+        ".write": "auth != null && root.child('yapps').child($yappId).child('authorId').val() === auth.uid",
         "$uid": {
           ".write": "auth != null && auth.uid === $uid",
           ".validate": "!newData.exists() || newData.val() === true"

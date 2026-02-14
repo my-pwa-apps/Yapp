@@ -61,6 +61,9 @@ export function useGroupInvites(uid: string | undefined) {
           });
         }
       });
+      // Sort newest first so index 0 is always the most recent
+      inv.sort((a, b) => b.timestamp - a.timestamp);
+      req.sort((a, b) => b.timestamp - a.timestamp);
       setInvites(inv);
       setJoinRequests(req);
     });

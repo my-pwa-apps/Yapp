@@ -97,6 +97,8 @@ export interface Yapp {
   mediaURL?: string;
   mediaType?: 'image' | 'gif' | 'sticker' | 'voice';
   voiceDuration?: number;
+  /** Visibility: 'public' = visible to everyone, 'contacts' = only author's contacts */
+  privacy: 'public' | 'contacts';
   timestamp: number;
   likeCount: number;
   replyCount: number;

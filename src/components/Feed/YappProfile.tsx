@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../../firebase';
 import {
@@ -6,6 +6,7 @@ import {
   useFollowing,
   useFollowerCount,
   useFollowingCount,
+  useContacts,
   followUser,
   unfollowUser,
 } from '../../hooks/useYapps';
@@ -26,6 +27,7 @@ export const YappProfile: React.FC<Props> = ({ uid, currentUser, onBack, onOpenT
   const [showBlockConfirm, setShowBlockConfirm] = useState(false);
   const { yapps, loading } = useUserYapps(uid);
   const following = useFollowing(currentUser.uid);
+  const contacts = useContacts(currentUser.uid);
   const followerCount = useFollowerCount(uid);
   const followingCount = useFollowingCount(uid);
   const blockedUsers = useBlockedUsers(currentUser.uid);
@@ -34,6 +36,13 @@ export const YappProfile: React.FC<Props> = ({ uid, currentUser, onBack, onOpenT
   const isSelf = uid === currentUser.uid;
   const isBlockedByMe = blockedUsers.has(uid);
   const isBlockedByThem = blockedBy.has(uid);
+  const isContact = contacts.has(uid);
+
+  // Filter yapps by privacy: self sees all, contacts see all, others see only public
+  const visibleYapps = useMemo(() => {
+    if (isSelf || isContact) return yapps;
+    return yapps.filter((y) => (y.privacy ?? 'public') === 'public');
+  }, [yapps, isSelf, isContact]);
 
   useEffect(() => {
     const userRef = ref(db, `users/${uid}`);
@@ -86,7 +95,7 @@ export const YappProfile: React.FC<Props> = ({ uid, currentUser, onBack, onOpenT
           <h3>{profile.displayName}</h3>
           {profile.status && <p className="yapp-profile-status">{profile.status}</p>}
           <div className="yapp-profile-stats">
-            <span><strong>{yapps.length}</strong> Yapps</span>
+            <span><strong>{visibleYapps.length}</strong> Yapps</span>
             <span><strong>{followerCount}</strong> Followers</span>
             <span><strong>{followingCount}</strong> Following</span>
           </div>
@@ -139,12 +148,12 @@ export const YappProfile: React.FC<Props> = ({ uid, currentUser, onBack, onOpenT
       <div className="yapp-profile-feed">
         {loading ? (
           <div className="feed-loading">Loading yapps...</div>
-        ) : yapps.length === 0 ? (
+        ) : visibleYapps.length === 0 ? (
           <div className="feed-empty">
             <p>{isSelf ? "You haven't yapped yet!" : `${profile.displayName} hasn't yapped yet.`}</p>
           </div>
         ) : (
-          yapps.map((y) => (
+          visibleYapps.map((y) => (
             <YappCard
               key={y.id}
               yapp={y}

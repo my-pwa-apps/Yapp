@@ -77,6 +77,7 @@ export const AppLayout: React.FC = () => {
   const [chatListScrollable, setChatListScrollable] = useState(false);
   const chatListRef = useRef<HTMLDivElement>(null);
   const [addableMembers, setAddableMembers] = useState<UserProfile[]>([]);
+  const pendingChatIdRef = useRef<string | null>(null);
 
   // Compute addable members when a call is active (chat members not yet in the call)
   useEffect(() => {
@@ -160,7 +161,7 @@ export const AppLayout: React.FC = () => {
   // Notify on new contact requests
   useEffect(() => {
     if (contactRequests.length > prevContactReqCountRef.current && prevContactReqCountRef.current > 0) {
-      const newest = contactRequests[contactRequests.length - 1];
+      const newest = contactRequests[0];
       if (newest) {
         notifyContactRequest(newest.fromName, newest.fromEmail);
       }
@@ -171,7 +172,7 @@ export const AppLayout: React.FC = () => {
   // Notify on new group invites
   useEffect(() => {
     if (groupInvites.length > prevGroupInviteCountRef.current && prevGroupInviteCountRef.current > 0) {
-      const newest = groupInvites[groupInvites.length - 1];
+      const newest = groupInvites[0];
       if (newest) {
         notifyGroupInvite(newest.chatName, newest.invitedBy);
       }
@@ -182,7 +183,7 @@ export const AppLayout: React.FC = () => {
   // Notify on new join requests
   useEffect(() => {
     if (joinRequests.length > prevJoinRequestCountRef.current && prevJoinRequestCountRef.current > 0) {
-      const newest = joinRequests[joinRequests.length - 1];
+      const newest = joinRequests[0];
       if (newest) {
         notifyJoinRequest(newest.chatName, newest.fromName);
       }
@@ -249,7 +250,16 @@ export const AppLayout: React.FC = () => {
       const updated = chats.find((c) => c.id === id);
       if (updated) setActiveChat(updated);
     }
-  }, [chats]);
+    // Resolve pending chat creation (newly created chat may not exist yet in chats)
+    const pendingId = pendingChatIdRef.current;
+    if (pendingId) {
+      const chat = chats.find((c) => c.id === pendingId);
+      if (chat) {
+        pendingChatIdRef.current = null;
+        handleSelectChat(chat);
+      }
+    }
+  }, [chats, handleSelectChat]);
 
   return (
     <div className={`app-layout ${appMode === 'feed' ? 'app-mode-feed' : 'app-mode-chat'}`}>
@@ -400,6 +410,7 @@ export const AppLayout: React.FC = () => {
             setShowNewChat(false);
             const chat = chats.find((c) => c.id === chatId);
             if (chat) handleSelectChat(chat);
+            else pendingChatIdRef.current = chatId;
           }}
         />
       )}
@@ -411,6 +422,7 @@ export const AppLayout: React.FC = () => {
             setShowNewGroup(false);
             const chat = chats.find((c) => c.id === chatId);
             if (chat) handleSelectChat(chat);
+            else pendingChatIdRef.current = chatId;
           }}
         />
       )}
@@ -431,6 +443,7 @@ export const AppLayout: React.FC = () => {
             setShowRequests(false);
             const chat = chats.find((c) => c.id === chatId);
             if (chat) handleSelectChat(chat);
+            else pendingChatIdRef.current = chatId;
           }}
         />
       )}

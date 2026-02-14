@@ -4,7 +4,6 @@ import {
   onValue,
   push,
   set,
-  get,
   remove,
   update,
   query,
@@ -34,7 +33,7 @@ export function useYapps(uid: string | undefined) {
           const val = child.val();
           // Only include top-level yapps in the feed (no replies)
           if (!val.parentId) {
-            list.push({ ...val, id: child.key! });
+            list.push({ ...val, id: child.key!, privacy: val.privacy ?? 'public' });
           }
         });
         // Newest first
@@ -64,7 +63,8 @@ export function useReplies(parentId: string | undefined) {
       (snap) => {
         const list: Yapp[] = [];
         snap.forEach((child) => {
-          list.push({ ...child.val(), id: child.key! });
+          const val = child.val();
+          list.push({ ...val, id: child.key!, privacy: val.privacy ?? 'public' });
         });
         list.sort((a, b) => a.timestamp - b.timestamp);
         setReplies(list);
@@ -93,7 +93,7 @@ export function useUserYapps(authorId: string | undefined) {
         const list: Yapp[] = [];
         snap.forEach((child) => {
           const val = child.val();
-          if (!val.parentId) list.push({ ...val, id: child.key! });
+          if (!val.parentId) list.push({ ...val, id: child.key!, privacy: val.privacy ?? 'public' });
         });
         list.sort((a, b) => b.timestamp - a.timestamp);
         setYapps(list);
@@ -197,6 +197,7 @@ export async function postYapp(
   mediaType?: 'image' | 'gif' | 'sticker' | 'voice',
   parentId?: string,
   voiceDuration?: number,
+  privacy: 'public' | 'contacts' = 'public',
 ): Promise<string> {
   const yappsRef = ref(db, 'yapps');
   const newRef = push(yappsRef);
@@ -205,6 +206,7 @@ export async function postYapp(
     authorName,
     authorPhotoURL,
     text,
+    privacy,
     timestamp: Date.now(),
     likeCount: 0,
     replyCount: 0,
@@ -234,14 +236,18 @@ export async function deleteYapp(yappId: string, parentId?: string): Promise<voi
 
 export async function toggleLike(yappId: string, uid: string): Promise<void> {
   const likeRef = ref(db, `yappLikes/${yappId}/${uid}`);
-  const snap = await get(likeRef);
   const countRef = ref(db, `yapps/${yappId}/likeCount`);
-  if (snap.exists()) {
-    await remove(likeRef);
-    await runTransaction(countRef, (current) => Math.max((current || 1) - 1, 0));
-  } else {
-    await set(likeRef, true);
-    await runTransaction(countRef, (current) => (current || 0) + 1);
+  // Use transaction on the like ref to avoid TOCTOU race from rapid taps
+  const result = await runTransaction(likeRef, (current) => {
+    return current ? null : true;
+  });
+  if (result.committed) {
+    const wasLiked = result.snapshot.exists();
+    if (wasLiked) {
+      await runTransaction(countRef, (current) => (current || 0) + 1);
+    } else {
+      await runTransaction(countRef, (current) => Math.max((current || 1) - 1, 0));
+    }
   }
 }
 
@@ -251,7 +257,11 @@ export async function reyapp(
   displayName: string,
   photoURL: string | null,
 ): Promise<string> {
-  const id = await postYapp(uid, displayName, photoURL, yapp.text, yapp.mediaURL, yapp.mediaType);
+  // Cannot reyapp contacts-only yapps (would leak to unintended audiences)
+  if ((yapp.privacy ?? 'public') === 'contacts') {
+    throw new Error('Cannot reyapp contacts-only yapps');
+  }
+  const id = await postYapp(uid, displayName, photoURL, yapp.text, yapp.mediaURL, yapp.mediaType, undefined, undefined, 'public');
   // Mark the new yapp as a reyapp
   await update(ref(db, `yapps/${id}`), {
     reyappOf: yapp.id,

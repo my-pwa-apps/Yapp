@@ -6,14 +6,16 @@ import { VoiceRecorder } from '../Chat/VoiceRecorder';
 import { checkContent } from '../../utils/contentFilter';
 
 interface Props {
-  onPost: (text: string, mediaURL?: string, mediaType?: 'image' | 'gif' | 'sticker' | 'voice', voiceDuration?: number) => Promise<void>;
+  onPost: (text: string, mediaURL?: string, mediaType?: 'image' | 'gif' | 'sticker' | 'voice', voiceDuration?: number, privacy?: 'public' | 'contacts') => Promise<void>;
   placeholder?: string;
   autoFocus?: boolean;
   compact?: boolean;
   onCancel?: () => void;
+  /** Hide privacy selector (e.g. in reply composer) */
+  hidePrivacy?: boolean;
 }
 
-export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, compact, onCancel }) => {
+export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, compact, onCancel, hidePrivacy }) => {
   const [text, setText] = useState('');
   const [mediaURL, setMediaURL] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'gif' | 'sticker' | 'voice' | null>(null);
@@ -23,10 +25,19 @@ export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, 
   const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
   const [voiceDuration, setVoiceDuration] = useState<number | undefined>(undefined);
+  const [privacy, setPrivacy] = useState<'public' | 'contacts'>(() => {
+    return (localStorage.getItem('yapp-default-privacy') as 'public' | 'contacts') || 'public';
+  });
   const fileRef = useRef<HTMLInputElement>(null);
 
   const charLimit = 500;
   const remaining = charLimit - text.length;
+
+  const togglePrivacy = () => {
+    const next = privacy === 'public' ? 'contacts' : 'public';
+    setPrivacy(next);
+    localStorage.setItem('yapp-default-privacy', next);
+  };
 
   const handlePost = async () => {
     const trimmed = text.trim();
@@ -43,7 +54,7 @@ export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, 
           return;
         }
       }
-      await onPost(trimmed, mediaURL ?? undefined, mediaType ?? undefined, voiceDuration);
+      await onPost(trimmed, mediaURL ?? undefined, mediaType ?? undefined, voiceDuration, privacy);
       setText('');
       setMediaURL(null);
       setMediaType(null);
@@ -85,7 +96,7 @@ export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, 
     }
     setSending(true);
     try {
-      await onPost(emoji, emoji, 'sticker');
+      await onPost(emoji, emoji, 'sticker', undefined, privacy);
       setText('');
       setMediaURL(null);
       setMediaType(null);
@@ -103,7 +114,7 @@ export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, 
       setMediaType('voice');
       setVoiceDuration(duration);
       // Auto-post voice message
-      await onPost('🎤 Voice message', dataUrl, 'voice', duration);
+      await onPost('🎤 Voice message', dataUrl, 'voice', duration, privacy);
       setText('');
       setMediaURL(null);
       setMediaType(null);
@@ -169,6 +180,21 @@ export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, 
             </svg>
           </button>
           <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleImagePick} />
+          {!hidePrivacy && (
+            <button
+              className={`icon-btn yapp-privacy-toggle ${privacy === 'contacts' ? 'yapp-privacy-contacts' : ''}`}
+              title={privacy === 'public' ? 'Public — visible to everyone' : 'Contacts only'}
+              aria-label={privacy === 'public' ? 'Visibility: public' : 'Visibility: contacts only'}
+              onClick={togglePrivacy}
+              type="button"
+            >
+              {privacy === 'public' ? (
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+              ) : (
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+              )}
+            </button>
+          )}
         </div>
         <div className="yapp-composer-right">
           <span className={`yapp-char-count ${remaining < 50 ? 'warn' : ''} ${remaining < 0 ? 'over' : ''}`}>

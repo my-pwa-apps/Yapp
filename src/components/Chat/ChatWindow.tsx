@@ -664,7 +664,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
           <input
             ref={fileInputRef}
             type="file"
-            accept="*/*"
+            accept="image/*"
             style={{ display: 'none' }}
             aria-label="Upload file"
             onChange={async (e) => {

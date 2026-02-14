@@ -28,6 +28,8 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
   const [searching, setSearching] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [confirmRemoveUid, setConfirmRemoveUid] = useState<string | null>(null);
+  const [confirmLeave, setConfirmLeave] = useState(false);
 
   const members = membersToArray(chat.members);
   const isAdmin = isGroupAdmin(chat, currentUid);
@@ -75,8 +77,14 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
   };
 
   const handleRemove = async (uid: string) => {
+    setConfirmRemoveUid(uid);
+  };
+
+  const confirmRemove = async () => {
+    if (!confirmRemoveUid) return;
+    const uid = confirmRemoveUid;
     const name = memberProfiles[uid]?.displayName || 'Unknown';
-    if (!confirm(`Remove ${name} from this group?`)) return;
+    setConfirmRemoveUid(null);
     setActionLoading(uid);
     try {
       await removeGroupMember(chat.id, uid, currentName, name);
@@ -86,8 +94,12 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
     setActionLoading(null);
   };
 
-  const handleLeave = async () => {
-    if (!confirm('Leave this group?')) return;
+  const handleLeave = () => {
+    setConfirmLeave(true);
+  };
+
+  const confirmLeaveGroup = async () => {
+    setConfirmLeave(false);
     setActionLoading('leave');
     try {
       await leaveGroup(chat.id, currentUid, currentName);
@@ -180,14 +192,23 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
                   </div>
                   {/* Remove button (admin only, can't remove self here) */}
                   {isAdmin && uid !== currentUid && (
-                    <button
-                      className="group-action-btn remove"
-                      onClick={() => handleRemove(uid)}
-                      disabled={actionLoading === uid}
-                      title="Remove from group"
-                    >
-                      ✕
-                    </button>
+                    confirmRemoveUid === uid ? (
+                      <div className="group-confirm-btns">
+                        <button className="group-action-btn remove" onClick={confirmRemove} disabled={actionLoading === uid}>
+                          {actionLoading === uid ? '...' : 'Remove'}
+                        </button>
+                        <button className="group-action-btn" onClick={() => setConfirmRemoveUid(null)}>Cancel</button>
+                      </div>
+                    ) : (
+                      <button
+                        className="group-action-btn remove"
+                        onClick={() => handleRemove(uid)}
+                        disabled={actionLoading === uid}
+                        title="Remove from group"
+                      >
+                        ✕
+                      </button>
+                    )
                   )}
                 </div>
               );
@@ -339,13 +360,25 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
 
           {/* Leave group */}
           <div className="mt-24 pt-16 border-top">
-            <button
-              className="profile-action-btn btn-danger"
-              onClick={handleLeave}
-              disabled={actionLoading === 'leave'}
-            >
-              {actionLoading === 'leave' ? 'Leaving...' : 'Leave Group'}
-            </button>
+            {confirmLeave ? (
+              <div className="group-confirm-action">
+                <span>Leave this group?</span>
+                <div className="group-confirm-btns">
+                  <button className="profile-action-btn btn-danger btn-sm" onClick={confirmLeaveGroup} disabled={actionLoading === 'leave'}>
+                    {actionLoading === 'leave' ? 'Leaving...' : 'Leave'}
+                  </button>
+                  <button className="profile-action-btn btn-sm" onClick={() => setConfirmLeave(false)}>Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <button
+                className="profile-action-btn btn-danger"
+                onClick={handleLeave}
+                disabled={actionLoading === 'leave'}
+              >
+                Leave Group
+              </button>
+            )}
           </div>
         </div>
       </div>

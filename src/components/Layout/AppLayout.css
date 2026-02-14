@@ -2132,6 +2132,26 @@
   color: #fff;
 }
 
+/* ── Group confirm action inline ── */
+.group-confirm-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.group-confirm-btns {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.btn-sm {
+  padding: 6px 14px !important;
+  font-size: 0.8rem !important;
+  width: auto !important;
+}
+
 /* ── Group Invite Banners ── */
 .group-invites-container {
   position: fixed;

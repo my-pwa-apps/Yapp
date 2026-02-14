@@ -9,7 +9,7 @@ import type { Chat } from '../types';
  */
 export function useUnreadCounts(chats: Chat[], currentUid: string | undefined) {
   const [counts, setCounts] = useState<Record<string, number>>({});
-  const chatIds = chats.map(c => c.id).join(',');
+  const chatIds = chats.map(c => c.id).sort().join(',');
 
   useEffect(() => {
     if (!currentUid || !chatIds) return;

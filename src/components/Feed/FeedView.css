@@ -56,6 +56,62 @@
   color: var(--accent);
 }
 
+/* ── Search bar ── */
+.feed-search-btn {
+  margin-top: 6px;
+}
+
+.feed-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  background: var(--bg-input);
+  border-radius: 20px;
+  padding: 4px 8px 4px 12px;
+  margin-top: 4px;
+}
+
+.feed-search-icon {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.feed-search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  padding: 6px 0;
+  min-width: 0;
+}
+
+.feed-search-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+/* ── Privacy toggle in composer ── */
+.yapp-privacy-toggle {
+  position: relative;
+}
+
+.yapp-privacy-toggle.yapp-privacy-contacts {
+  color: var(--accent);
+}
+
+/* ── Privacy badge on cards ── */
+.yapp-card-privacy {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-secondary);
+  opacity: 0.6;
+  margin-left: 2px;
+  flex-shrink: 0;
+}
+
 .feed-tabs {
   display: flex;
   padding: 0;
@@ -1103,4 +1159,44 @@
 .yapps-tab-option.active {
   background: var(--accent);
   color: #fff;
+}
+
+/* ── Yapp delete confirm ── */
+.yapp-delete-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-hover);
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+.yapp-delete-confirm .group-confirm-btns {
+  display: flex;
+  gap: 6px;
+}
+.yapp-btn-xs {
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.yapp-btn-xs.danger {
+  background: #dc2626;
+  color: #fff;
+}
+.yapp-btn-xs.danger:hover {
+  background: #b91c1c;
+}
+.yapp-btn-xs:not(.danger) {
+  background: var(--bg-input);
+  color: var(--text-secondary);
+}
+.yapp-btn-xs:not(.danger):hover {
+  background: var(--bg-hover);
 }

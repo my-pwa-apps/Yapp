@@ -17,7 +17,7 @@ export const YappThread: React.FC<Props> = ({ yapp, currentUser, onBack, onOpenT
   const [showComposer, setShowComposer] = useState(false);
 
   const handleReply = async (text: string, mediaURL?: string, mediaType?: 'image' | 'gif' | 'sticker' | 'voice', voiceDuration?: number) => {
-    await postYapp(currentUser.uid, currentUser.displayName, currentUser.photoURL, text, mediaURL, mediaType, yapp.id, voiceDuration);
+    await postYapp(currentUser.uid, currentUser.displayName, currentUser.photoURL, text, mediaURL, mediaType, yapp.id, voiceDuration, yapp.privacy ?? 'public');
     setShowComposer(false);
   };
 
@@ -54,6 +54,7 @@ export const YappThread: React.FC<Props> = ({ yapp, currentUser, onBack, onOpenT
               autoFocus
               compact
               onCancel={() => setShowComposer(false)}
+              hidePrivacy
             />
           )}
         </div>
