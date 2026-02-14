@@ -59,6 +59,8 @@ export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, 
       setMediaURL(null);
       setMediaType(null);
       setVoiceDuration(undefined);
+    } catch (e) {
+      console.error('[YappComposer] Post failed:', e);
     } finally {
       setSending(false);
     }
@@ -100,6 +102,8 @@ export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, 
       setText('');
       setMediaURL(null);
       setMediaType(null);
+    } catch (e) {
+      console.error('[YappComposer] Sticker post failed:', e);
     } finally {
       setSending(false);
     }
@@ -119,6 +123,8 @@ export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, 
       setMediaURL(null);
       setMediaType(null);
       setVoiceDuration(undefined);
+    } catch (e) {
+      console.error('[YappComposer] Voice post failed:', e);
     } finally {
       setSending(false);
     }

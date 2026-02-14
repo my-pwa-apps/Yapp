@@ -206,9 +206,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const connUnsub = onValue(connectedRef, (snap) => {
             if (snap.val() === true) {
               // Connection established — mark online and set up disconnect handlers
-              onDisconnect(onlineRef).set(false);
-              onDisconnect(lastSeenRef).set(serverTimestamp());
-              set(onlineRef, true);
+              onDisconnect(onlineRef).set(false).catch(() => {});
+              onDisconnect(lastSeenRef).set(serverTimestamp()).catch(() => {});
+              set(onlineRef, true).catch(() => {});
             }
           });
           presenceUnsubRef.current = connUnsub;

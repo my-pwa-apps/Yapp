@@ -85,7 +85,7 @@ const YappCardInner: React.FC<Props> = ({ yapp, currentUser, onOpenThread, onOpe
   const handleLike = async () => {
     if (busy) return;
     setBusy(true);
-    try { await toggleLike(yapp.id, currentUser.uid); } finally { setBusy(false); }
+    try { await toggleLike(yapp.id, currentUser.uid); } catch (e) { console.error('[YappCard] Like failed:', e); } finally { setBusy(false); }
   };
 
   const handleReyapp = async () => {
@@ -93,13 +93,13 @@ const YappCardInner: React.FC<Props> = ({ yapp, currentUser, onOpenThread, onOpe
     setBusy(true);
     try {
       await reyapp(yapp, currentUser.uid, currentUser.displayName, currentUser.photoURL);
-    } finally { setBusy(false); }
+    } catch (e) { console.error('[YappCard] Reyapp failed:', e); } finally { setBusy(false); }
   };
 
   const handleDelete = async () => {
     if (busy) return;
     setBusy(true);
-    try { await deleteYapp(yapp.id, yapp.parentId); } finally { setBusy(false); setShowMenu(false); setShowDeleteConfirm(false); }
+    try { await deleteYapp(yapp.id, yapp.parentId); } catch (e) { console.error('[YappCard] Delete failed:', e); } finally { setBusy(false); setShowMenu(false); setShowDeleteConfirm(false); }
   };
 
   return (

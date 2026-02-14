@@ -39,7 +39,7 @@ export const FeedView: React.FC<Props> = ({ currentUser }) => {
         !autoFollowedRef.current.has(contactUid)
       ) {
         autoFollowedRef.current.add(contactUid);
-        followUser(currentUser.uid, contactUid);
+        followUser(currentUser.uid, contactUid).catch(() => {});
       }
     });
   }, [contacts, settingsLoading, yappsSettings.autoFollowContacts, following, currentUser.uid, blockedUsers, blockedBy]);

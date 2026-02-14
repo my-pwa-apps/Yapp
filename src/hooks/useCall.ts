@@ -176,7 +176,7 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
         const candidateRef = push(
           ref(db, `callSignaling/${callId}/${currentUid}_${remoteUid}/candidates`)
         );
-        set(candidateRef, e.candidate.toJSON());
+        set(candidateRef, e.candidate.toJSON()).catch(() => {});
       }
     };
 
@@ -414,8 +414,8 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
 
   const rejectCall = () => {
     if (callIdRef.current) {
-      update(ref(db, `calls/${callIdRef.current}`), { status: 'ended' });
-      remove(ref(db, `callSignaling/${callIdRef.current}`));
+      update(ref(db, `calls/${callIdRef.current}`), { status: 'ended' }).catch(() => {});
+      remove(ref(db, `callSignaling/${callIdRef.current}`)).catch(() => {});
     }
     cleanup();
     setCallState('idle');
@@ -424,8 +424,8 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
 
   const endCall = () => {
     if (callIdRef.current) {
-      update(ref(db, `calls/${callIdRef.current}`), { status: 'ended' });
-      remove(ref(db, `callSignaling/${callIdRef.current}`));
+      update(ref(db, `calls/${callIdRef.current}`), { status: 'ended' }).catch(() => {});
+      remove(ref(db, `callSignaling/${callIdRef.current}`)).catch(() => {});
     }
     cleanup();
     setCallState('ended');

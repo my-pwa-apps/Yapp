@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" width="180" height="180">
+  <!-- Green background -->
+  <rect width="180" height="180" fill="#65a30d" rx="0"/>
+  <!-- Balloon + Y centered -->
+  <g transform="translate(90, 86) scale(1.12) translate(-93.5, -106)">
+    <path d="M103 55.5C125.5 55.5 144 74 144 96.5C144 119 125.5 137.5 103 137.5H75L56.5 156.5V137.5C48.5 132.5 43 125.5 43 96.5C43 74 62 55.5 84 55.5H103Z" fill="white"/>
+    <path d="M77 77.25L90 95.25L103 77.25" stroke="#65a30d" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <line x1="90" y1="95.25" x2="90" y2="113.25" stroke="#65a30d" stroke-width="9" stroke-linecap="round"/>
+  </g>
+</svg>

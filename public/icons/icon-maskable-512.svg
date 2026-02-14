@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Green background fills entire canvas -->
+  <rect width="512" height="512" fill="#65a30d" rx="0"/>
+  <!-- Balloon + Y centered in safe zone (inner 80%) -->
+  <g transform="translate(256, 246) scale(1.2) translate(-249.33, -282.67)">
+    <path d="M274.67 148C334.67 148 384 197.33 384 257.33C384 317.33 334.67 366.67 274.67 366.67H200L150.67 417.33V366.67C129.33 353.33 114.67 337.33 114.67 257.33C114.67 197.33 165.33 148 224 148H274.67Z" fill="white"/>
+    <path d="M205.33 209.33L240 257.33L274.67 209.33" stroke="#65a30d" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <line x1="240" y1="257.33" x2="240" y2="305.33" stroke="#65a30d" stroke-width="24" stroke-linecap="round"/>
+  </g>
+</svg>
