@@ -11,6 +11,6 @@ export const YappLogo: React.FC<Props> = ({ size = 72, className }) => (
     alt="Yapp"
     width={size}
     height={size}
-    className={`rounded-full ${className || ''}`}
+    className={className || undefined}
   />
 );
