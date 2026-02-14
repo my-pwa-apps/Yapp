@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { compressImage, blobToDataURL } from '../../hooks/useMediaUpload';
 import { GifPicker } from '../Chat/GifPicker';
 import { StickerPicker } from '../Chat/StickerPicker';
@@ -25,10 +25,12 @@ export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, 
   const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
   const [voiceDuration, setVoiceDuration] = useState<number | undefined>(undefined);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [privacy, setPrivacy] = useState<'public' | 'contacts'>(() => {
     return (localStorage.getItem('yapp-default-privacy') as 'public' | 'contacts') || 'public';
   });
   const fileRef = useRef<HTMLInputElement>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const charLimit = 500;
   const remaining = charLimit - text.length;
@@ -38,6 +40,23 @@ export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, 
     setPrivacy(next);
     localStorage.setItem('yapp-default-privacy', next);
   };
+
+  const showToast = (msg: string) => {
+    clearTimeout(toastTimer.current);
+    setToastMsg(msg);
+    toastTimer.current = setTimeout(() => setToastMsg(null), 4000);
+  };
+
+  const showPostError = (e: unknown) => {
+    const message = e instanceof Error ? e.message : String(e);
+    if (message.toUpperCase().includes('PERMISSION_DENIED')) {
+      showToast('Post blocked by database rules. Please refresh and try again.');
+      return;
+    }
+    showToast('Failed to post yapp. Please try again.');
+  };
+
+  useEffect(() => () => clearTimeout(toastTimer.current), []);
 
   const handlePost = async () => {
     const trimmed = text.trim();
@@ -61,6 +80,7 @@ export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, 
       setVoiceDuration(undefined);
     } catch (e) {
       console.error('[YappComposer] Post failed:', e);
+      showPostError(e);
     } finally {
       setSending(false);
     }
@@ -104,6 +124,7 @@ export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, 
       setMediaType(null);
     } catch (e) {
       console.error('[YappComposer] Sticker post failed:', e);
+      showPostError(e);
     } finally {
       setSending(false);
     }
@@ -125,6 +146,7 @@ export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, 
       setVoiceDuration(undefined);
     } catch (e) {
       console.error('[YappComposer] Voice post failed:', e);
+      showPostError(e);
     } finally {
       setSending(false);
     }
@@ -228,6 +250,11 @@ export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, 
       {showStickerPicker && (
         <div className="yapp-gif-picker-wrap">
           <StickerPicker onSelect={handleStickerSelect} onClose={() => setShowStickerPicker(false)} />
+        </div>
+      )}
+      {toastMsg && (
+        <div className="app-toast" onClick={() => setToastMsg(null)}>
+          {toastMsg}
         </div>
       )}
     </div>
