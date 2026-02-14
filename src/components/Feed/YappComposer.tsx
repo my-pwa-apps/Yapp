@@ -1,9 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { compressImage } from '../../hooks/useMediaUpload';
+import { compressImage, blobToDataURL } from '../../hooks/useMediaUpload';
 import { GifPicker } from '../Chat/GifPicker';
+import { StickerPicker } from '../Chat/StickerPicker';
+import { VoiceRecorder } from '../Chat/VoiceRecorder';
 
 interface Props {
-  onPost: (text: string, mediaURL?: string, mediaType?: 'image' | 'gif') => Promise<void>;
+  onPost: (text: string, mediaURL?: string, mediaType?: 'image' | 'gif' | 'sticker' | 'voice', voiceDuration?: number) => Promise<void>;
   placeholder?: string;
   autoFocus?: boolean;
   compact?: boolean;
@@ -13,9 +15,12 @@ interface Props {
 export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, compact, onCancel }) => {
   const [text, setText] = useState('');
   const [mediaURL, setMediaURL] = useState<string | null>(null);
-  const [mediaType, setMediaType] = useState<'image' | 'gif' | null>(null);
+  const [mediaType, setMediaType] = useState<'image' | 'gif' | 'sticker' | 'voice' | null>(null);
   const [sending, setSending] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
+  const [showStickerPicker, setShowStickerPicker] = useState(false);
+  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
+  const [voiceDuration, setVoiceDuration] = useState<number | undefined>(undefined);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const charLimit = 500;
@@ -26,10 +31,11 @@ export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, 
     if (!trimmed && !mediaURL) return;
     setSending(true);
     try {
-      await onPost(trimmed, mediaURL ?? undefined, mediaType ?? undefined);
+      await onPost(trimmed, mediaURL ?? undefined, mediaType ?? undefined, voiceDuration);
       setText('');
       setMediaURL(null);
       setMediaType(null);
+      setVoiceDuration(undefined);
     } finally {
       setSending(false);
     }
@@ -57,6 +63,49 @@ export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, 
     setShowGifPicker(false);
   };
 
+  const handleStickerSelect = async (emoji: string) => {
+    setShowStickerPicker(false);
+    setSending(true);
+    try {
+      await onPost(emoji, emoji, 'sticker');
+      setText('');
+      setMediaURL(null);
+      setMediaType(null);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleVoiceSend = async (blob: Blob, duration: number) => {
+    setShowVoiceRecorder(false);
+    setSending(true);
+    try {
+      const dataUrl = await blobToDataURL(blob);
+      setMediaURL(dataUrl);
+      setMediaType('voice');
+      setVoiceDuration(duration);
+      // Auto-post voice message
+      await onPost('🎤 Voice message', dataUrl, 'voice', duration);
+      setText('');
+      setMediaURL(null);
+      setMediaType(null);
+      setVoiceDuration(undefined);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (showVoiceRecorder) {
+    return (
+      <div className={`yapp-composer ${compact ? 'yapp-composer-compact' : ''}`}>
+        <VoiceRecorder
+          onSend={handleVoiceSend}
+          onCancel={() => setShowVoiceRecorder(false)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className={`yapp-composer ${compact ? 'yapp-composer-compact' : ''}`}>
       <textarea
@@ -83,9 +132,19 @@ export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, 
               <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
             </svg>
           </button>
-          <button className="icon-btn" title="Add GIF" onClick={() => setShowGifPicker(!showGifPicker)}>
+          <button className="icon-btn" title="Add GIF" onClick={() => { setShowGifPicker(!showGifPicker); setShowStickerPicker(false); }}>
             <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
               <path d="M11.5 9H13v6h-1.5zM9 9H6c-.6 0-1 .5-1 1v4c0 .5.4 1 1 1h3c.6 0 1-.5 1-1v-2H8.5v1.5h-2v-3H10V10c0-.5-.4-1-1-1zm10 1.5V9h-4.5v6H16v-2h2v-1.5h-2v-1z"/>
+            </svg>
+          </button>
+          <button className="icon-btn" title="Stickers" onClick={() => { setShowStickerPicker(!showStickerPicker); setShowGifPicker(false); }}>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
+            </svg>
+          </button>
+          <button className="icon-btn" title="Voice message" onClick={() => setShowVoiceRecorder(true)}>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
             </svg>
           </button>
           <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleImagePick} />
@@ -111,6 +170,11 @@ export const YappComposer: React.FC<Props> = ({ onPost, placeholder, autoFocus, 
       {showGifPicker && (
         <div className="yapp-gif-picker-wrap">
           <GifPicker onSelect={handleGifSelect} onClose={() => setShowGifPicker(false)} />
+        </div>
+      )}
+      {showStickerPicker && (
+        <div className="yapp-gif-picker-wrap">
+          <StickerPicker onSelect={handleStickerSelect} onClose={() => setShowStickerPicker(false)} />
         </div>
       )}
     </div>

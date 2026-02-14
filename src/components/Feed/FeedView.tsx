@@ -25,8 +25,8 @@ export const FeedView: React.FC<Props> = ({ currentUser }) => {
     return yapps.filter((y) => following.has(y.authorId) || y.authorId === currentUser.uid);
   }, [yapps, tab, following, currentUser.uid]);
 
-  const handlePost = async (text: string, mediaURL?: string, mediaType?: 'image' | 'gif') => {
-    await postYapp(currentUser.uid, currentUser.displayName, currentUser.photoURL, text, mediaURL, mediaType);
+  const handlePost = async (text: string, mediaURL?: string, mediaType?: 'image' | 'gif' | 'sticker' | 'voice', voiceDuration?: number) => {
+    await postYapp(currentUser.uid, currentUser.displayName, currentUser.photoURL, text, mediaURL, mediaType, undefined, voiceDuration);
   };
 
   // Profile sub-view

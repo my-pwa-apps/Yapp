@@ -15,8 +15,8 @@ export const YappThread: React.FC<Props> = ({ yapp, currentUser, onBack, onOpenP
   const { replies, loading } = useReplies(yapp.id);
   const [showComposer, setShowComposer] = useState(false);
 
-  const handleReply = async (text: string, mediaURL?: string, mediaType?: 'image' | 'gif') => {
-    await postYapp(currentUser.uid, currentUser.displayName, currentUser.photoURL, text, mediaURL, mediaType, yapp.id);
+  const handleReply = async (text: string, mediaURL?: string, mediaType?: 'image' | 'gif' | 'sticker' | 'voice', voiceDuration?: number) => {
+    await postYapp(currentUser.uid, currentUser.displayName, currentUser.photoURL, text, mediaURL, mediaType, yapp.id, voiceDuration);
     setShowComposer(false);
   };
 

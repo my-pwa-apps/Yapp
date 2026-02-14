@@ -95,7 +95,8 @@ export interface Yapp {
   authorPhotoURL: string | null;
   text: string;
   mediaURL?: string;
-  mediaType?: 'image' | 'gif';
+  mediaType?: 'image' | 'gif' | 'sticker' | 'voice';
+  voiceDuration?: number;
   timestamp: number;
   likeCount: number;
   replyCount: number;

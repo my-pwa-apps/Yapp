@@ -161,8 +161,9 @@ export async function postYapp(
   authorPhotoURL: string | null,
   text: string,
   mediaURL?: string,
-  mediaType?: 'image' | 'gif',
+  mediaType?: 'image' | 'gif' | 'sticker' | 'voice',
   parentId?: string,
+  voiceDuration?: number,
 ): Promise<string> {
   const yappsRef = ref(db, 'yapps');
   const newRef = push(yappsRef);
@@ -178,6 +179,7 @@ export async function postYapp(
   };
   if (mediaURL) (yapp as any).mediaURL = mediaURL;
   if (mediaType) (yapp as any).mediaType = mediaType;
+  if (voiceDuration != null) (yapp as any).voiceDuration = voiceDuration;
   if (parentId) {
     (yapp as any).parentId = parentId;
     // Increment reply count on parent

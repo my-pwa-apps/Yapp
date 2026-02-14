@@ -390,6 +390,68 @@
   background: var(--bg-chat);
 }
 
+/* ── Sticker display ── */
+.yapp-card-sticker {
+  font-size: 3.5rem;
+  line-height: 1.2;
+  padding: 4px 0;
+}
+
+/* ── Voice player ── */
+.yapp-voice-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  margin-top: 8px;
+  background: var(--bg-input);
+  border-radius: 20px;
+  min-width: 200px;
+  max-width: 320px;
+}
+
+.yapp-voice-play-btn {
+  background: var(--accent);
+  border: none;
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.yapp-voice-play-btn:hover {
+  background: var(--accent-hover);
+}
+
+.yapp-voice-track {
+  flex: 1;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.yapp-voice-progress {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.1s linear;
+}
+
+.yapp-voice-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  min-width: 32px;
+  text-align: right;
+}
+
 .yapp-card-actions {
   display: flex;
   gap: 4px;

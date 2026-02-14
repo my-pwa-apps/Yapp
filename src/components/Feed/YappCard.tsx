@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useYappLikes, toggleLike, deleteYapp, reyapp } from '../../hooks/useYapps';
 import type { Yapp, UserProfile } from '../../types';
-import { formatRelativeTime } from '../../utils';
+import { formatRelativeTime, formatDuration } from '../../utils';
 
 interface Props {
   yapp: Yapp;
@@ -10,6 +10,56 @@ interface Props {
   onOpenProfile?: (uid: string) => void;
   showReplyContext?: boolean;
 }
+
+/* ── Inline voice player ── */
+const YappVoicePlayer: React.FC<{ src: string; duration?: number }> = ({ src, duration }) => {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const onTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+      if (audio.duration) setProgress((audio.currentTime / audio.duration) * 100);
+    };
+    const onEnded = () => { setPlaying(false); setProgress(0); setCurrentTime(0); };
+    audio.addEventListener('timeupdate', onTimeUpdate);
+    audio.addEventListener('ended', onEnded);
+    return () => { audio.removeEventListener('timeupdate', onTimeUpdate); audio.removeEventListener('ended', onEnded); };
+  }, []);
+
+  const toggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (playing) { audio.pause(); } else { audio.play(); }
+    setPlaying(!playing);
+  };
+
+  const displayDuration = duration ?? (audioRef.current?.duration || 0);
+
+  return (
+    <div className="yapp-voice-player" onClick={(e) => e.stopPropagation()}>
+      <audio ref={audioRef} src={src} preload="metadata" />
+      <button className="yapp-voice-play-btn" onClick={toggle}>
+        {playing ? (
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+        ) : (
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        )}
+      </button>
+      <div className="yapp-voice-track">
+        <div className="yapp-voice-progress" style={{ width: `${progress}%` }} />
+      </div>
+      <span className="yapp-voice-time">
+        {playing ? formatDuration(Math.floor(currentTime)) : formatDuration(Math.floor(displayDuration))}
+      </span>
+    </div>
+  );
+};
 
 export const YappCard: React.FC<Props> = ({ yapp, currentUser, onOpenThread, onOpenProfile, showReplyContext }) => {
   const liked = useYappLikes(yapp.id, currentUser.uid);
@@ -85,9 +135,17 @@ export const YappCard: React.FC<Props> = ({ yapp, currentUser, onOpenThread, onO
             </div>
           )}
 
-          <p className="yapp-card-text">{yapp.text}</p>
+          {yapp.mediaType === 'sticker' ? (
+            <div className="yapp-card-sticker">{yapp.text}</div>
+          ) : (
+            <p className="yapp-card-text">{yapp.text}</p>
+          )}
 
-          {yapp.mediaURL && (
+          {yapp.mediaType === 'voice' && yapp.mediaURL && (
+            <YappVoicePlayer src={yapp.mediaURL} duration={yapp.voiceDuration} />
+          )}
+
+          {yapp.mediaURL && yapp.mediaType !== 'sticker' && yapp.mediaType !== 'voice' && (
             <div className="yapp-card-media">
               <img src={yapp.mediaURL} alt="media" loading="lazy" />
             </div>
