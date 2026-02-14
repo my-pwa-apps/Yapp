@@ -1,26 +1,5 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background circle with gradient -->
-  <circle cx="32" cy="32" r="31" fill="url(#green_gradient)" />
-  <circle cx="32" cy="32" r="31" stroke="#84cc16" stroke-width="1" stroke-opacity="0.3" />
-  
-  <!-- Chat bubble shapes - stylized Y for Yappin -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
   <path d="M34.33 21C42.33 21 48.00 27.33 48.00 34.67C48.00 42.00 42.33 48.33 34.33 48.33H25L18.67 54.67V48.33C16.17 46.67 14.33 44.67 14.33 34.67C14.33 27.33 20.67 21 28.00 21H34.33Z" fill="white" />
-  
-  <!-- Y shape inside the bubble -->
-  <path d="M25.67 28.67L30.00 34.67L34.33 28.67" stroke="#84cc16" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-  <path d="M30.00 34.67L30.00 40.67" stroke="#84cc16" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-  
-  <!-- Small speech bubbles -->
-  <circle cx="40" cy="26" r="2.3" fill="#84cc16" opacity="0.8" />
-  <circle cx="43.7" cy="31" r="1.7" fill="#84cc16" opacity="0.6" />
-  <circle cx="46" cy="36" r="1.3" fill="#84cc16" opacity="0.4" />
-  
-  <!-- Define the gradient -->
-  <defs>
-    <linearGradient id="green_gradient" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#a3e635" />
-      <stop offset="1" stop-color="#65a30d" />
-    </linearGradient>
-  </defs>
+  <path d="M25.67 28.67L30.00 34.67L34.33 28.67" stroke="#65a30d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  <line x1="30" y1="34.67" x2="30" y2="40.67" stroke="#65a30d" stroke-width="3" stroke-linecap="round" />
 </svg>
