@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useYappLikes, toggleLike, deleteYapp, reyapp } from '../../hooks/useYapps';
+import { useYappLikes, useReplies, toggleLike, deleteYapp, reyapp } from '../../hooks/useYapps';
 import type { Yapp, UserProfile } from '../../types';
 import { formatRelativeTime, formatDuration } from '../../utils';
 
@@ -9,6 +9,10 @@ interface Props {
   onOpenThread?: (yapp: Yapp) => void;
   onOpenProfile?: (uid: string) => void;
   showReplyContext?: boolean;
+  /** Current nesting depth for inline expand (0 = top level) */
+  depth?: number;
+  /** Whether to start with replies expanded (from settings) */
+  defaultExpanded?: boolean;
 }
 
 /* ── Inline voice player ── */
@@ -61,12 +65,20 @@ const YappVoicePlayer: React.FC<{ src: string; duration?: number }> = ({ src, du
   );
 };
 
-export const YappCard: React.FC<Props> = ({ yapp, currentUser, onOpenThread, onOpenProfile, showReplyContext }) => {
+export const YappCard: React.FC<Props> = ({ yapp, currentUser, onOpenThread, onOpenProfile, showReplyContext, depth = 0, defaultExpanded }) => {
   const liked = useYappLikes(yapp.id, currentUser.uid);
   const [busy, setBusy] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded ?? false);
 
+  const MAX_INLINE_DEPTH = 3;
+  const canExpandInline = yapp.replyCount > 0 && depth < MAX_INLINE_DEPTH;
   const isOwn = yapp.authorId === currentUser.uid;
+
+  const handleToggleExpand = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpanded((prev) => !prev);
+  };
 
   const handleLike = async () => {
     if (busy) return;
@@ -165,8 +177,86 @@ export const YappCard: React.FC<Props> = ({ yapp, currentUser, onOpenThread, onO
               <span>{yapp.reyappCount || ''}</span>
             </button>
           </div>
+
+          {/* Expand / Collapse inline thread toggle */}
+          {canExpandInline && (
+            <button className="yapp-expand-toggle" onClick={handleToggleExpand}>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/>
+              </svg>
+              {expanded
+                ? 'Hide replies'
+                : `Show ${yapp.replyCount} ${yapp.replyCount === 1 ? 'reply' : 'replies'}`
+              }
+            </button>
+          )}
+          {/* At max depth, show link to open full thread */}
+          {yapp.replyCount > 0 && depth >= MAX_INLINE_DEPTH && (
+            <button className="yapp-expand-toggle" onClick={(e) => { e.stopPropagation(); onOpenThread?.(yapp); }}>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                <path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18zM18 14H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
+              </svg>
+              View full thread ({yapp.replyCount} {yapp.replyCount === 1 ? 'reply' : 'replies'})
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Inline expanded replies */}
+      {expanded && canExpandInline && (
+        <InlineReplies
+          parentId={yapp.id}
+          currentUser={currentUser}
+          onOpenThread={onOpenThread}
+          onOpenProfile={onOpenProfile}
+          depth={depth + 1}
+        />
+      )}
     </article>
+  );
+};
+
+/* ── Inline replies loader (only mounts when expanded) ── */
+const InlineReplies: React.FC<{
+  parentId: string;
+  currentUser: UserProfile;
+  onOpenThread?: (yapp: Yapp) => void;
+  onOpenProfile?: (uid: string) => void;
+  depth: number;
+}> = ({ parentId, currentUser, onOpenThread, onOpenProfile, depth }) => {
+  const { replies, loading } = useReplies(parentId);
+
+  if (loading) {
+    return (
+      <div className="yapp-inline-replies">
+        <div className="feed-loading" style={{ padding: '12px 16px' }}>
+          <div className="feed-spinner" /> Loading…
+        </div>
+      </div>
+    );
+  }
+
+  if (replies.length === 0) {
+    return (
+      <div className="yapp-inline-replies">
+        <div className="feed-empty-replies" style={{ padding: '8px 16px', fontSize: '0.82rem' }}>No replies yet</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="yapp-inline-replies">
+      {replies.map((reply) => (
+        <YappCard
+          key={reply.id}
+          yapp={reply}
+          currentUser={currentUser}
+          onOpenThread={onOpenThread}
+          onOpenProfile={onOpenProfile}
+          showReplyContext
+          depth={depth}
+        />
+      ))}
+    </div>
   );
 };

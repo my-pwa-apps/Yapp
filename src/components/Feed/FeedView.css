@@ -24,11 +24,36 @@
   flex-shrink: 0;
 }
 
+.feed-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 8px;
+}
+
 .feed-title {
   font-size: 1.2rem;
   font-weight: 700;
   padding: 12px 16px 0;
   color: var(--text-primary);
+}
+
+.feed-settings-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+  margin-top: 6px;
+}
+.feed-settings-btn:hover {
+  background: var(--hover);
+  color: var(--accent);
 }
 
 .feed-tabs {
@@ -491,6 +516,74 @@
   background: rgba(239, 68, 68, 0.1);
 }
 
+/* ── Expand / Collapse thread toggle ── */
+.yapp-expand-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 4px 0;
+  margin-top: 4px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  font-family: inherit;
+}
+
+.yapp-expand-toggle:hover {
+  opacity: 0.8;
+}
+
+/* ── Inline expanded replies ── */
+.yapp-inline-replies {
+  margin-left: 28px;
+  padding-left: 16px;
+  border-left: 2px solid var(--border);
+  position: relative;
+}
+
+.yapp-inline-replies .yapp-card {
+  border-bottom: none;
+  padding: 8px 12px;
+}
+
+.yapp-inline-replies .yapp-card:last-child {
+  border-bottom: none;
+}
+
+.yapp-inline-replies .yapp-card-avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 0.8rem;
+}
+
+.yapp-inline-replies .yapp-card-text {
+  font-size: 0.88rem;
+}
+
+.yapp-inline-replies .yapp-card-actions {
+  gap: 0;
+}
+
+.yapp-inline-replies .yapp-action {
+  padding: 2px 8px;
+  font-size: 0.75rem;
+}
+
+/* Deeper nesting gets progressively subtle */
+.yapp-inline-replies .yapp-inline-replies {
+  margin-left: 16px;
+  padding-left: 12px;
+}
+
+.yapp-inline-replies .yapp-inline-replies .yapp-inline-replies {
+  margin-left: 12px;
+  padding-left: 10px;
+}
+
 /* ── Feed states ── */
 .feed-loading {
   display: flex;
@@ -907,4 +1000,50 @@
   .yapp-dropdown {
     min-width: 120px;
   }
+
+  .yapp-inline-replies {
+    margin-left: 16px;
+    padding-left: 12px;
+  }
+
+  .yapp-inline-replies .yapp-inline-replies {
+    margin-left: 10px;
+    padding-left: 8px;
+  }
+
+  .yapp-inline-replies .yapp-card {
+    padding: 6px 8px;
+  }
+
+  .yapp-inline-replies .yapp-card-avatar {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/* ── Yapps Settings: tab selector ── */
+.yapps-tab-selector {
+  display: flex;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.yapps-tab-option {
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.yapps-tab-option:first-child {
+  border-right: 1px solid var(--border);
+}
+.yapps-tab-option.active {
+  background: var(--accent);
+  color: #fff;
 }

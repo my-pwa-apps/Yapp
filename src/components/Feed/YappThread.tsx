@@ -8,10 +8,11 @@ interface Props {
   yapp: Yapp;
   currentUser: UserProfile;
   onBack: () => void;
+  onOpenThread?: (yapp: Yapp) => void;
   onOpenProfile?: (uid: string) => void;
 }
 
-export const YappThread: React.FC<Props> = ({ yapp, currentUser, onBack, onOpenProfile }) => {
+export const YappThread: React.FC<Props> = ({ yapp, currentUser, onBack, onOpenThread, onOpenProfile }) => {
   const { replies, loading } = useReplies(yapp.id);
   const [showComposer, setShowComposer] = useState(false);
 
@@ -26,7 +27,7 @@ export const YappThread: React.FC<Props> = ({ yapp, currentUser, onBack, onOpenP
         <button className="icon-btn" onClick={onBack}>
           <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
         </button>
-        <h2>Yapp</h2>
+        <h2>{yapp.parentId ? 'Thread' : 'Yapp'}</h2>
       </header>
 
       <div className="yapp-thread-scroll">
@@ -69,6 +70,7 @@ export const YappThread: React.FC<Props> = ({ yapp, currentUser, onBack, onOpenP
                 key={reply.id}
                 yapp={reply}
                 currentUser={currentUser}
+                onOpenThread={onOpenThread}
                 onOpenProfile={onOpenProfile}
                 showReplyContext
               />

@@ -121,6 +121,25 @@ export function useYappLikes(yappId: string | undefined, uid: string | undefined
   return liked;
 }
 
+/* ─── Contacts hook ─── */
+
+export function useContacts(uid: string | undefined) {
+  const [contacts, setContacts] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!uid) return;
+    const contactsRef = ref(db, `contacts/${uid}`);
+    const unsub = onValue(contactsRef, (snap) => {
+      const ids = new Set<string>();
+      snap.forEach((child) => { ids.add(child.key!); });
+      setContacts(ids);
+    });
+    return () => unsub();
+  }, [uid]);
+
+  return contacts;
+}
+
 /* ─── Following hook ─── */
 
 export function useFollowing(uid: string | undefined) {

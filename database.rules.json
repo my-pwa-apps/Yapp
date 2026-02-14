@@ -165,6 +165,13 @@
           ".validate": "!newData.exists() || newData.val() === true"
         }
       }
+    },
+
+    "yappsSettings": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
     }
   }
 }
