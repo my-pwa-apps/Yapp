@@ -113,6 +113,22 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
     return () => unsub();
   }, [currentUid, callState]);
 
+  // While ringing on receiver side, watch for caller hanging up
+  useEffect(() => {
+    if (callState !== 'incoming' || !callIdRef.current) return;
+    const statusRef = ref(db, `calls/${callIdRef.current}/status`);
+    const unsub = onValue(statusRef, (snap) => {
+      const status = snap.val();
+      if (status === 'ended' || status === null) {
+        cleanup();
+        setCallState('idle');
+        setCallData(null);
+        callIdRef.current = null;
+      }
+    });
+    return () => unsub();
+  }, [callState, cleanup]);
+
   const getMediaStream = async (callType: 'audio' | 'video'): Promise<MediaStream> => {
     try {
       return await navigator.mediaDevices.getUserMedia({
