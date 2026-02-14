@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useChats, membersToArray } from '../../hooks/useChats';
+import { useChats, membersToArray, getUserProfile } from '../../hooks/useChats';
 import { useCall } from '../../hooks/useCall';
 import { useContactRequests } from '../../hooks/useContactRequests';
 import { useGroupInvites } from '../../hooks/useGroupInvites';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useUnreadCounts } from '../../hooks/useUnreadCounts';
+import { usePushSubscription } from '../../hooks/usePushSubscription';
 import { ChatList } from '../Chat/ChatList';
 import { ChatWindow } from '../Chat/ChatWindow';
 import { NewChatModal } from '../Chat/NewChatModal';
@@ -16,7 +17,7 @@ import { ContactRequestsModal } from '../Chat/ContactRequestsModal';
 import { GroupInfoPanel } from '../Chat/GroupInfoPanel';
 import { NotificationSettings } from '../Chat/NotificationSettings';
 import { KeyRecoveryModal } from '../Chat/KeyRecoveryModal';
-import type { Chat } from '../../types';
+import type { Chat, UserProfile } from '../../types';
 import { YappLogo } from '../YappLogo';
 import './AppLayout.css';
 
@@ -36,9 +37,12 @@ export const AppLayout: React.FC = () => {
   const call = useCall(user?.uid ?? '', profile?.displayName ?? '', showToast);
   const contactRequests = useContactRequests(user?.uid);
   const { invites: groupInvites, joinRequests } = useGroupInvites(user?.uid);
-  const { notifyMessage, notifyGroupInvite, notifyJoinRequest, notifyContactRequest, refreshPrefs } = useNotifications();
+  const { notifyMessage, notifyGroupInvite, notifyJoinRequest, notifyContactRequest, notifyIncomingCall, refreshPrefs } = useNotifications();
   const unreadCounts = useUnreadCounts(chats, user?.uid);
   const totalUnread = Object.values(unreadCounts).reduce((sum, n) => sum + n, 0);
+
+  // Register for Web Push (saves subscription to RTDB)
+  usePushSubscription(user?.uid);
   const notificationCount = contactRequests.length + groupInvites.length + joinRequests.length;
 
   // Set app badge on installed PWA (Android, Windows, iOS)
@@ -66,6 +70,30 @@ export const AppLayout: React.FC = () => {
   const [sidebarSearch, setSidebarSearch] = useState('');
   const [chatListScrollable, setChatListScrollable] = useState(false);
   const chatListRef = useRef<HTMLDivElement>(null);
+  const [addableMembers, setAddableMembers] = useState<UserProfile[]>([]);
+
+  // Compute addable members when a call is active (chat members not yet in the call)
+  useEffect(() => {
+    if (call.callState !== 'active' || !call.callData || !activeChat) {
+      setAddableMembers([]);
+      return;
+    }
+    const chatMemberUids = membersToArray(activeChat.members);
+    const callParticipantUids = new Set(Object.keys(call.callData.participants));
+    const addableUids = chatMemberUids.filter(
+      (uid) => uid !== user?.uid && !callParticipantUids.has(uid)
+    );
+    if (addableUids.length === 0) {
+      setAddableMembers([]);
+      return;
+    }
+    let cancelled = false;
+    Promise.all(addableUids.map((uid) => getUserProfile(uid))).then((profiles) => {
+      if (cancelled) return;
+      setAddableMembers(profiles.filter((p): p is UserProfile => p !== null));
+    });
+    return () => { cancelled = true; };
+  }, [call.callState, call.callData, activeChat, user?.uid]);
 
   // Detect when chat list overflows (needs scrolling)
   useEffect(() => {
@@ -111,6 +139,17 @@ export const AppLayout: React.FC = () => {
     chats.forEach((c) => { snap[c.id] = c.lastMessage?.timestamp ?? 0; });
     prevChatSnapRef.current = snap;
   }, [chats, user?.uid, notifyMessage]);
+
+  // Notify on incoming calls (shows system notification when tab is in background)
+  useEffect(() => {
+    if (call.callState === 'incoming' && call.callData) {
+      notifyIncomingCall(
+        call.callData.callerName,
+        call.callData.callType,
+        call.callData.id
+      );
+    }
+  }, [call.callState, call.callData, notifyIncomingCall]);
 
   // Notify on new contact requests
   useEffect(() => {
@@ -282,6 +321,7 @@ export const AppLayout: React.FC = () => {
       {showNewChat && (
         <NewChatModal
           currentUser={profile!}
+          existingChats={chats}
           onClose={() => setShowNewChat(false)}
           onChatCreated={(chatId) => {
             setShowNewChat(false);
@@ -351,6 +391,8 @@ export const AppLayout: React.FC = () => {
           onEnd={call.endCall}
           onToggleMute={call.toggleMute}
           onToggleVideo={call.toggleVideo}
+          addableMembers={addableMembers}
+          onAddParticipant={call.addParticipant}
         />
       )}
 

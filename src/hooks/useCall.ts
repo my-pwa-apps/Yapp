@@ -11,6 +11,8 @@ import {
 } from 'firebase/database';
 import { db } from '../firebase';
 import type { CallData } from '../types';
+import { useCallSounds } from './useCallSounds';
+import { sendPushToUsers } from '../utils/sendPushNotification';
 
 const ICE_SERVERS: RTCConfiguration = {
   iceServers: [
@@ -30,6 +32,7 @@ export interface UseCallReturn {
   acceptCall: () => Promise<void>;
   rejectCall: () => void;
   endCall: () => void;
+  addParticipant: (uid: string) => Promise<void>;
   toggleMute: () => void;
   toggleVideo: () => void;
   isMuted: boolean;
@@ -51,6 +54,20 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
   const unsubscribersRef = useRef<(() => void)[]>([]);
   // Queue ICE candidates that arrive before remoteDescription is set
   const iceCandidateQueues = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
+
+  // Call sounds (dialtone for outgoing, ringtone for incoming)
+  const { playSound, stopSound } = useCallSounds();
+
+  // Play / stop sounds based on call state
+  useEffect(() => {
+    if (callState === 'outgoing') {
+      playSound('dialtone');
+    } else if (callState === 'incoming') {
+      playSound('ringtone');
+    } else {
+      stopSound();
+    }
+  }, [callState, playSound, stopSound]);
 
   const cleanup = useCallback(() => {
     // Close all peer connections
@@ -220,8 +237,13 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
     setCallData({ ...newCall, id: callId });
     setCallState('outgoing');
 
-    // Create peer connections for each remote member
+    // Send push notification to remote members (wakes them up even if app is closed)
     const remoteMembers = members.filter((uid) => uid !== currentUid);
+    sendPushToUsers(remoteMembers, {
+      title: '\u{1F4DE} Incoming Call',
+      body: `${currentName} is calling you`,
+      data: { type: 'call', callId, callType, tag: `call-${callId}` },
+    }).catch(() => {});
     for (const remoteUid of remoteMembers) {
       const pc = createPeerConnection(callId, remoteUid, stream, true);
 
@@ -264,6 +286,51 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
     });
     unsubscribersRef.current.push(unsubStatus);
   };
+
+  // Listen for newly added participants (someone else was added to our active call)
+  useEffect(() => {
+    if (!callIdRef.current || (callState !== 'active' && callState !== 'outgoing')) return;
+    const callId = callIdRef.current;
+
+    const participantsRef = ref(db, `calls/${callId}/participants`);
+    const unsubParticipants = onValue(participantsRef, async (snap) => {
+      const participants = snap.val() as Record<string, boolean> | null;
+      if (!participants) return;
+
+      const stream = localStreamRef.current;
+      if (!stream) return;
+
+      // Find participants we don't have a peer connection for yet
+      const allUids = Object.keys(participants).filter((uid) => uid !== currentUid);
+      for (const remoteUid of allUids) {
+        if (peerConnectionsRef.current.has(remoteUid)) continue;
+        // New participant — check if they have an offer for us (they are the caller for this leg)
+        const offerSnap = await get(
+          ref(db, `callSignaling/${callId}/${remoteUid}_${currentUid}/offer`)
+        );
+        const offer = offerSnap.val();
+        if (offer) {
+          // They sent us an offer — we answer
+          const pc = createPeerConnection(callId, remoteUid, stream, false);
+          await pc.setRemoteDescription(new RTCSessionDescription(offer));
+          flushIceCandidates(pc, remoteUid);
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          await set(ref(db, `callSignaling/${callId}/${currentUid}_${remoteUid}/answer`), {
+            type: answer.type,
+            sdp: answer.sdp,
+          });
+        }
+        // If no offer yet, the addParticipant flow will create offers from the caller's side
+      }
+
+      // Update callData with new participants
+      setCallData((prev) => prev ? { ...prev, participants } : prev);
+    });
+    unsubscribersRef.current.push(unsubParticipants);
+
+    return () => unsubParticipants();
+  }, [callState, currentUid, flushIceCandidates]);
 
   const acceptCall = async () => {
     if (!callData || !callIdRef.current) return;
@@ -353,6 +420,44 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
     }, 1500);
   };
 
+  /** Add a new participant to the current call */
+  const addParticipant = async (uid: string) => {
+    const callId = callIdRef.current;
+    const stream = localStreamRef.current;
+    if (!callId || !stream) return;
+    if (peerConnectionsRef.current.has(uid)) return; // already connected
+
+    // Add participant to the call record in Firebase
+    await update(ref(db, `calls/${callId}/participants`), { [uid]: true });
+
+    // Send push notification to the added participant
+    sendPushToUsers([uid], {
+      title: '\u{1F4DE} Incoming Call',
+      body: `${currentName} added you to a call`,
+      data: { type: 'call', callId, callType: callData?.callType || 'audio', tag: `call-${callId}` },
+    }).catch(() => {});
+
+    // Create peer connection and send offer
+    const pc = createPeerConnection(callId, uid, stream, true);
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await set(ref(db, `callSignaling/${callId}/${currentUid}_${uid}/offer`), {
+      type: offer.type,
+      sdp: offer.sdp,
+    });
+
+    // Listen for their answer
+    const answerRef = ref(db, `callSignaling/${callId}/${uid}_${currentUid}/answer`);
+    const unsubAnswer = onValue(answerRef, async (snap) => {
+      const answer = snap.val();
+      if (answer && pc.signalingState === 'have-local-offer') {
+        await pc.setRemoteDescription(new RTCSessionDescription(answer));
+        flushIceCandidates(pc, uid);
+      }
+    });
+    unsubscribersRef.current.push(unsubAnswer);
+  };
+
   const toggleMute = () => {
     const stream = localStreamRef.current;
     if (stream) {
@@ -387,6 +492,7 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
     acceptCall,
     rejectCall,
     endCall,
+    addParticipant,
     toggleMute,
     toggleVideo,
     isMuted,

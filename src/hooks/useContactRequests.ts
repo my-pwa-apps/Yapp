@@ -8,6 +8,7 @@ import {
 } from 'firebase/database';
 import { db } from '../firebase';
 import type { ContactRequest, UserProfile } from '../types';
+import { sendPushToUsers } from '../utils/sendPushNotification';
 import { findOrCreateDirectChat } from './useChats';
 
 /**
@@ -72,6 +73,14 @@ export async function sendContactRequest(
     status: 'pending',
   };
   await set(ref(db, `contactRequests/${targetUser.uid}/${currentUser.uid}`), request);
+
+  // Send push notification to the target user
+  sendPushToUsers([targetUser.uid], {
+    title: 'New Contact Request',
+    body: `${currentUser.displayName} wants to connect with you`,
+    data: { type: 'contact_request', tag: 'contact-request' },
+  }).catch(() => {});
+
   return 'sent';
 }
 

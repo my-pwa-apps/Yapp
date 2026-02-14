@@ -18,6 +18,7 @@ import {
   wrapGroupKeyForMember,
   importPublicKey,
 } from './useCrypto';
+import { sendPushToUsers } from '../utils/sendPushNotification';
 
 /** Helper: convert members record {uid: true} to array */
 export function membersToArray(members: Record<string, boolean> | undefined): string[] {
@@ -206,6 +207,15 @@ export async function inviteToGroup(chatId: string, targetUid: string, adminUid:
     fromName: adminName,
     timestamp: Date.now(),
   });
+
+  // Send push notification to invited user
+  const chatSnap = await get(ref(db, `chats/${chatId}/name`));
+  const groupName = chatSnap.exists() ? chatSnap.val() : 'a group';
+  sendPushToUsers([targetUid], {
+    title: 'Group Invite',
+    body: `${adminName} invited you to ${groupName}`,
+    data: { type: 'group_invite', chatId, tag: `invite-${chatId}` },
+  }).catch(() => {});
 }
 
 /** User requests to join a group — needs admin approval */
@@ -216,6 +226,19 @@ export async function requestToJoinGroup(chatId: string, uid: string, userName: 
     fromName: userName,
     timestamp: Date.now(),
   });
+
+  // Send push notification to group admins
+  const adminsSnap = await get(ref(db, `chats/${chatId}/admins`));
+  if (adminsSnap.exists()) {
+    const adminUids = Object.keys(adminsSnap.val());
+    const chatSnap = await get(ref(db, `chats/${chatId}/name`));
+    const groupName = chatSnap.exists() ? chatSnap.val() : 'your group';
+    sendPushToUsers(adminUids, {
+      title: 'Join Request',
+      body: `${userName} wants to join ${groupName}`,
+      data: { type: 'join_request', chatId, tag: `join-${chatId}` },
+    }).catch(() => {});
+  }
 }
 
 /** Approve a pending member (admin approves a join request, or user accepts an invite) */

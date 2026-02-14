@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import {
   ref,
+  get,
   onValue,
   push,
   update,
 } from 'firebase/database';
 import { db } from '../firebase';
 import type { Message } from '../types';
+import { sendPushToUsers } from '../utils/sendPushNotification';
 
 export function useMessages(chatId: string | null) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -106,6 +108,45 @@ async function _pushMessage(
   }
   updates[`chats/${chatId}/lastMessage`] = lastMessage;
   await update(ref(db), updates);
+
+  // Send Web Push to other chat members (fire-and-forget)
+  _pushNotifyMembers(
+    chatId,
+    msg.senderId as string,
+    msg.senderName as string,
+    msg.encrypted ? 'New message' : (msg.text as string)
+  );
+}
+
+/** Fire-and-forget: send push notification to all chat members except sender */
+async function _pushNotifyMembers(
+  chatId: string,
+  senderId: string,
+  senderName: string,
+  text: string
+) {
+  try {
+    const membersSnap = await get(ref(db, `chats/${chatId}/members`));
+    if (!membersSnap.exists()) return;
+    const members = Object.keys(membersSnap.val());
+    const recipients = members.filter((uid) => uid !== senderId);
+    if (recipients.length === 0) return;
+
+    // Check if this is a group chat for better notification title
+    const chatSnap = await get(ref(db, `chats/${chatId}/name`));
+    const groupName = chatSnap.exists() ? chatSnap.val() : null;
+    const title = groupName
+      ? `${senderName} in ${groupName}`
+      : senderName;
+
+    sendPushToUsers(recipients, {
+      title,
+      body: text.length > 100 ? text.slice(0, 100) + '…' : text,
+      data: { type: 'message', chatId, tag: `msg-${chatId}` },
+    }).catch(() => {});
+  } catch {
+    // Non-critical — don't break message sending
+  }
 }
 
 export async function markMessagesRead(chatId: string, messageIds: string[], uid: string) {

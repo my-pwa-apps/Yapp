@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import type { CallData } from '../../types';
+import React, { useEffect, useRef, useState } from 'react';
+import type { CallData, UserProfile } from '../../types';
 import type { CallState } from '../../hooks/useCall';
 
 interface Props {
@@ -14,6 +14,9 @@ interface Props {
   onEnd: () => void;
   onToggleMute: () => void;
   onToggleVideo: () => void;
+  /** Chat members eligible to be added to the call (not already in it) */
+  addableMembers?: UserProfile[];
+  onAddParticipant?: (uid: string) => void;
 }
 
 export const CallScreen: React.FC<Props> = ({
@@ -28,9 +31,12 @@ export const CallScreen: React.FC<Props> = ({
   onEnd,
   onToggleMute,
   onToggleVideo,
+  addableMembers = [],
+  onAddParticipant,
 }) => {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
+  const [showAddPicker, setShowAddPicker] = useState(false);
 
   const isVideo = callData?.callType === 'video';
 
@@ -219,6 +225,41 @@ export const CallScreen: React.FC<Props> = ({
                   <path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08a.956.956 0 0 1 0-1.36C3.57 8.55 7.55 7 12 7s8.43 1.55 11.71 4.72c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.1-.7-.28a11.27 11.27 0 0 0-2.67-1.85.996.996 0 0 1-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/>
                 </svg>
               </button>
+
+              {/* Add participant button — only during active calls with addable members */}
+              {callState === 'active' && addableMembers.length > 0 && onAddParticipant && (
+                <div className="call-add-user-wrapper">
+                  <button
+                    className="call-btn toggle"
+                    onClick={() => setShowAddPicker((prev) => !prev)}
+                    title="Add user to call"
+                  >
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                      <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                    </svg>
+                  </button>
+                  {showAddPicker && (
+                    <div className="call-add-picker">
+                      <div className="call-add-picker-title">Add to call</div>
+                      {addableMembers.map((member) => (
+                        <button
+                          key={member.uid}
+                          className="call-add-picker-item"
+                          onClick={() => {
+                            onAddParticipant(member.uid);
+                            setShowAddPicker(false);
+                          }}
+                        >
+                          <div className="avatar avatar-xs">
+                            {member.displayName.charAt(0).toUpperCase()}
+                          </div>
+                          <span>{member.displayName}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>

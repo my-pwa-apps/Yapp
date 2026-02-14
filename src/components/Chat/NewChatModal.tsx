@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { searchUsers, findOrCreateDirectChat } from '../../hooks/useChats';
 import { sendContactRequest } from '../../hooks/useContactRequests';
-import type { UserProfile } from '../../types';
+import type { UserProfile, Chat } from '../../types';
 
 interface Props {
   currentUser: UserProfile;
+  existingChats: Chat[];
   onClose: () => void;
   onChatCreated: (chatId: string) => void;
 }
 
-export const NewChatModal: React.FC<Props> = ({ currentUser, onClose, onChatCreated }) => {
+export const NewChatModal: React.FC<Props> = ({ currentUser, existingChats, onClose, onChatCreated }) => {
   const [email, setEmail] = useState('');
   const [results, setResults] = useState<UserProfile[]>([]);
   const [error, setError] = useState('');
@@ -19,6 +20,11 @@ export const NewChatModal: React.FC<Props> = ({ currentUser, onClose, onChatCrea
   const [notFound, setNotFound] = useState(false);
 
   const appUrl = 'https://my-pwa-apps.github.io/Yapp/';
+
+  // Check if a self-chat already exists
+  const hasSelfChat = existingChats.some(
+    (c) => c.type === 'direct' && Object.keys(c.members).length === 1 && c.members[currentUser.uid]
+  );
 
   const handleSearch = async () => {
     if (!email.trim()) return;
@@ -88,27 +94,30 @@ export const NewChatModal: React.FC<Props> = ({ currentUser, onClose, onChatCrea
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
         <div className="modal-body">
-          <button
-            className="self-chat-btn"
-            onClick={async () => {
-              setCreating(true);
-              try {
-                const chatId = await findOrCreateDirectChat(currentUser, currentUser.uid);
-                onChatCreated(chatId);
-              } catch {
-                setError('Failed to create self-chat');
-              }
-              setCreating(false);
-            }}
-            disabled={creating}
-          >
-            <div className="avatar avatar-sm">
-              {currentUser.displayName.charAt(0).toUpperCase()}
-            </div>
-            <span>Message yourself</span>
-          </button>
-
-          <div className="modal-divider">or search for someone</div>
+          {!hasSelfChat && (
+            <>
+              <button
+                className="self-chat-btn"
+                onClick={async () => {
+                  setCreating(true);
+                  try {
+                    const chatId = await findOrCreateDirectChat(currentUser, currentUser.uid);
+                    onChatCreated(chatId);
+                  } catch {
+                    setError('Failed to create self-chat');
+                  }
+                  setCreating(false);
+                }}
+                disabled={creating}
+              >
+                <div className="avatar avatar-sm">
+                  {currentUser.displayName.charAt(0).toUpperCase()}
+                </div>
+                <span>Message yourself</span>
+              </button>
+              <div className="modal-divider">or search for someone</div>
+            </>
+          )}
 
           <input
             className="modal-input"

@@ -1577,6 +1577,67 @@
   color: var(--danger);
 }
 
+/* Add participant picker (inside call overlay) */
+.call-add-user-wrapper {
+  position: relative;
+}
+
+.call-add-picker {
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 0;
+  min-width: 200px;
+  max-height: 240px;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  z-index: 100;
+}
+
+.call-add-picker-title {
+  padding: 6px 14px 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.call-add-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 14px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.call-add-picker-item:hover {
+  background: var(--bg-hover);
+}
+
+.avatar-xs {
+  width: 28px;
+  height: 28px;
+  font-size: 0.75rem;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 /* Contact requests badge */
 .requests-btn {
   position: relative;

@@ -110,6 +110,13 @@
         ".write": "auth != null && auth.uid === $uid",
         ".validate": "newData.hasChildren(['encryptedPrivateKey']) && newData.child('encryptedPrivateKey').hasChildren(['ciphertext', 'iv', 'salt'])"
       }
+    },
+
+    "pushSubscriptions": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid"
+      }
     }
   }
 }

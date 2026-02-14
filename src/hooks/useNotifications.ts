@@ -143,11 +143,24 @@ export function useNotifications() {
     );
   }, []);
 
+  const notifyIncomingCall = useCallback((callerName: string, callType: 'audio' | 'video', callId: string) => {
+    const prefs = prefsRef.current;
+    if (!prefs.enabled) return;
+    const icon = callType === 'video' ? '📹' : '📞';
+    showNotification(
+      `${icon} Incoming ${callType} call`,
+      `${callerName} is calling you`,
+      `call-${callId}`,
+      { type: 'call' },
+    );
+  }, []);
+
   return {
     notifyMessage,
     notifyGroupInvite,
     notifyJoinRequest,
     notifyContactRequest,
+    notifyIncomingCall,
     refreshPrefs,
   };
 }

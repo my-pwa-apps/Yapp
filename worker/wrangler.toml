@@ -1,0 +1,8 @@
+name = "yapp-push"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# Secrets (set via `npx wrangler secret put <NAME>`):
+# VAPID_PRIVATE_JWK  — JWK JSON string of the VAPID P-256 private key
+# VAPID_PUBLIC_KEY   — base64url-encoded 65-byte uncompressed public key
+# PUSH_API_KEY       — shared secret between client and worker
