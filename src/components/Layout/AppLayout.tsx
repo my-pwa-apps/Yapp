@@ -350,6 +350,9 @@ export const AppLayout: React.FC = () => {
 
       {/* Bottom navigation */}
       <nav className="bottom-nav">
+        <div className="bottom-nav-logo">
+          <YappLogo size={28} />
+        </div>
         <button
           className={`bottom-nav-item ${appMode === 'chat' ? 'active' : ''}`}
           onClick={() => setAppMode('chat')}
