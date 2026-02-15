@@ -234,6 +234,15 @@ export async function deleteYapp(yappId: string, parentId?: string): Promise<voi
   }
 }
 
+/** Edit a yapp's text (only the author can edit). */
+export async function editYapp(yappId: string, newText: string): Promise<void> {
+  await update(ref(db, `yapps/${yappId}`), {
+    text: newText,
+    edited: true,
+    editedAt: Date.now(),
+  });
+}
+
 export async function toggleLike(yappId: string, uid: string): Promise<void> {
   const likeRef = ref(db, `yappLikes/${yappId}/${uid}`);
   const countRef = ref(db, `yapps/${yappId}/likeCount`);

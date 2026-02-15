@@ -5,6 +5,7 @@ import {
   onValue,
   push,
   update,
+  remove,
 } from 'firebase/database';
 import { db } from '../firebase';
 import type { Message } from '../types';
@@ -43,7 +44,9 @@ export async function sendMessage(
   senderId: string,
   senderName: string,
   text: string,
-  encryption?: { ciphertext: string; iv: string }
+  encryption?: { ciphertext: string; iv: string },
+  ephemeralTTL?: number,
+  forwardable?: boolean,
 ) {
   const msg: Record<string, unknown> = {
     chatId,
@@ -59,6 +62,12 @@ export async function sendMessage(
     msg.ciphertext = encryption.ciphertext;
     msg.iv = encryption.iv;
   }
+  if (ephemeralTTL && ephemeralTTL > 0) {
+    msg.ephemeralTTL = ephemeralTTL;
+  }
+  if (forwardable === false) {
+    msg.forwardable = false;
+  }
   await _pushMessage(chatId, msg);
 }
 
@@ -72,7 +81,7 @@ export async function sendMediaMessage(
   type: 'image' | 'gif' | 'sticker' | 'voice',
   mediaURL: string,
   previewText: string,
-  extra?: { voiceDuration?: number }
+  extra?: { voiceDuration?: number; ephemeralTTL?: number }
 ) {
   await _pushMessage(chatId, {
     chatId,
@@ -84,6 +93,7 @@ export async function sendMediaMessage(
     type,
     mediaURL,
     ...(extra?.voiceDuration !== undefined ? { voiceDuration: extra.voiceDuration } : {}),
+    ...(extra?.ephemeralTTL && extra.ephemeralTTL > 0 ? { ephemeralTTL: extra.ephemeralTTL } : {}),
   });
 }
 
@@ -155,6 +165,77 @@ export async function markMessagesRead(chatId: string, messageIds: string[], uid
     updates[`messages/${chatId}/${id}/readBy/${uid}`] = true;
   });
   await update(ref(db), updates);
+}
+
+/** Edit a text message (only the sender can edit). */
+export async function editMessage(
+  chatId: string,
+  messageId: string,
+  newText: string,
+) {
+  const updates: Record<string, unknown> = {
+    [`messages/${chatId}/${messageId}/text`]: newText,
+    [`messages/${chatId}/${messageId}/edited`]: true,
+    [`messages/${chatId}/${messageId}/editedAt`]: Date.now(),
+  };
+  await update(ref(db), updates);
+}
+
+/** Soft-delete a message (replaces content, keeps the row so read receipts aren't lost). */
+export async function deleteMessage(chatId: string, messageId: string) {
+  const updates: Record<string, unknown> = {
+    [`messages/${chatId}/${messageId}/deleted`]: true,
+    [`messages/${chatId}/${messageId}/text`]: '',
+    [`messages/${chatId}/${messageId}/mediaURL`]: null,
+  };
+  await update(ref(db), updates);
+}
+
+/** Set the ephemeral (self-destruct) timer for a chat. 0 = off. */
+export async function setEphemeralTTL(chatId: string, ttlSeconds: number) {
+  await update(ref(db, `chats/${chatId}`), { ephemeralTTL: ttlSeconds || null });
+}
+
+/** Set the expiry timestamp on an ephemeral message once it's been read by a recipient. */
+export async function setEphemeralExpiry(chatId: string, messageId: string, ttlSeconds: number) {
+  const expiry = Date.now() + ttlSeconds * 1000;
+  await update(ref(db), {
+    [`messages/${chatId}/${messageId}/ephemeralExpiry`]: expiry,
+  });
+}
+
+/** Delete a message permanently (used for expired ephemeral messages). */
+export async function purgeMessage(chatId: string, messageId: string) {
+  await remove(ref(db, `messages/${chatId}/${messageId}`));
+}
+
+/** Forward a message to another chat. */
+export async function forwardMessage(
+  targetChatId: string,
+  senderId: string,
+  senderName: string,
+  originalMessage: Message,
+) {
+  if (originalMessage.ephemeralTTL) {
+    throw new Error('Ephemeral messages cannot be forwarded');
+  }
+  const msg: Record<string, unknown> = {
+    chatId: targetChatId,
+    senderId,
+    senderName,
+    text: originalMessage.text,
+    timestamp: Date.now(),
+    readBy: { [senderId]: true },
+    type: originalMessage.type,
+    forwardedFrom: originalMessage.senderName,
+  };
+  if (originalMessage.mediaURL) {
+    msg.mediaURL = originalMessage.mediaURL;
+  }
+  if (originalMessage.voiceDuration != null) {
+    msg.voiceDuration = originalMessage.voiceDuration;
+  }
+  await _pushMessage(targetChatId, msg);
 }
 
 export async function setTyping(chatId: string, uid: string, isTyping: boolean) {

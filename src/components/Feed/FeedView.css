@@ -1200,3 +1200,46 @@
 .yapp-btn-xs:not(.danger):hover {
   background: var(--bg-hover);
 }
+
+/* ── Yapp edit ── */
+.yapp-dropdown-edit {
+  color: var(--text-primary) !important;
+}
+.yapp-edited-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+.yapp-edit-form {
+  margin: 6px 0;
+}
+.yapp-edit-input {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  padding: 8px 10px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.4;
+  box-sizing: border-box;
+}
+.yapp-edit-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.yapp-edit-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  justify-content: flex-end;
+}
+.yapp-btn-primary {
+  background: var(--accent) !important;
+  color: #fff !important;
+}
+.yapp-btn-primary:hover {
+  background: var(--accent-bright) !important;
+}

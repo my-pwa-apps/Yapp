@@ -405,6 +405,206 @@
   margin-top: 1px;
 }
 
+/* ── Message edit/delete/ephemeral ── */
+.message-deleted {
+  opacity: 0.6;
+}
+.message-deleted-text {
+  font-style: italic;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+}
+.message-edited-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+.message-ephemeral-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-muted);
+}
+.message-bubble.ephemeral {
+  border: 1px dashed var(--accent);
+}
+
+/* Message context menu */
+.message-context-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--bg-modal);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px var(--shadow);
+  z-index: 20;
+  min-width: 130px;
+  overflow: hidden;
+}
+.message-context-menu button {
+  width: 100%;
+  padding: 8px 14px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.message-context-menu button:hover {
+  background: var(--bg-hover);
+}
+.message-context-menu .message-menu-danger {
+  color: var(--danger-text, #ef4444);
+}
+
+/* Message edit form */
+.message-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 160px;
+}
+.message-edit-input {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  padding: 6px 8px;
+  resize: vertical;
+  font-family: inherit;
+}
+.message-edit-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.message-edit-save,
+.message-edit-cancel {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.message-edit-save {
+  background: var(--accent);
+  color: #fff;
+}
+.message-edit-save:hover {
+  background: var(--accent-bright);
+}
+.message-edit-cancel {
+  background: var(--bg-input);
+  color: var(--text-secondary);
+}
+.message-edit-cancel:hover {
+  background: var(--bg-hover);
+}
+
+/* Message delete confirm */
+.message-delete-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 0;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+.message-delete-confirm-btns {
+  display: flex;
+  gap: 6px;
+}
+.msg-btn-danger {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: #dc2626;
+  color: #fff;
+}
+.msg-btn-danger:hover {
+  background: #b91c1c;
+}
+.msg-btn-cancel {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--bg-input);
+  color: var(--text-secondary);
+}
+.msg-btn-cancel:hover {
+  background: var(--bg-hover);
+}
+
+/* Ephemeral timer menu */
+.ephemeral-wrapper {
+  position: relative;
+}
+.ephemeral-active {
+  color: var(--accent) !important;
+}
+.ephemeral-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--bg-modal);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px var(--shadow);
+  z-index: 30;
+  min-width: 200px;
+  overflow: hidden;
+}
+.ephemeral-menu-title {
+  padding: 10px 14px 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+.ephemeral-option {
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ephemeral-option:hover {
+  background: var(--bg-hover);
+}
+.ephemeral-option.active {
+  color: var(--accent);
+  font-weight: 600;
+}
+.compose-ephemeral-badge {
+  display: flex;
+  align-items: center;
+  color: var(--accent);
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+
 /* E2EE lock icon next to chat name */
 .e2ee-header-lock {
   margin-left: 6px;

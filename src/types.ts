@@ -34,6 +34,8 @@ export interface Chat {
   typing?: Record<string, boolean>;
   /** Pending join/invite requests: uid -> { type, fromName, timestamp } */
   pendingMembers?: Record<string, PendingMember>;
+  /** Ephemeral messages: TTL in seconds (0 = off). When set, new messages self-destruct after being read. */
+  ephemeralTTL?: number;
 }
 
 export interface PendingMember {
@@ -58,6 +60,19 @@ export interface Message {
   encrypted?: boolean;
   ciphertext?: string;
   iv?: string;
+  /** Edit tracking */
+  edited?: boolean;
+  editedAt?: number;
+  /** Soft-deleted flag */
+  deleted?: boolean;
+  /** Ephemeral / self-destructing: seconds until message disappears after being read */
+  ephemeralTTL?: number;
+  /** Timestamp when the message should auto-delete (set when first read by recipient) */
+  ephemeralExpiry?: number;
+  /** Whether this message may be forwarded by recipients (default: true) */
+  forwardable?: boolean;
+  /** If this message was forwarded, the original sender's name */
+  forwardedFrom?: string;
 }
 
 export interface CallData {
@@ -110,4 +125,7 @@ export interface Yapp {
   /** Display name of who reyapped it */
   reyappByUid?: string;
   reyappByName?: string;
+  /** Edit tracking */
+  edited?: boolean;
+  editedAt?: number;
 }

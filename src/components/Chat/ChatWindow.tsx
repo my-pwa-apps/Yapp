@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ref, onValue } from 'firebase/database';
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
-import { useMessages, sendMessage, sendMediaMessage, markMessagesRead, setTyping } from '../../hooks/useMessages';
+import { useMessages, sendMessage, sendMediaMessage, markMessagesRead, setTyping, setEphemeralTTL, setEphemeralExpiry, purgeMessage } from '../../hooks/useMessages';
 import { membersToArray } from '../../hooks/useChats';
 import { compressImage, blobToDataURL } from '../../hooks/useMediaUpload';
 import { useChatEncryption, enableGroupEncryption } from '../../hooks/useE2EE';
@@ -98,6 +98,19 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
   // Media picker state
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
+
+  // Ephemeral message state
+  const [showEphemeralMenu, setShowEphemeralMenu] = useState(false);
+  const ephemeralTTL = chat.ephemeralTTL ?? 0;
+  const EPHEMERAL_OPTIONS = [
+    { label: 'Off', value: 0 },
+    { label: '10s', value: 10 },
+    { label: '30s', value: 30 },
+    { label: '1m', value: 60 },
+    { label: '5m', value: 300 },
+    { label: '1h', value: 3600 },
+    { label: '24h', value: 86400 },
+  ];
   const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -253,6 +266,36 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     }
   }, [messages, currentUid, chat.id, pageVisible]);
 
+  // Ephemeral: set expiry on messages once they are read by someone other than sender
+  useEffect(() => {
+    for (const msg of messages) {
+      if (!msg.ephemeralTTL || msg.ephemeralExpiry) continue;
+      const readByOthers = msg.readBy
+        ? Object.keys(msg.readBy).filter((uid) => uid !== msg.senderId).length
+        : 0;
+      if (readByOthers > 0) {
+        setEphemeralExpiry(chat.id, msg.id, msg.ephemeralTTL);
+      }
+    }
+  }, [messages, chat.id]);
+
+  // Ephemeral: purge expired messages
+  useEffect(() => {
+    const ephemeralMsgs = messages.filter((m) => m.ephemeralExpiry);
+    if (ephemeralMsgs.length === 0) return;
+    const checkExpiry = () => {
+      const now = Date.now();
+      for (const msg of ephemeralMsgs) {
+        if (msg.ephemeralExpiry && now >= msg.ephemeralExpiry) {
+          purgeMessage(chat.id, msg.id);
+        }
+      }
+    };
+    checkExpiry();
+    const intv = setInterval(checkExpiry, 2000);
+    return () => clearInterval(intv);
+  }, [messages, chat.id]);
+
   // Scroll to a specific message index in the list
   const scrollToMessageIndex = useCallback((index: number) => {
     const container = messagesContainerRef.current;
@@ -295,7 +338,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
       const enc = await encryptMessage(trimmed);
       if (enc) encryption = enc;
     }
-    await sendMessage(chat.id, currentUid, currentName, trimmed, encryption);
+    await sendMessage(chat.id, currentUid, currentName, trimmed, encryption, ephemeralTTL || undefined);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -458,6 +501,39 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
         {enablingE2EE && (
           <span className="e2ee-enabling" title="Enabling encryption...">🔄</span>
         )}
+        {/* Ephemeral timer toggle */}
+        <div className="ephemeral-wrapper">
+          <button
+            className={`icon-btn ${ephemeralTTL ? 'ephemeral-active' : ''}`}
+            title={ephemeralTTL ? `Disappearing messages: ${EPHEMERAL_OPTIONS.find(o => o.value === ephemeralTTL)?.label ?? ephemeralTTL + 's'}` : 'Disappearing messages: off'}
+            onClick={() => setShowEphemeralMenu(!showEphemeralMenu)}
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+            </svg>
+          </button>
+          {showEphemeralMenu && (
+            <div className="ephemeral-menu">
+              <div className="ephemeral-menu-title">Disappearing messages</div>
+              {EPHEMERAL_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  className={`ephemeral-option ${ephemeralTTL === opt.value ? 'active' : ''}`}
+                  onClick={() => {
+                    setEphemeralTTL(chat.id, opt.value);
+                    setShowEphemeralMenu(false);
+                    showToast(opt.value ? `Messages will disappear ${opt.label} after being read` : 'Disappearing messages turned off');
+                  }}
+                >
+                  {opt.label}
+                  {ephemeralTTL === opt.value && (
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="var(--accent)"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         {/* Search in chat — only when messages overflow */}
         {messagesScrollable && (
           <button className="icon-btn" title="Search in chat" onClick={() => { setShowSearch(!showSearch); setTimeout(() => searchInputRef.current?.focus(), 100); }}>
@@ -592,7 +668,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
           onSelect={async (gifUrl) => {
             setShowGifPicker(false);
             justSentRef.current = true;
-            await sendMediaMessage(chat.id, currentUid, currentName, 'gif', gifUrl, '🎬 GIF');
+            await sendMediaMessage(chat.id, currentUid, currentName, 'gif', gifUrl, '🎬 GIF', { ephemeralTTL: ephemeralTTL || undefined });
           }}
           onClose={() => setShowGifPicker(false)}
         />
@@ -602,7 +678,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
           onSelect={async (emoji) => {
             setShowStickerPicker(false);
             justSentRef.current = true;
-            await sendMediaMessage(chat.id, currentUid, currentName, 'sticker', emoji, emoji);
+            await sendMediaMessage(chat.id, currentUid, currentName, 'sticker', emoji, emoji, { ephemeralTTL: ephemeralTTL || undefined });
           }}
           onClose={() => setShowStickerPicker(false)}
         />
@@ -617,7 +693,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
             try {
               const dataUrl = await blobToDataURL(blob);
               justSentRef.current = true;
-              await sendMediaMessage(chat.id, currentUid, currentName, 'voice', dataUrl, '🎤 Voice message', { voiceDuration: duration });
+              await sendMediaMessage(chat.id, currentUid, currentName, 'voice', dataUrl, '🎤 Voice message', { voiceDuration: duration, ephemeralTTL: ephemeralTTL || undefined });
             } catch { /* ignore */ }
             setUploading(false);
           }}
@@ -626,6 +702,12 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
         />
       ) : (
         <div className="compose-bar">
+          {/* Ephemeral active badge */}
+          {ephemeralTTL > 0 && (
+            <div className="compose-ephemeral-badge" title={`Disappearing messages: ${EPHEMERAL_OPTIONS.find(o => o.value === ephemeralTTL)?.label}`}>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+            </div>
+          )}
           {/* Attachment menu */}
           <div className="attach-wrapper">
             <button
@@ -675,7 +757,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
               try {
                 const dataUrl = await compressImage(file);
                 justSentRef.current = true;
-                await sendMediaMessage(chat.id, currentUid, currentName, 'image', dataUrl, '📎 File');
+                await sendMediaMessage(chat.id, currentUid, currentName, 'image', dataUrl, '📎 File', { ephemeralTTL: ephemeralTTL || undefined });
               } catch { /* ignore */ }
               setUploading(false);
             }}

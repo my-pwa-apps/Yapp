@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useYappLikes, useReplies, toggleLike, deleteYapp, reyapp } from '../../hooks/useYapps';
+import { useYappLikes, useReplies, toggleLike, deleteYapp, reyapp, editYapp } from '../../hooks/useYapps';
 import type { Yapp, UserProfile } from '../../types';
 import { formatRelativeTime, formatDuration } from '../../utils';
 
@@ -71,6 +71,9 @@ const YappCardInner: React.FC<Props> = ({ yapp, currentUser, onOpenThread, onOpe
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [expanded, setExpanded] = useState(defaultExpanded ?? false);
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState('');
+  const editRef = useRef<HTMLTextAreaElement>(null);
 
   const MAX_INLINE_DEPTH = 3;
   const canExpandInline = yapp.replyCount > 0 && depth < MAX_INLINE_DEPTH;
@@ -100,6 +103,22 @@ const YappCardInner: React.FC<Props> = ({ yapp, currentUser, onOpenThread, onOpe
     if (busy) return;
     setBusy(true);
     try { await deleteYapp(yapp.id, yapp.parentId); } catch (e) { console.error('[YappCard] Delete failed:', e); } finally { setBusy(false); setShowMenu(false); setShowDeleteConfirm(false); }
+  };
+
+  const handleStartEdit = () => {
+    setEditText(yapp.text);
+    setEditing(true);
+    setShowMenu(false);
+    setTimeout(() => editRef.current?.focus(), 50);
+  };
+
+  const handleSaveEdit = async () => {
+    const trimmed = editText.trim();
+    if (!trimmed || trimmed === yapp.text) { setEditing(false); return; }
+    setBusy(true);
+    try { await editYapp(yapp.id, trimmed); } catch (e) { console.error('[YappCard] Edit failed:', e); }
+    setBusy(false);
+    setEditing(false);
   };
 
   return (
@@ -143,6 +162,7 @@ const YappCardInner: React.FC<Props> = ({ yapp, currentUser, onOpenThread, onOpe
                 </button>
                 {showMenu && (
                   <div className="yapp-dropdown">
+                    <button className="yapp-dropdown-edit" onClick={handleStartEdit} disabled={busy}>Edit yapp</button>
                     <button onClick={() => { setShowMenu(false); setShowDeleteConfirm(true); }} disabled={busy}>Delete yapp</button>
                   </div>
                 )}
@@ -165,10 +185,33 @@ const YappCardInner: React.FC<Props> = ({ yapp, currentUser, onOpenThread, onOpe
             </div>
           )}
 
-          {yapp.mediaType === 'sticker' ? (
+          {editing ? (
+            <div className="yapp-edit-form" onClick={(e) => e.stopPropagation()}>
+              <textarea
+                ref={editRef}
+                className="yapp-edit-input"
+                value={editText}
+                aria-label="Edit yapp"
+                onChange={(e) => setEditText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSaveEdit(); }
+                  if (e.key === 'Escape') setEditing(false);
+                }}
+                rows={3}
+                disabled={busy}
+              />
+              <div className="yapp-edit-actions">
+                <button className="yapp-btn yapp-btn-primary yapp-btn-xs" onClick={handleSaveEdit} disabled={busy}>Save</button>
+                <button className="yapp-btn yapp-btn-secondary yapp-btn-xs" onClick={() => setEditing(false)} disabled={busy}>Cancel</button>
+              </div>
+            </div>
+          ) : yapp.mediaType === 'sticker' ? (
             <div className="yapp-card-sticker">{yapp.text}</div>
           ) : (
-            <p className="yapp-card-text">{yapp.text}</p>
+            <p className="yapp-card-text">
+              {yapp.text}
+              {yapp.edited && <span className="yapp-edited-label"> (edited)</span>}
+            </p>
           )}
 
           {yapp.mediaType === 'voice' && yapp.mediaURL && (
