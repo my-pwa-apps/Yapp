@@ -1,6 +1,6 @@
 /* push-sw.js — Web Push event handler
    Imported by the PWA service worker via workbox importScripts.
-   SW_VERSION: 2 */
+   SW_VERSION: 3 */
 
 self.addEventListener('push', function (event) {
   if (!event.data) return;
