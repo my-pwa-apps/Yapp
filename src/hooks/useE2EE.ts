@@ -118,14 +118,16 @@ export function useChatEncryption(
     }
     if (resolvingRef.current === chat.id) return;
     resolvingRef.current = chat.id;
+    let cancelled = false;
     resolveChatKey(chat, currentUid, keys.privateKey)
       .then((key) => {
-        setChatKey(key);
+        if (!cancelled) setChatKey(key);
         resolvingRef.current = null;
       })
       .catch(() => {
         resolvingRef.current = null;
       });
+    return () => { cancelled = true; };
   }, [chat?.id, currentUid, keys, keyVersion]);
 
   /** Encrypt plaintext for the current chat. Returns null if E2EE is not available. */

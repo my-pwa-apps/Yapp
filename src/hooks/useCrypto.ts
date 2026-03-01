@@ -70,16 +70,14 @@ function idbClear(): Promise<void> {
 // ─── Base64 helpers ───────────────────────────────────────────────
 
 export function bufToBase64(buf: Uint8Array): string {
-  let s = '';
-  for (let i = 0; i < buf.length; i++) s += String.fromCharCode(buf[i]);
-  return btoa(s);
+  return btoa(String.fromCharCode(...buf));
 }
 
-export function base64ToBuf(b64: string): Uint8Array {
+export function base64ToBuf(b64: string): Uint8Array<ArrayBuffer> {
   const s = atob(b64);
   const buf = new Uint8Array(s.length);
   for (let i = 0; i < s.length; i++) buf[i] = s.charCodeAt(i);
-  return buf;
+  return buf as Uint8Array<ArrayBuffer>;
 }
 
 // ─── Key generation ───────────────────────────────────────────────
@@ -114,7 +112,7 @@ export async function importPublicKey(jwkStr: string): Promise<CryptoKey> {
 
 async function deriveFromPassword(
   password: string,
-  salt: Uint8Array
+  salt: Uint8Array<ArrayBuffer>
 ): Promise<CryptoKey> {
   const material = await crypto.subtle.importKey(
     'raw',

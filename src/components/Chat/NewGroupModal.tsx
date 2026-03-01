@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { searchUsers, createGroupChat } from '../../hooks/useChats';
 import { useAuth } from '../../contexts/AuthContext';
 import type { UserProfile } from '../../types';
@@ -69,9 +69,16 @@ export const NewGroupModal: React.FC<Props> = ({ currentUser, onClose, onGroupCr
     setCreating(false);
   };
 
+  // Close on Escape key
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
   return (
-    <div className="modal-overlay" onClick={onClose} onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" role="dialog" aria-modal="true" aria-label="New Group" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>New Group</h3>
           <button className="modal-close" onClick={onClose}>×</button>

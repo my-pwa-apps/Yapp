@@ -52,7 +52,7 @@ export const NotificationSettings: React.FC<Props> = ({ onClose, onPrefsChanged 
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal modal-sm" onClick={(e) => e.stopPropagation()}>
+      <div className="modal modal-sm" role="dialog" aria-modal="true" aria-label="Settings" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>Settings</h3>
           <button className="modal-close" onClick={onClose}>×</button>

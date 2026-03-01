@@ -180,7 +180,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
       if (!cancelled) setDecryptedMessages(result);
     })();
     return () => { cancelled = true; };
-  }, [messages, chatKey]);
+  }, [messages, chatKey, decryptMessage]);
 
 
 
@@ -194,6 +194,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     initialScrollDone.current = false;
     prevMessageCount.current = 0;
     setDecryptedMessages([]);
+    setText('');
     setShowSearch(false);
     setSearchQuery('');
     setSearchResults([]);
@@ -694,7 +695,9 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
               const dataUrl = await blobToDataURL(blob);
               justSentRef.current = true;
               await sendMediaMessage(chat.id, currentUid, currentName, 'voice', dataUrl, '🎤 Voice message', { voiceDuration: duration, ephemeralTTL: ephemeralTTL || undefined });
-            } catch { /* ignore */ }
+            } catch (err) {
+              console.warn('[ChatWindow] Voice upload failed:', err);
+            }
             setUploading(false);
           }}
           onCancel={() => setShowVoiceRecorder(false)}
@@ -758,7 +761,9 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
                 const dataUrl = await compressImage(file);
                 justSentRef.current = true;
                 await sendMediaMessage(chat.id, currentUid, currentName, 'image', dataUrl, '📎 File', { ephemeralTTL: ephemeralTTL || undefined });
-              } catch { /* ignore */ }
+              } catch (err) {
+                console.warn('[ChatWindow] Image upload failed:', err);
+              }
               setUploading(false);
             }}
           />
@@ -767,6 +772,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
             ref={inputRef}
             className="compose-input"
             placeholder={uploading ? 'Uploading...' : 'Type a message'}
+            aria-label="Type a message"
             value={text}
             onChange={(e) => handleTyping(e.target.value)}
             onKeyDown={handleKeyDown}

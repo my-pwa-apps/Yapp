@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { ContactRequest, UserProfile } from '../../types';
 import { acceptContactRequest, rejectContactRequest } from '../../hooks/useContactRequests';
 import type { GroupInvite, GroupJoinRequest } from '../../hooks/useGroupInvites';
@@ -86,9 +86,16 @@ export const ContactRequestsModal: React.FC<Props> = ({
 
   const totalCount = requests.length + groupInvites.length + joinRequests.length;
 
+  // Close on Escape key
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
   return (
-    <div className="modal-overlay" onClick={onClose} onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" role="dialog" aria-modal="true" aria-label="Notifications" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>Notifications</h3>
           <button className="modal-close" onClick={onClose}>×</button>

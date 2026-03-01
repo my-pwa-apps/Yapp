@@ -52,7 +52,7 @@ export interface Message {
   senderName: string;
   text: string;
   timestamp: number;
-  readBy: Record<string, boolean>;
+  readBy?: Record<string, boolean>;
   type: 'text' | 'image' | 'gif' | 'sticker' | 'voice' | 'system';
   mediaURL?: string;
   voiceDuration?: number;

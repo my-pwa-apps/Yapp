@@ -54,10 +54,6 @@ export function usePushSubscription(uid: string | undefined) {
 
     return () => {
       cancelled = true;
-      // Clean up subscription reference on sign-out
-      if (subKeyRef.current && uid) {
-        remove(ref(db, `pushSubscriptions/${uid}/${subKeyRef.current}`)).catch(() => {});
-      }
     };
   }, [uid]);
 }

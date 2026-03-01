@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -228,7 +228,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       setLoading(false);
     });
-    return () => unsub();
+    return () => {
+      unsub();
+      presenceUnsubRef.current?.();
+      presenceUnsubRef.current = null;
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
@@ -396,12 +400,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const contextValue = useMemo(() => ({
+    user, profile, loading, signIn, signInWithGoogle, signUp, signOut,
+    updateStatus, updateDisplayName, updatePhotoURL, changePassword,
+    cryptoKeys, needsKeyRecovery, recoverKeys,
+  }), [user, profile, loading, cryptoKeys, needsKeyRecovery]);
+
   return (
-    <AuthContext.Provider value={{
-      user, profile, loading, signIn, signInWithGoogle, signUp, signOut,
-      updateStatus, updateDisplayName, updatePhotoURL, changePassword,
-      cryptoKeys, needsKeyRecovery, recoverKeys,
-    }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

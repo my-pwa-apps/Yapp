@@ -89,12 +89,15 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
     setIsVideoOff(false);
   }, []);
 
-  // Listen for incoming calls
+  // Listen for incoming calls — use a ref for callState to avoid re-subscribing on every state change
+  const callStateRef = useRef(callState);
+  callStateRef.current = callState;
+
   useEffect(() => {
     if (!currentUid) return;
     const callsRef = ref(db, 'calls');
     const unsub = onValue(callsRef, (snap) => {
-      if (callState !== 'idle') return;
+      if (callStateRef.current !== 'idle') return;
       snap.forEach((child) => {
         const data = { ...child.val(), id: child.key! } as CallData;
         if (
@@ -105,13 +108,14 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
           setCallData(data);
           callIdRef.current = data.id;
           setCallState('incoming');
+          return true; // break forEach after first match
         }
       });
     }, (err) => {
       console.warn('[useCall] Cannot listen for calls:', err.message);
     });
     return () => unsub();
-  }, [currentUid, callState]);
+  }, [currentUid]);
 
   // While ringing on receiver side, watch for caller hanging up
   useEffect(() => {

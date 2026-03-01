@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ref, onValue, query, limitToLast } from 'firebase/database';
 import { db } from '../firebase';
 import type { Chat } from '../types';
@@ -9,7 +9,7 @@ import type { Chat } from '../types';
  */
 export function useUnreadCounts(chats: Chat[], currentUid: string | undefined) {
   const [counts, setCounts] = useState<Record<string, number>>({});
-  const chatIds = chats.map(c => c.id).sort().join(',');
+  const chatIds = useMemo(() => chats.map(c => c.id).sort().join(','), [chats]);
 
   useEffect(() => {
     if (!currentUid || !chatIds) return;

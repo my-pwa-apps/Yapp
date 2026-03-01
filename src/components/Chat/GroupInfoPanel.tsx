@@ -31,6 +31,13 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
   const [confirmRemoveUid, setConfirmRemoveUid] = useState<string | null>(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
 
+  // Close on Escape key
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
   const members = membersToArray(chat.members);
   const isAdmin = isGroupAdmin(chat, currentUid);
   const pendingMembers = chat.pendingMembers || {};
@@ -146,7 +153,7 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
 
   return (
     <div className="profile-overlay" onClick={onClose}>
-      <div className="profile-panel" onClick={(e) => e.stopPropagation()}>
+      <div className="profile-panel" role="dialog" aria-modal="true" aria-label="Group Info" onClick={(e) => e.stopPropagation()}>
         <div className="profile-header">
           <button className="back-btn d-flex" onClick={onClose} aria-label="Close group info">
             <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">

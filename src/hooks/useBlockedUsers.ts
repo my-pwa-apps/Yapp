@@ -5,6 +5,7 @@ import {
   set,
   remove,
   get,
+  update,
 } from 'firebase/database';
 import { db } from '../firebase';
 
@@ -65,29 +66,27 @@ export async function isBlocked(uid1: string, uid2: string): Promise<boolean> {
  * and cleans up pending contact requests.
  */
 export async function blockUser(currentUid: string, targetUid: string): Promise<void> {
-  // Add to blocked lists (both directions for fast lookup)
-  await set(ref(db, `blockedUsers/${currentUid}/${targetUid}`), true);
-  await set(ref(db, `blockedBy/${targetUid}/${currentUid}`), true);
-
-  // Remove from contacts (both directions)
-  await remove(ref(db, `contacts/${currentUid}/${targetUid}`));
-  await remove(ref(db, `contacts/${targetUid}/${currentUid}`));
-
-  // Unfollow both directions
-  await remove(ref(db, `yappFollowing/${currentUid}/${targetUid}`));
-  await remove(ref(db, `yappFollowing/${targetUid}/${currentUid}`));
-  await remove(ref(db, `yappFollowers/${currentUid}/${targetUid}`));
-  await remove(ref(db, `yappFollowers/${targetUid}/${currentUid}`));
-
-  // Remove pending contact requests (both directions)
-  await remove(ref(db, `contactRequests/${currentUid}/${targetUid}`));
-  await remove(ref(db, `contactRequests/${targetUid}/${currentUid}`));
+  const updates: Record<string, unknown> = {
+    [`blockedUsers/${currentUid}/${targetUid}`]: true,
+    [`blockedBy/${targetUid}/${currentUid}`]: true,
+    [`contacts/${currentUid}/${targetUid}`]: null,
+    [`contacts/${targetUid}/${currentUid}`]: null,
+    [`yappFollowing/${currentUid}/${targetUid}`]: null,
+    [`yappFollowing/${targetUid}/${currentUid}`]: null,
+    [`yappFollowers/${currentUid}/${targetUid}`]: null,
+    [`yappFollowers/${targetUid}/${currentUid}`]: null,
+    [`contactRequests/${currentUid}/${targetUid}`]: null,
+    [`contactRequests/${targetUid}/${currentUid}`]: null,
+  };
+  await update(ref(db), updates);
 }
 
 /**
  * Unblock a user.
  */
 export async function unblockUser(currentUid: string, targetUid: string): Promise<void> {
-  await remove(ref(db, `blockedUsers/${currentUid}/${targetUid}`));
-  await remove(ref(db, `blockedBy/${targetUid}/${currentUid}`));
+  await update(ref(db), {
+    [`blockedUsers/${currentUid}/${targetUid}`]: null,
+    [`blockedBy/${targetUid}/${currentUid}`]: null,
+  });
 }

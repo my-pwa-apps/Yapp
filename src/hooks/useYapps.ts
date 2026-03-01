@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ref,
   onValue,
@@ -125,39 +125,39 @@ export function useYappLikes(yappId: string | undefined, uid: string | undefined
 /* ─── Contacts hook ─── */
 
 export function useContacts(uid: string | undefined) {
-  const [contacts, setContacts] = useState<Set<string>>(new Set());
+  const [contactIds, setContactIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!uid) return;
     const contactsRef = ref(db, `contacts/${uid}`);
     const unsub = onValue(contactsRef, (snap) => {
-      const ids = new Set<string>();
-      snap.forEach((child) => { ids.add(child.key!); });
-      setContacts(ids);
+      const ids: string[] = [];
+      snap.forEach((child) => { ids.push(child.key!); });
+      setContactIds(ids);
     });
     return () => unsub();
   }, [uid]);
 
-  return contacts;
+  return useMemo(() => new Set(contactIds), [contactIds]);
 }
 
 /* ─── Following hook ─── */
 
 export function useFollowing(uid: string | undefined) {
-  const [following, setFollowing] = useState<Set<string>>(new Set());
+  const [followingIds, setFollowingIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!uid) return;
     const followRef = ref(db, `yappFollowing/${uid}`);
     const unsub = onValue(followRef, (snap) => {
-      const ids = new Set<string>();
-      snap.forEach((child) => { ids.add(child.key!); });
-      setFollowing(ids);
+      const ids: string[] = [];
+      snap.forEach((child) => { ids.push(child.key!); });
+      setFollowingIds(ids);
     });
     return () => unsub();
   }, [uid]);
 
-  return following;
+  return useMemo(() => new Set(followingIds), [followingIds]);
 }
 
 export function useFollowerCount(uid: string | undefined) {
@@ -286,12 +286,16 @@ export async function reyapp(
 export async function followUser(uid: string, targetUid: string): Promise<boolean> {
   const blocked = await isBlocked(uid, targetUid);
   if (blocked) return false;
-  await set(ref(db, `yappFollowing/${uid}/${targetUid}`), true);
-  await set(ref(db, `yappFollowers/${targetUid}/${uid}`), true);
+  await update(ref(db), {
+    [`yappFollowing/${uid}/${targetUid}`]: true,
+    [`yappFollowers/${targetUid}/${uid}`]: true,
+  });
   return true;
 }
 
 export async function unfollowUser(uid: string, targetUid: string): Promise<void> {
-  await remove(ref(db, `yappFollowing/${uid}/${targetUid}`));
-  await remove(ref(db, `yappFollowers/${targetUid}/${uid}`));
+  await update(ref(db), {
+    [`yappFollowing/${uid}/${targetUid}`]: null,
+    [`yappFollowers/${targetUid}/${uid}`]: null,
+  });
 }

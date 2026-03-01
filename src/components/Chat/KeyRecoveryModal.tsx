@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface Props {
   onRecover: (password: string) => Promise<void>;
@@ -22,9 +22,16 @@ export const KeyRecoveryModal: React.FC<Props> = ({ onRecover, onSkip }) => {
     setLoading(false);
   };
 
+  // Close on Escape key
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onSkip(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onSkip]);
+
   return (
-    <div className="modal-overlay">
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay" onClick={onSkip}>
+      <div className="modal" role="dialog" aria-modal="true" aria-label="Unlock Encryption" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>Unlock Encryption</h3>
         </div>

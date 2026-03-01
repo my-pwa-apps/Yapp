@@ -76,6 +76,7 @@ export const LoginPage: React.FC = () => {
             <input
               type="text"
               placeholder="Display name"
+              aria-label="Display name"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               className="login-input"
@@ -84,6 +85,7 @@ export const LoginPage: React.FC = () => {
           <input
             type="email"
             placeholder="Email address"
+            aria-label="Email address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -92,13 +94,14 @@ export const LoginPage: React.FC = () => {
           <input
             type="password"
             placeholder="Password"
+            aria-label="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={6}
             className="login-input"
           />
-          {error && <p className="login-error">{error}</p>}
+          {error && <p className="login-error" role="alert">{error}</p>}
           <button type="submit" className="login-btn" disabled={loading}>
             {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
           </button>

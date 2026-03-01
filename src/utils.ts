@@ -4,6 +4,7 @@
 
 /** Format seconds as m:ss */
 export function formatDuration(secs: number): string {
+  if (!Number.isFinite(secs) || secs < 0) return '0:00';
   const m = Math.floor(secs / 60);
   const s = Math.floor(secs % 60);
   return `${m}:${s.toString().padStart(2, '0')}`;
@@ -11,7 +12,7 @@ export function formatDuration(secs: number): string {
 
 /** Format a "last seen" relative time string */
 export function formatLastSeen(lastSeen: number): string {
-  const diff = Date.now() - lastSeen;
+  const diff = Math.max(0, Date.now() - lastSeen);
   if (diff < 60_000) return 'seen just now';
   if (diff < 3_600_000) return `seen ${Math.floor(diff / 60_000)}m ago`;
   if (diff < 86_400_000) return `seen ${Math.floor(diff / 3_600_000)}h ago`;
@@ -20,7 +21,7 @@ export function formatLastSeen(lastSeen: number): string {
 
 /** Format a timestamp as a short relative time (1m, 2h, 3d, etc.) */
 export function formatRelativeTime(timestamp: number): string {
-  const diff = Date.now() - timestamp;
+  const diff = Math.max(0, Date.now() - timestamp);
   if (diff < 60_000) return 'now';
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m`;
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h`;
@@ -30,13 +31,13 @@ export function formatRelativeTime(timestamp: number): string {
 
 /** Format a timestamp as HH:MM for message bubbles */
 export function formatMessageTime(ts: number | undefined): string {
-  if (ts == null) return '';
+  if (ts === undefined || ts === null) return '';
   return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 /** Format a timestamp for chat list sidebar: time today, weekday this week, else short date */
 export function formatChatListTime(ts: number | undefined): string {
-  if (ts == null) return '';
+  if (ts === undefined || ts === null) return '';
   const date = new Date(ts);
   const now = new Date();
   const diff = now.getTime() - date.getTime();

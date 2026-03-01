@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { AvatarPicker } from './AvatarPicker';
 import type { UserProfile } from '../../types';
@@ -55,9 +55,16 @@ export const ProfilePanel: React.FC<Props> = ({ profile, onClose }) => {
     setPwLoading(false);
   };
 
+  // Close on Escape key
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
   return (
     <div className="profile-overlay" onClick={onClose}>
-      <div className="profile-panel" onClick={(e) => e.stopPropagation()}>
+      <div className="profile-panel" role="dialog" aria-modal="true" aria-label="Profile" onClick={(e) => e.stopPropagation()}>
         <div className="profile-header">
           <button className="back-btn d-flex" onClick={onClose} aria-label="Close profile">
             <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">

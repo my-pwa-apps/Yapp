@@ -95,9 +95,13 @@ export const AppLayout: React.FC = () => {
       return;
     }
     let cancelled = false;
-    Promise.all(addableUids.map((uid) => getUserProfile(uid))).then((profiles) => {
+    Promise.allSettled(addableUids.map((uid) => getUserProfile(uid))).then((results) => {
       if (cancelled) return;
-      setAddableMembers(profiles.filter((p): p is UserProfile => p !== null));
+      const profiles = results
+        .filter((r): r is PromiseFulfilledResult<UserProfile | null> => r.status === 'fulfilled')
+        .map(r => r.value)
+        .filter((p): p is UserProfile => p !== null);
+      setAddableMembers(profiles);
     });
     return () => { cancelled = true; };
   }, [call.callState, call.callData, activeChat, user?.uid]);
@@ -115,8 +119,8 @@ export const AppLayout: React.FC = () => {
 
   // Clear search when list no longer scrollable
   useEffect(() => {
-    if (!chatListScrollable) setSidebarSearch('');
-  }, [chatListScrollable]);
+    if (!chatListScrollable && sidebarSearch) setSidebarSearch('');
+  }, [chatListScrollable, sidebarSearch]);
 
   // Use ref so notification effect always reads current activeChat without re-running
   const activeChatRef = useRef(activeChat);
@@ -203,6 +207,13 @@ export const AppLayout: React.FC = () => {
     setShowSidebar(true);
     setActiveChat(null);
   }, []);
+
+  // Stable callback for starting calls
+  const handleStartCall = useCallback((callType: 'audio' | 'video') => {
+    if (!activeChat) return;
+    const members = membersToArray(activeChat.members);
+    call.startCall(activeChat.id, callType, members);
+  }, [activeChat, call.startCall]);
 
   // Use refs for stable service worker handler to avoid re-registering on every render
   const callRef = useRef(call);
@@ -346,10 +357,7 @@ export const AppLayout: React.FC = () => {
             currentUid={user?.uid ?? ''}
             currentName={profile?.displayName ?? ''}
             onBack={handleBack}
-            onStartCall={(callType) => {
-              const members = membersToArray(activeChat.members);
-              call.startCall(activeChat.id, callType, members);
-            }}
+            onStartCall={handleStartCall}
             onShowGroupInfo={() => setShowGroupInfo(true)}
           />
         ) : (
@@ -490,7 +498,7 @@ export const AppLayout: React.FC = () => {
         />
       )}
       {toastMsg && (
-        <div className="app-toast" onClick={() => setToastMsg(null)}>
+        <div className="app-toast" role="alert" aria-live="polite" onClick={() => setToastMsg(null)}>
           {toastMsg}
         </div>
       )}
