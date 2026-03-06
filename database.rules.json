@@ -138,7 +138,10 @@
     "pushSubscriptions": {
       "$uid": {
         ".read": "auth != null",
-        ".write": "auth != null && auth.uid === $uid"
+        ".write": "auth != null && auth.uid === $uid",
+        "$subHash": {
+          ".validate": "newData.hasChildren(['endpoint', 'keys']) && newData.child('endpoint').isString() && newData.child('keys').hasChildren(['p256dh', 'auth'])"
+        }
       }
     },
 
