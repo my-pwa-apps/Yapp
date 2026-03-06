@@ -12,7 +12,7 @@ const Toggle: React.FC<ToggleProps> = ({ on, onToggle, label }) => (
     className={`notif-toggle ${on ? 'on' : 'off'}`}
     onClick={onToggle}
     role="switch"
-    aria-checked={on ? 'true' : 'false'}
+    aria-checked={on}
     aria-label={label}
   >
     <span className="notif-toggle-thumb" />
