@@ -126,6 +126,7 @@ export const AvatarPicker: React.FC<Props> = ({ currentPhotoURL, displayName, on
             accept="image/*"
             style={{ display: 'none' }}
             onChange={handleFileUpload}
+            aria-label="Upload profile picture"
           />
 
           {/* Default avatars grid */}
