@@ -11,7 +11,7 @@ import {
   approvePendingMember,
   rejectPendingMember,
 } from '../../hooks/useChats';
-import type { Chat, UserProfile, PendingMember } from '../../types';
+import type { Chat, UserProfile } from '../../types';
 
 interface Props {
   chat: Chat;
@@ -137,9 +137,6 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
     }
     setActionLoading(null);
   };
-
-  // Pending invites for the current user (they were invited by admin)
-  const myPendingInvite = pendingMembers[currentUid]?.type === 'invite' ? pendingMembers[currentUid] : null;
 
   // Join requests that admins need to approve
   const joinRequests = Object.entries(pendingMembers).filter(

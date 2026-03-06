@@ -2,8 +2,6 @@ import { useEffect, useState } from 'react';
 import {
   ref,
   onValue,
-  set,
-  remove,
   get,
   update,
 } from 'firebase/database';

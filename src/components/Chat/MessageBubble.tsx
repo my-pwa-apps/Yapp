@@ -24,7 +24,7 @@ interface Props {
   onForward?: (message: Message) => void;
 }
 
-export const MessageBubble = React.memo(function MessageBubble({ message, isMine, showSender, memberCount, highlight, onForward }: Props) {
+export const MessageBubble = React.memo(function MessageBubble({ message, isMine, showSender, memberCount: _memberCount, highlight, onForward }: Props) {
   const [showMenu, setShowMenu] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState('');

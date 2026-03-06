@@ -167,7 +167,7 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
     callId: string,
     remoteUid: string,
     stream: MediaStream,
-    isCaller: boolean
+    _isCaller: boolean
   ): RTCPeerConnection => {
     const pc = new RTCPeerConnection(ICE_SERVERS);
 

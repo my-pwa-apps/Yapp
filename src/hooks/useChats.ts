@@ -243,7 +243,7 @@ export async function requestToJoinGroup(chatId: string, uid: string, userName: 
 }
 
 /** Approve a pending member (admin approves a join request, or user accepts an invite) */
-export async function approvePendingMember(chatId: string, uid: string, approverName: string, memberName: string) {
+export async function approvePendingMember(chatId: string, uid: string, _approverName: string, memberName: string) {
   // Write members and pendingMembers separately so security rules at each path are evaluated correctly
   await set(ref(db, `chats/${chatId}/members/${uid}`), true);
   await set(ref(db, `chats/${chatId}/pendingMembers/${uid}`), null);
