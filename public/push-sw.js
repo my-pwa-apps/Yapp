@@ -81,6 +81,8 @@ self.addEventListener('notificationclick', function (event) {
         var url = '/Yapp/';
         if (msg && msg.type === 'ANSWER_CALL') {
           url += '?answerCall=' + encodeURIComponent(msg.callId);
+        } else if (msg && msg.type === 'OPEN_CHAT') {
+          url += '?openChat=' + encodeURIComponent(msg.chatId);
         }
         return self.clients.openWindow(url);
       })

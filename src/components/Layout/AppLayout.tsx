@@ -252,6 +252,22 @@ export const AppLayout: React.FC = () => {
     }
   }, [call.callState, call.callData, call.acceptCall]);
 
+  // Handle cold-start: if app was opened via notification with ?openChat= param
+  const openChatHandledRef = useRef(false);
+  useEffect(() => {
+    if (openChatHandledRef.current || loading) return;
+    const params = new URLSearchParams(window.location.search);
+    const openChatId = params.get('openChat');
+    if (openChatId) {
+      const chat = chats.find((c) => c.id === openChatId);
+      if (chat) {
+        openChatHandledRef.current = true;
+        handleSelectChat(chat);
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+  }, [chats, loading, handleSelectChat]);
+
   // Keep activeChat in sync with live data
   const activeChatIdRef = useRef(activeChat?.id);
   activeChatIdRef.current = activeChat?.id;
