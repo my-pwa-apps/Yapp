@@ -229,7 +229,7 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
             setConfirmAction({ type: 'delete', chatId: contextMenu.chatId, label });
             setContextMenu(null);
           }}>
-            {chats.find(c => c.id === contextMenu.chatId)?.type === 'group' ? 'Leave group' : 'Delete chat'}
+            {chats.find(c => c.id === contextMenu.chatId)?.type === 'group' ? 'Leave' : 'Delete'}
           </button>
         </div>
       )}

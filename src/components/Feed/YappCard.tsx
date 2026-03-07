@@ -162,8 +162,8 @@ const YappCardInner: React.FC<Props> = ({ yapp, currentUser, onOpenThread, onOpe
                 </button>
                 {showMenu && (
                   <div className="yapp-dropdown">
-                    <button className="yapp-dropdown-edit" onClick={handleStartEdit} disabled={busy}>Edit yapp</button>
-                    <button onClick={() => { setShowMenu(false); setShowDeleteConfirm(true); }} disabled={busy}>Delete yapp</button>
+                      <button className="yapp-dropdown-edit" onClick={handleStartEdit} disabled={busy}>Edit</button>
+                      <button onClick={() => { setShowMenu(false); setShowDeleteConfirm(true); }} disabled={busy}>Delete</button>
                   </div>
                 )}
               </div>
@@ -191,7 +191,7 @@ const YappCardInner: React.FC<Props> = ({ yapp, currentUser, onOpenThread, onOpe
                 ref={editRef}
                 className="yapp-edit-input"
                 value={editText}
-                aria-label="Edit yapp"
+                aria-label="Edit post"
                 onChange={(e) => setEditText(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSaveEdit(); }
