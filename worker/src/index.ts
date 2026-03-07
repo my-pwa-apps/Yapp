@@ -9,6 +9,24 @@ interface Env {
   VAPID_PRIVATE_JWK: string;   // JWK JSON string
   VAPID_PUBLIC_KEY: string;     // base64url 65-byte uncompressed public key
   PUSH_API_KEY: string;         // shared API key
+  ALLOWED_ORIGINS?: string;     // comma-separated allowed origins (default: '*')
+}
+
+// ─── Simple in-memory rate limiter ────────────────────────────
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_WINDOW = 60_000; // 1 minute
+const RATE_LIMIT_MAX = 30;        // max requests per window per IP
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT_MAX) return false;
+  entry.count++;
+  return true;
 }
 
 interface PushSubscriptionJSON {
@@ -32,40 +50,48 @@ interface PushRequest {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    const cors = corsHeaders(request, env);
+
     // CORS preflight
     if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: corsHeaders() });
+      return new Response(null, { status: 204, headers: cors });
     }
 
     const url = new URL(request.url);
 
     // Health check
     if (url.pathname === '/' && request.method === 'GET') {
-      return Response.json({ status: 'ok' }, { headers: corsHeaders() });
+      return Response.json({ status: 'ok' }, { headers: cors });
     }
 
     // Push endpoint
     if (url.pathname === '/push' && request.method === 'POST') {
+      // Rate limit by IP
+      const clientIp = request.headers.get('CF-Connecting-IP') || 'unknown';
+      if (!checkRateLimit(clientIp)) {
+        return Response.json({ error: 'Rate limit exceeded' }, { status: 429, headers: cors });
+      }
+
       // Verify API key
       const apiKey = request.headers.get('X-API-Key');
       if (!apiKey || apiKey !== env.PUSH_API_KEY) {
-        return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders() });
+        return Response.json({ error: 'Unauthorized' }, { status: 401, headers: cors });
       }
 
       try {
         const body = (await request.json()) as PushRequest;
         if (!body.subscriptions?.length || !body.payload) {
-          return Response.json({ error: 'Missing subscriptions or payload' }, { status: 400, headers: corsHeaders() });
+          return Response.json({ error: 'Missing subscriptions or payload' }, { status: 400, headers: cors });
         }
 
         const results = await sendPushNotifications(body, env);
-        return Response.json(results, { headers: corsHeaders() });
+        return Response.json(results, { headers: cors });
       } catch (err) {
-        return Response.json({ error: String(err) }, { status: 500, headers: corsHeaders() });
+        return Response.json({ error: String(err) }, { status: 500, headers: cors });
       }
     }
 
-    return Response.json({ error: 'Not found' }, { status: 404, headers: corsHeaders() });
+    return Response.json({ error: 'Not found' }, { status: 404, headers: cors });
   },
 } satisfies ExportedHandler<Env>;
 
@@ -263,10 +289,22 @@ function concat(...arrays: Uint8Array[]): Uint8Array {
 
 // ─── CORS ────────────────────────────────────────────────────
 
-function corsHeaders(): Record<string, string> {
+function corsHeaders(request: Request, env: Env): Record<string, string> {
+  const origin = request.headers.get('Origin') || '';
+  const allowedRaw = env.ALLOWED_ORIGINS || '*';
+
+  let allowOrigin = '';
+  if (allowedRaw === '*') {
+    allowOrigin = '*';
+  } else {
+    const allowedList = allowedRaw.split(',').map((o) => o.trim());
+    allowOrigin = allowedList.includes(origin) ? origin : allowedList[0];
+  }
+
   return {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
+    'Vary': 'Origin',
   };
 }

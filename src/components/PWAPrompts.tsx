@@ -49,7 +49,7 @@ export const PWAPrompts: React.FC = () => {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
-    onRegisteredSW(swUrl, r) {
+    onRegisteredSW(_swUrl, r) {
       // Check for updates every 60 seconds
       if (r) {
         setInterval(() => { r.update(); }, 60_000);

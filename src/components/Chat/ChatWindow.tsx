@@ -697,6 +697,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
               await sendMediaMessage(chat.id, currentUid, currentName, 'voice', dataUrl, '🎤 Voice message', { voiceDuration: duration, ephemeralTTL: ephemeralTTL || undefined });
             } catch (err) {
               console.warn('[ChatWindow] Voice upload failed:', err);
+              showToast('Voice message failed to send');
             }
             setUploading(false);
           }}
@@ -763,6 +764,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
                 await sendMediaMessage(chat.id, currentUid, currentName, 'image', dataUrl, '📎 File', { ephemeralTTL: ephemeralTTL || undefined });
               } catch (err) {
                 console.warn('[ChatWindow] Image upload failed:', err);
+                showToast('Image failed to send');
               }
               setUploading(false);
             }}

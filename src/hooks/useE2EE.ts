@@ -122,9 +122,11 @@ export function useChatEncryption(
     resolveChatKey(chat, currentUid, keys.privateKey)
       .then((key) => {
         if (!cancelled) setChatKey(key);
-        resolvingRef.current = null;
       })
-      .catch(() => {
+      .catch((e) => {
+        console.warn('[E2EE] Key resolution failed:', e);
+      })
+      .finally(() => {
         resolvingRef.current = null;
       });
     return () => { cancelled = true; };

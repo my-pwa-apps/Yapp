@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { ref, set, remove } from 'firebase/database';
+import { ref, set } from 'firebase/database';
 import { db } from '../firebase';
 import { VAPID_PUBLIC_KEY } from '../pushConfig';
 

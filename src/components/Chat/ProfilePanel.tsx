@@ -152,14 +152,17 @@ export const ProfilePanel: React.FC<Props> = ({ profile, onClose }) => {
               <input
                 type="password" placeholder="Current password" className="modal-input"
                 value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} required
+                aria-label="Current password"
               />
               <input
                 type="password" placeholder="New password" className="modal-input"
                 value={newPw} onChange={(e) => setNewPw(e.target.value)} required minLength={6}
+                aria-label="New password"
               />
               <input
                 type="password" placeholder="Confirm new password" className="modal-input"
                 value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} required minLength={6}
+                aria-label="Confirm new password"
               />
               {pwError && <p className="login-error" style={{ margin: '4px 0' }}>{pwError}</p>}
               {pwSuccess && <p className="modal-success">{pwSuccess}</p>}
