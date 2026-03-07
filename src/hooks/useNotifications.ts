@@ -113,6 +113,7 @@ export function useNotifications() {
   const notifyGroupInvite = useCallback((groupName: string, invitedBy: string) => {
     const prefs = prefsRef.current;
     if (!prefs.enabled || !prefs.groupInvites) return;
+    if (document.hasFocus()) return;
     showNotification(
       'Group Invite',
       `${invitedBy} invited you to "${groupName}"`,
@@ -124,6 +125,7 @@ export function useNotifications() {
   const notifyJoinRequest = useCallback((groupName: string, fromName: string) => {
     const prefs = prefsRef.current;
     if (!prefs.enabled || !prefs.joinRequests) return;
+    if (document.hasFocus()) return;
     showNotification(
       'Join Request',
       `${fromName} wants to join "${groupName}"`,
@@ -135,6 +137,7 @@ export function useNotifications() {
   const notifyContactRequest = useCallback((fromName: string, fromEmail: string) => {
     const prefs = prefsRef.current;
     if (!prefs.enabled || !prefs.contactRequests) return;
+    if (document.hasFocus()) return;
     showNotification(
       'Contact Request',
       `${fromName} (${fromEmail}) wants to connect`,
@@ -146,6 +149,8 @@ export function useNotifications() {
   const notifyIncomingCall = useCallback((callerName: string, callType: 'audio' | 'video', callId: string) => {
     const prefs = prefsRef.current;
     if (!prefs.enabled) return;
+    // Don't show OS notification when app is focused — the in-app call UI handles it
+    if (document.hasFocus()) return;
     const icon = callType === 'video' ? '📹' : '📞';
     showNotification(
       `${icon} Incoming ${callType} call`,

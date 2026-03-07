@@ -1,6 +1,6 @@
 /* push-sw.js — Web Push event handler
    Imported by the PWA service worker via workbox importScripts.
-   SW_VERSION: 3 */
+   SW_VERSION: 4 */
 
 self.addEventListener('push', function (event) {
   if (!event.data) return;
@@ -33,7 +33,21 @@ self.addEventListener('push', function (event) {
     ];
   }
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  // Skip notification if a focused Yapp window exists (app is in foreground)
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then(function (clientList) {
+        for (var i = 0; i < clientList.length; i++) {
+          if (clientList[i].url.indexOf('/Yapp') !== -1 && clientList[i].focused) {
+            // App is focused — forward push data to the app, skip OS notification
+            clientList[i].postMessage({ type: 'PUSH_RECEIVED', payload: payload });
+            return;
+          }
+        }
+        return self.registration.showNotification(title, options);
+      })
+  );
 });
 
 self.addEventListener('notificationclick', function (event) {

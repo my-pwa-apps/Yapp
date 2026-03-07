@@ -222,6 +222,7 @@ export const AppLayout: React.FC = () => {
   chatsRef.current = chats;
 
   // Handle notification click — open the right chat or answer/decline a call
+  const pendingAnswerCallIdRef = useRef<string | null>(null);
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       if (event.data?.type === 'OPEN_CHAT' && event.data.chatId) {
@@ -230,6 +231,9 @@ export const AppLayout: React.FC = () => {
       } else if (event.data?.type === 'ANSWER_CALL') {
         if (callRef.current.callState === 'incoming') {
           callRef.current.acceptCall();
+        } else {
+          // Call state not yet 'incoming' — store pending answer for when it arrives
+          pendingAnswerCallIdRef.current = event.data.callId;
         }
       } else if (event.data?.type === 'DECLINE_CALL') {
         if (callRef.current.callState === 'incoming') {
@@ -245,10 +249,14 @@ export const AppLayout: React.FC = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const answerCallId = params.get('answerCall');
-    if (answerCallId && call.callState === 'incoming' && call.callData?.id === answerCallId) {
+    const pendingId = answerCallId || pendingAnswerCallIdRef.current;
+    if (pendingId && call.callState === 'incoming' && call.callData?.id === pendingId) {
+      pendingAnswerCallIdRef.current = null;
       call.acceptCall();
-      // Clean up the URL param
-      window.history.replaceState({}, '', window.location.pathname);
+      // Clean up the URL param if present
+      if (answerCallId) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
     }
   }, [call.callState, call.callData, call.acceptCall]);
 
