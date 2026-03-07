@@ -61,7 +61,10 @@
   border-radius: 50%;
   display: flex;
   align-items: center;
+  justify-content: center;
   transition: background 0.2s;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .icon-btn:hover {
@@ -433,7 +436,7 @@
 /* Message context menu */
 .message-context-menu {
   position: absolute;
-  top: 100%;
+  bottom: 100%;
   right: 0;
   background: var(--bg-modal);
   border: 1px solid var(--border);
@@ -445,9 +448,10 @@
 }
 .message-context-menu button {
   width: 100%;
-  padding: 8px 14px;
+  padding: 10px 14px;
   background: none;
   border: none;
+  min-height: 44px;
   color: var(--text-primary);
   font-size: 0.85rem;
   text-align: left;
@@ -487,13 +491,14 @@
 }
 .message-edit-save,
 .message-edit-cancel {
-  padding: 4px 12px;
+  padding: 6px 14px;
   border: none;
   border-radius: 6px;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s;
+  min-height: 36px;
 }
 .message-edit-save {
   background: var(--accent);
@@ -524,27 +529,29 @@
   gap: 6px;
 }
 .msg-btn-danger {
-  padding: 4px 12px;
+  padding: 6px 14px;
   border: none;
   border-radius: 6px;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
   background: #dc2626;
   color: #fff;
+  min-height: 36px;
 }
 .msg-btn-danger:hover {
   background: #b91c1c;
 }
 .msg-btn-cancel {
-  padding: 4px 12px;
+  padding: 6px 14px;
   border: none;
   border-radius: 6px;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
   background: var(--bg-input);
   color: var(--text-secondary);
+  min-height: 36px;
 }
 .msg-btn-cancel:hover {
   background: var(--bg-hover);

@@ -179,7 +179,7 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
           </div>
           <div className="chat-item-info">
             <div className="chat-item-top">
-              <span className="chat-item-name">
+              <span className="chat-item-name" title={getChatName(chat)}>
                 {getChatName(chat)}
               </span>
               <span className="chat-item-time">

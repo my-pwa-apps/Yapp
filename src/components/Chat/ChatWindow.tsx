@@ -423,7 +423,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
           if (chat.type === 'group' && onShowGroupInfo) onShowGroupInfo();
           else if (chat.type === 'direct' && !isSelfChat && otherProfile) setShowUserDetail(!showUserDetail);
         }}>
-          <div className="chat-header-name">
+          <div className="chat-header-name" title={chatName}>
             {chatName}
             {chatKey && (
               <span className="e2ee-header-lock" title="End-to-end encrypted">
