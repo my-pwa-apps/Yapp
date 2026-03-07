@@ -62,13 +62,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
+  transition: background 0.2s, transform 0.1s, color 0.15s;
   min-width: 44px;
   min-height: 44px;
 }
 
 .icon-btn:hover {
   background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.icon-btn:active {
+  transform: scale(0.88);
 }
 
 /* ── Avatar ── */
@@ -151,12 +156,17 @@
   gap: 12px;
   padding: 10px 16px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.2s, transform 0.1s;
   border-bottom: 1px solid var(--border-light);
 }
 
 .chat-item:hover {
   background: var(--bg-header);
+}
+
+.chat-item:active {
+  transform: scale(0.985);
+  background: var(--bg-hover-strong);
 }
 
 .chat-item.active {
@@ -223,6 +233,13 @@
   justify-content: center;
   padding: 0 5px;
   flex-shrink: 0;
+  animation: badgePop 0.3s cubic-bezier(0.17, 0.89, 0.32, 1.49);
+}
+
+@keyframes badgePop {
+  0% { transform: scale(0); }
+  70% { transform: scale(1.2); }
+  100% { transform: scale(1); }
 }
 
 .chat-item-badge {
@@ -369,12 +386,25 @@
   background: var(--bg-bubble-sent);
   color: var(--text-primary);
   border-top-right-radius: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  animation: msgSlideInRight 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .message-bubble.received {
   background: var(--bg-bubble-received);
   color: var(--text-primary);
   border-top-left-radius: 0;
+  animation: msgSlideInLeft 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes msgSlideInRight {
+  from { opacity: 0; transform: translateX(12px) scale(0.97); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes msgSlideInLeft {
+  from { opacity: 0; transform: translateX(-12px) scale(0.97); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
 }
 
 .message-bubble.system {
@@ -761,17 +791,23 @@
   justify-content: center;
   cursor: pointer;
   color: var(--bg-app);
-  transition: background 0.2s;
+  transition: background 0.2s, transform 0.15s;
   flex-shrink: 0;
 }
 
 .send-btn:hover {
   background: var(--accent-hover);
+  transform: scale(1.08);
+}
+
+.send-btn:active {
+  transform: scale(0.92);
 }
 
 .send-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+  transform: none;
 }
 
 /* ── Modal ── */
@@ -784,6 +820,7 @@
   justify-content: center;
   z-index: 100;
   padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+  animation: modalFadeIn 0.2s ease;
 }
 
 .modal {
@@ -794,6 +831,17 @@
   padding: 0;
   box-shadow: 0 12px 40px var(--overlay-light);
   overflow: hidden;
+  animation: modalScaleIn 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalScaleIn {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 .modal-header {
@@ -1110,7 +1158,28 @@
 .typing-indicator {
   color: var(--accent-hover);
   font-size: 0.8rem;
-  font-style: italic;
+  font-style: normal;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.typing-indicator::after {
+  content: '';
+  display: inline-flex;
+  width: 18px;
+  height: 8px;
+  margin-left: 2px;
+  background: radial-gradient(circle, var(--accent-hover) 30%, transparent 30%) 0 50% / 6px 6px no-repeat,
+             radial-gradient(circle, var(--accent-hover) 30%, transparent 30%) 6px 50% / 6px 6px no-repeat,
+             radial-gradient(circle, var(--accent-hover) 30%, transparent 30%) 12px 50% / 6px 6px no-repeat;
+  animation: typingDots 1.4s ease-in-out infinite;
+}
+
+@keyframes typingDots {
+  0%, 20% { opacity: 0.3; }
+  50% { opacity: 1; }
+  80%, 100% { opacity: 0.3; }
 }
 
 /* ── Loading ── */
@@ -2471,6 +2540,12 @@
 .presence-badge.online {
   background: var(--accent);
   box-shadow: 0 0 4px var(--accent-glow);
+  animation: presencePulse 2s ease-in-out infinite;
+}
+
+@keyframes presencePulse {
+  0%, 100% { box-shadow: 0 0 4px var(--accent-glow); }
+  50% { box-shadow: 0 0 8px var(--accent-glow), 0 0 12px rgba(101, 163, 13, 0.3); }
 }
 
 .presence-badge.offline {

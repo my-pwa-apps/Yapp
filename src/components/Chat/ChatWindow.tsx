@@ -367,7 +367,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
 
   const getStatusText = () => {
     if (typingUsers.length > 0) {
-      return <span className="typing-indicator">typing...</span>;
+      return <span className="typing-indicator">typing</span>;
     }
     if (isSelfChat) return 'Note to self';
     if (chat.type === 'direct' && otherProfile) {

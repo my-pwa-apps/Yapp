@@ -567,12 +567,16 @@
   padding: 4px 12px;
   border-radius: 20px;
   font-size: 0.8rem;
-  transition: color 0.15s, background 0.15s;
+  transition: color 0.15s, background 0.15s, transform 0.15s;
 }
 
 .yapp-action:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
+}
+
+.yapp-action:active {
+  transform: scale(0.9);
 }
 
 .yapp-action:disabled {
@@ -582,11 +586,23 @@
 
 .yapp-action-liked {
   color: #ef4444;
+  animation: heartPop 0.35s cubic-bezier(0.17, 0.89, 0.32, 1.49);
 }
 
 .yapp-action-liked:hover {
   color: #ef4444;
   background: rgba(239, 68, 68, 0.1);
+}
+
+.yapp-action-liked svg {
+  fill: #ef4444;
+}
+
+@keyframes heartPop {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.35); }
+  60% { transform: scale(0.9); }
+  100% { transform: scale(1); }
 }
 
 /* ── Expand / Collapse thread toggle ── */
