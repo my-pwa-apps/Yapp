@@ -119,7 +119,7 @@ export const FeedView: React.FC<Props> = ({ currentUser }) => {
               <input
                 className="feed-search-input"
                 type="text"
-                placeholder="Search public yapps..."
+                placeholder="Search yapps..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 autoFocus
