@@ -52,13 +52,20 @@ export const YappProfile: React.FC<Props> = ({ uid, currentUser, onBack, onOpenT
     return () => unsub();
   }, [uid]);
 
+  const [showUnfollowConfirm, setShowUnfollowConfirm] = useState(false);
+
   const handleToggleFollow = async () => {
     if (isBlockedByMe || isBlockedByThem) return;
     if (isFollowing) {
-      await unfollowUser(currentUser.uid, uid);
+      setShowUnfollowConfirm(true);
     } else {
       await followUser(currentUser.uid, uid);
     }
+  };
+
+  const confirmUnfollow = async () => {
+    await unfollowUser(currentUser.uid, uid);
+    setShowUnfollowConfirm(false);
   };
 
   const handleToggleBlock = async () => {
@@ -122,6 +129,25 @@ export const YappProfile: React.FC<Props> = ({ uid, currentUser, onBack, onOpenT
           <p className="yapp-profile-blocked-msg">You cannot interact with this user.</p>
         )}
       </div>
+
+      {/* Unfollow confirmation modal */}
+      {showUnfollowConfirm && (
+        <div className="modal-overlay" onClick={() => setShowUnfollowConfirm(false)}>
+          <div className="modal modal-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Unfollow {profile?.displayName}?</h3>
+              <button className="modal-close" onClick={() => setShowUnfollowConfirm(false)}>×</button>
+            </div>
+            <div className="modal-body modal-body-pad">
+              <p className="block-confirm-text">You won't see their yapps in your feed anymore.</p>
+              <div className="block-confirm-actions">
+                <button className="yapp-btn yapp-btn-secondary" onClick={() => setShowUnfollowConfirm(false)}>Cancel</button>
+                <button className="yapp-btn yapp-btn-danger" onClick={confirmUnfollow}>Unfollow</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Block confirmation modal */}
       {showBlockConfirm && (

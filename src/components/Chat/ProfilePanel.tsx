@@ -111,7 +111,7 @@ export const ProfilePanel: React.FC<Props> = ({ profile, onClose }) => {
               </div>
             ) : (
               <p onClick={() => setEditingName(true)} className="cursor-pointer" title="Click to edit">
-                {profile.displayName} <span className="edit-hint">✏️</span>
+                {profile.displayName} <span className="edit-hint">Edit</span>
               </p>
             )}
           </div>
@@ -138,7 +138,7 @@ export const ProfilePanel: React.FC<Props> = ({ profile, onClose }) => {
               </div>
             ) : (
               <p onClick={() => setEditing(true)} className="cursor-pointer" title="Click to edit">
-                {profile.status}
+                {profile.status || 'Set a status...'} <span className="edit-hint">Edit</span>
               </p>
             )}
           </div>

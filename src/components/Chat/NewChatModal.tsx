@@ -71,7 +71,7 @@ export const NewChatModal: React.FC<Props> = ({ currentUser, existingChats, onCl
     try {
       const result = await sendContactRequest(currentUser, user);
       if (result === 'sent') {
-        setSuccess(`Request sent to ${user.displayName}!`);
+        setSuccess(`Request sent to ${user.displayName}! You'll be notified when they accept.`);
         setResults([]);
       } else if (result === 'already_sent') {
         setError('Request already sent — waiting for them to accept');

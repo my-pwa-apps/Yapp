@@ -142,6 +142,47 @@
   font-size: 0.9rem;
 }
 
+.no-chat-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.no-chat-actions .modal-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.no-chat-actions .modal-btn:active {
+  transform: scale(0.96);
+}
+
+.no-chat-actions .modal-btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.no-chat-actions .modal-btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+.no-chat-actions .modal-btn-secondary {
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+
+.no-chat-actions .modal-btn-secondary:hover {
+  background: var(--bg-hover-strong);
+}
+
 /* ── Chat List ── */
 .chat-list {
   flex: 1;
@@ -2809,8 +2850,15 @@
 
 /* ── Edit pencil icon ── */
 .edit-hint {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
+  font-size: 0.7rem;
+  color: var(--accent);
+  opacity: 0.7;
+  margin-left: 4px;
+  transition: opacity 0.15s;
+}
+
+.cursor-pointer:hover .edit-hint {
+  opacity: 1;
 }
 
 /* ── Avatar round ── */

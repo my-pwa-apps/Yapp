@@ -535,14 +535,12 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
             </div>
           )}
         </div>
-        {/* Search in chat — only when messages overflow */}
-        {messagesScrollable && (
+        {/* Search in chat */}
           <button className="icon-btn" title="Search in chat" onClick={() => { setShowSearch(!showSearch); setTimeout(() => searchInputRef.current?.focus(), 100); }}>
             <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
               <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
             </svg>
           </button>
-        )}
         {/* Group info button */}
         {chat.type === 'group' && onShowGroupInfo && (
           <button className="icon-btn" title="Group info" onClick={onShowGroupInfo}>
