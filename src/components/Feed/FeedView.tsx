@@ -15,9 +15,9 @@ interface Props {
 }
 
 export const FeedView: React.FC<Props> = ({ currentUser }) => {
-  const { yapps, loading } = useYapps(currentUser.uid);
-  const following = useFollowing(currentUser.uid);
   const contacts = useContacts(currentUser.uid);
+  const { yapps, loading } = useYapps(currentUser.uid, contacts);
+  const following = useFollowing(currentUser.uid);
   const { settings: yappsSettings, loading: settingsLoading } = useYappsSettings(currentUser.uid);
   const blockedUsers = useBlockedUsers(currentUser.uid);
   const blockedBy = useBlockedByUsers(currentUser.uid);

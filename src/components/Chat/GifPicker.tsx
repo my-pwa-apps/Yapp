@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { PUSH_WORKER_URL } from '../../pushConfig';
 
-const GIPHY_KEY = import.meta.env.VITE_GIPHY_API_KEY ?? '';
-const GIPHY_BASE = 'https://api.giphy.com/v1/gifs';
+const GIPHY_PROXY = PUSH_WORKER_URL ? `${PUSH_WORKER_URL}/giphy` : '';
 
 interface GifResult {
   id: string;
@@ -24,12 +24,13 @@ export const GifPicker: React.FC<Props> = ({ onSelect, onClose }) => {
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const fetchGifs = useCallback(async (searchQuery: string) => {
+    if (!GIPHY_PROXY) { setGifs([]); return; }
     setLoading(true);
     try {
-      const endpoint = searchQuery.trim()
-        ? `${GIPHY_BASE}/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(searchQuery)}&limit=30&rating=pg`
-        : `${GIPHY_BASE}/trending?api_key=${GIPHY_KEY}&limit=30&rating=pg`;
-      const res = await fetch(endpoint);
+      const params = searchQuery.trim()
+        ? `?q=${encodeURIComponent(searchQuery)}&limit=30`
+        : '?limit=30';
+      const res = await fetch(`${GIPHY_PROXY}${params}`);
       const json = await res.json();
       setGifs(json.data || []);
     } catch {

@@ -25,7 +25,6 @@ interface Props {
 export const YappProfile: React.FC<Props> = ({ uid, currentUser, onBack, onOpenThread, onOpenProfile }) => {
   const [profile, setProfile] = useState<UserProfileType | null>(null);
   const [showBlockConfirm, setShowBlockConfirm] = useState(false);
-  const { yapps, loading } = useUserYapps(uid);
   const following = useFollowing(currentUser.uid);
   const contacts = useContacts(currentUser.uid);
   const followerCount = useFollowerCount(uid);
@@ -37,12 +36,10 @@ export const YappProfile: React.FC<Props> = ({ uid, currentUser, onBack, onOpenT
   const isBlockedByMe = blockedUsers.has(uid);
   const isBlockedByThem = blockedBy.has(uid);
   const isContact = contacts.has(uid);
+  const canViewPrivate = isSelf || isContact;
+  const { yapps, loading } = useUserYapps(uid, currentUser.uid, canViewPrivate);
 
-  // Filter yapps by privacy: self sees all, contacts see all, others see only public
-  const visibleYapps = useMemo(() => {
-    if (isSelf || isContact) return yapps;
-    return yapps.filter((y) => (y.privacy ?? 'public') === 'public');
-  }, [yapps, isSelf, isContact]);
+  const visibleYapps = useMemo(() => yapps, [yapps]);
 
   useEffect(() => {
     const userRef = ref(db, `users/${uid}`);

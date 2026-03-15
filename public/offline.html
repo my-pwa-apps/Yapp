@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#65a30d" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#111B21" />
   <title>Yappin' - Offline</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -14,7 +14,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
+      min-height: 100dvh;
       text-align: center;
       padding: 24px;
     }
@@ -37,8 +37,8 @@
   </style>
 </head>
 <body>
-  <div class="offline-container">
-    <div class="offline-icon">📡</div>
+  <div class="offline-container" role="main">
+    <div class="offline-icon" aria-label="No connection">📡</div>
     <h1>You're offline</h1>
     <p>Yappin' needs an internet connection to send and receive messages. Check your connection and try again.</p>
     <button onclick="window.location.reload()">Retry</button>

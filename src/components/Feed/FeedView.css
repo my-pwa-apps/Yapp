@@ -52,7 +52,7 @@
   margin-top: 6px;
 }
 .feed-settings-btn:hover {
-  background: var(--hover);
+  background: var(--bg-hover);
   color: var(--accent);
 }
 

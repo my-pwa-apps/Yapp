@@ -54,8 +54,8 @@
     },
 
     "chats": {
-      ".read": "auth != null",
       "$chatId": {
+        ".read": "auth != null && (data.child('members').child(auth.uid).exists() || data.child('pendingMembers').child(auth.uid).exists() || data.child('admins').child(auth.uid).exists())",
         ".write": "auth != null && (!data.exists() || data.child('members').child(auth.uid).exists())",
         ".validate": "!newData.exists() || (newData.hasChildren(['type', 'members', 'createdBy', 'createdAt']) && (newData.child('type').val() === 'direct' || newData.child('type').val() === 'group') && newData.child('createdBy').isString() && newData.child('createdAt').isNumber() && (!newData.child('name').exists() || (newData.child('name').isString() && newData.child('name').val().length <= 50)))",
         "members": {
@@ -123,7 +123,7 @@
     "callSignaling": {
       "$callId": {
         ".read": "auth != null && root.child('calls').child($callId).child('participants').child(auth.uid).exists()",
-        ".write": "auth != null && root.child('calls').child($callId).child('participants').child(auth.uid).exists()"
+        ".write": "auth != null && root.child('calls').child($callId).child('participants').child(auth.uid).exists() && root.child('calls').child($callId).child('status').val() !== 'ended'"
       }
     },
 
@@ -137,7 +137,7 @@
 
     "pushSubscriptions": {
       "$uid": {
-        ".read": "auth != null",
+        ".read": "auth != null && auth.uid === $uid",
         ".write": "auth != null && auth.uid === $uid",
         "$subHash": {
           ".validate": "newData.hasChildren(['endpoint', 'keys']) && newData.child('endpoint').isString() && newData.child('keys').hasChildren(['p256dh', 'auth'])"
@@ -146,9 +146,8 @@
     },
 
     "yapps": {
-      ".read": "auth != null",
-      ".indexOn": ["timestamp", "authorId", "parentId"],
       "$yappId": {
+        ".read": "auth != null && ((data.child('privacy').val() !== 'contacts' && data.exists()) || data.child('authorId').val() === auth.uid || root.child('contacts').child(data.child('authorId').val()).child(auth.uid).exists())",
         ".write": "auth != null && (!data.exists() || data.child('authorId').val() === auth.uid)",
         ".validate": "newData.hasChildren(['id', 'authorId', 'authorName', 'text', 'timestamp', 'likeCount', 'replyCount', 'reyappCount']) && (data.exists() || (newData.child('id').val() === $yappId && newData.child('authorId').val() === auth.uid && (!newData.child('mediaType').exists() || newData.child('mediaType').val() === 'image' || newData.child('mediaType').val() === 'gif' || newData.child('mediaType').val() === 'sticker' || newData.child('mediaType').val() === 'voice') && (!newData.child('parentId').exists() || newData.child('parentId').isString()) && (!newData.child('voiceDuration').exists() || newData.child('voiceDuration').isNumber()))) && newData.child('authorId').isString() && newData.child('authorName').isString() && newData.child('authorName').val().length <= 30 && newData.child('text').isString() && newData.child('text').val().length <= 5000 && newData.child('timestamp').isNumber() && newData.child('likeCount').isNumber() && newData.child('replyCount').isNumber() && newData.child('reyappCount').isNumber() && (!newData.child('privacy').exists() || newData.child('privacy').val() === 'public' || newData.child('privacy').val() === 'contacts') && (!newData.child('edited').exists() || newData.child('edited').isBoolean()) && (!newData.child('editedAt').exists() || newData.child('editedAt').isNumber())",
         "likeCount": {
@@ -169,10 +168,47 @@
     "yappLikes": {
       ".read": "auth != null",
       "$yappId": {
-        ".write": "auth != null && root.child('yapps').child($yappId).child('authorId').val() === auth.uid",
         "$uid": {
           ".write": "auth != null && auth.uid === $uid",
           ".validate": "!newData.exists() || newData.val() === true"
+        }
+      }
+    },
+
+    "publicYappIds": {
+      ".read": "auth != null",
+      "$yappId": {
+        ".write": "auth != null && root.child('yapps').child($yappId).child('authorId').val() === auth.uid",
+        ".validate": "!newData.exists() || (newData.isNumber() && root.child('yapps').child($yappId).child('privacy').val() === 'public' && !root.child('yapps').child($yappId).child('parentId').exists())"
+      }
+    },
+
+    "publicAuthorYappIds": {
+      "$authorId": {
+        ".read": "auth != null",
+        "$yappId": {
+          ".write": "auth != null && auth.uid === $authorId",
+          ".validate": "!newData.exists() || (newData.isNumber() && root.child('yapps').child($yappId).child('authorId').val() === $authorId && root.child('yapps').child($yappId).child('privacy').val() === 'public' && !root.child('yapps').child($yappId).child('parentId').exists())"
+        }
+      }
+    },
+
+    "privateAuthorYappIds": {
+      "$authorId": {
+        ".read": "auth != null && (auth.uid === $authorId || root.child('contacts').child($authorId).child(auth.uid).exists())",
+        "$yappId": {
+          ".write": "auth != null && auth.uid === $authorId",
+          ".validate": "!newData.exists() || (newData.isNumber() && root.child('yapps').child($yappId).child('authorId').val() === $authorId && root.child('yapps').child($yappId).child('privacy').val() === 'contacts' && !root.child('yapps').child($yappId).child('parentId').exists())"
+        }
+      }
+    },
+
+    "replyYappIds": {
+      "$parentId": {
+        ".read": "auth != null && ((root.child('yapps').child($parentId).child('privacy').val() !== 'contacts' && root.child('yapps').child($parentId).exists()) || root.child('yapps').child($parentId).child('authorId').val() === auth.uid || root.child('contacts').child(root.child('yapps').child($parentId).child('authorId').val()).child(auth.uid).exists())",
+        "$yappId": {
+          ".write": "auth != null && root.child('yapps').child($yappId).child('authorId').val() === auth.uid",
+          ".validate": "!newData.exists() || (newData.isNumber() && root.child('yapps').child($yappId).child('parentId').val() === $parentId)"
         }
       }
     },
@@ -193,6 +229,26 @@
         "$followerUid": {
           ".write": "auth != null && auth.uid === $followerUid",
           ".validate": "!newData.exists() || (newData.val() === true && !root.child('blockedUsers').child($uid).child($followerUid).exists() && !root.child('blockedUsers').child($followerUid).child($uid).exists())"
+        }
+      }
+    },
+
+    "userChats": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$chatId": {
+          ".write": "auth != null && (auth.uid === $uid || root.child('chats').child($chatId).child('members').child(auth.uid).exists())",
+          ".validate": "!newData.exists() || newData.val() === true"
+        }
+      }
+    },
+
+    "userPendingInvites": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$chatId": {
+          ".write": "auth != null && (auth.uid === $uid || root.child('chats').child($chatId).child('members').child(auth.uid).exists())",
+          ".validate": "!newData.exists() || newData.val() === true"
         }
       }
     },

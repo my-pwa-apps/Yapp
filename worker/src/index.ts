@@ -1,3 +1,9 @@
+import {
+  fetchPushSubscriptions,
+  notificationRequestIsAuthorized,
+  verifyFirebaseUser,
+} from './firebase';
+
 /**
  * Cloudflare Worker for sending Web Push notifications.
  *
@@ -8,17 +14,32 @@
 interface Env {
   VAPID_PRIVATE_JWK: string;   // JWK JSON string
   VAPID_PUBLIC_KEY: string;     // base64url 65-byte uncompressed public key
-  PUSH_API_KEY: string;         // shared API key
   ALLOWED_ORIGINS?: string;     // comma-separated allowed origins (default: '*')
+  GIPHY_API_KEY?: string;       // Giphy API key (server-side only, never exposed to client)
+  FIREBASE_DATABASE_URL: string;
+  FIREBASE_WEB_API_KEY: string;
+  FIREBASE_SERVICE_ACCOUNT_EMAIL: string;
+  FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY: string;
 }
 
 // ─── Simple in-memory rate limiter ────────────────────────────
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_WINDOW = 60_000; // 1 minute
 const RATE_LIMIT_MAX = 30;        // max requests per window per IP
+const RATE_LIMIT_CLEANUP_INTERVAL = 5 * 60_000; // 5 minutes
+let lastCleanup = Date.now();
 
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
+
+  // Periodically clean up expired entries to prevent memory leak
+  if (now - lastCleanup > RATE_LIMIT_CLEANUP_INTERVAL) {
+    lastCleanup = now;
+    for (const [key, entry] of rateLimitMap) {
+      if (now > entry.resetAt) rateLimitMap.delete(key);
+    }
+  }
+
   const entry = rateLimitMap.get(ip);
   if (!entry || now > entry.resetAt) {
     rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
@@ -38,6 +59,15 @@ interface PushSubscriptionJSON {
 }
 
 interface PushRequest {
+  recipientUids: string[];
+  payload: {
+    title: string;
+    body: string;
+    data?: Record<string, string>;
+  };
+}
+
+interface PushDeliveryRequest {
   subscriptions: PushSubscriptionJSON[];
   payload: {
     title: string;
@@ -72,22 +102,70 @@ export default {
         return Response.json({ error: 'Rate limit exceeded' }, { status: 429, headers: cors });
       }
 
-      // Verify API key
-      const apiKey = request.headers.get('X-API-Key');
-      if (!apiKey || apiKey !== env.PUSH_API_KEY) {
+      const user = await verifyFirebaseUser(request, env);
+      if (!user) {
         return Response.json({ error: 'Unauthorized' }, { status: 401, headers: cors });
       }
 
       try {
-        const body = (await request.json()) as PushRequest;
-        if (!body.subscriptions?.length || !body.payload) {
-          return Response.json({ error: 'Missing subscriptions or payload' }, { status: 400, headers: cors });
+        // Reject oversized payloads
+        const contentLength = parseInt(request.headers.get('Content-Length') || '0', 10);
+        if (contentLength > 256_000) {
+          return Response.json({ error: 'Payload too large' }, { status: 413, headers: cors });
         }
 
-        const results = await sendPushNotifications(body, env);
+        const body = (await request.json()) as PushRequest;
+        if (!body.recipientUids?.length || !body.payload) {
+          return Response.json({ error: 'Missing recipientUids or payload' }, { status: 400, headers: cors });
+        }
+
+        if (body.recipientUids.length > 100) {
+          return Response.json({ error: 'Too many recipients' }, { status: 400, headers: cors });
+        }
+
+        // Validate payload field lengths
+        if ((body.payload.title?.length ?? 0) > 256 || (body.payload.body?.length ?? 0) > 4096) {
+          return Response.json({ error: 'Payload title or body too long' }, { status: 400, headers: cors });
+        }
+
+        const authorized = await notificationRequestIsAuthorized(user.uid, body.recipientUids, body.payload, env);
+        if (!authorized) {
+          return Response.json({ error: 'Forbidden' }, { status: 403, headers: cors });
+        }
+
+        const subscriptions = await fetchPushSubscriptions(body.recipientUids, env);
+        if (subscriptions.length === 0) {
+          return Response.json({ sent: 0, total: 0, results: [] }, { headers: cors });
+        }
+
+        const results = await sendPushNotifications({ subscriptions, payload: body.payload }, env);
         return Response.json(results, { headers: cors });
       } catch (err) {
-        return Response.json({ error: String(err) }, { status: 500, headers: cors });
+        console.error('[Worker] Push error:', err);
+        return Response.json({ error: 'Internal server error' }, { status: 500, headers: cors });
+      }
+    }
+
+    // Giphy proxy — keeps API key server-side
+    if (url.pathname === '/giphy' && request.method === 'GET') {
+      if (!env.GIPHY_API_KEY) {
+        return Response.json({ error: 'Giphy not configured' }, { status: 503, headers: cors });
+      }
+      const clientIp = request.headers.get('CF-Connecting-IP') || 'unknown';
+      if (!checkRateLimit(clientIp)) {
+        return Response.json({ error: 'Rate limit exceeded' }, { status: 429, headers: cors });
+      }
+      const q = url.searchParams.get('q') || '';
+      const limit = Math.min(parseInt(url.searchParams.get('limit') || '30', 10), 50);
+      const giphyUrl = q.trim()
+        ? `https://api.giphy.com/v1/gifs/search?api_key=${env.GIPHY_API_KEY}&q=${encodeURIComponent(q)}&limit=${limit}&rating=pg`
+        : `https://api.giphy.com/v1/gifs/trending?api_key=${env.GIPHY_API_KEY}&limit=${limit}&rating=pg`;
+      try {
+        const giphyRes = await fetch(giphyUrl);
+        const giphyData = await giphyRes.json();
+        return Response.json(giphyData, { headers: cors });
+      } catch {
+        return Response.json({ error: 'Giphy request failed' }, { status: 502, headers: cors });
       }
     }
 
@@ -97,7 +175,7 @@ export default {
 
 // ─── Push delivery ───────────────────────────────────────────
 
-async function sendPushNotifications(req: PushRequest, env: Env) {
+async function sendPushNotifications(req: PushDeliveryRequest, env: Env) {
   const payloadBytes = new TextEncoder().encode(JSON.stringify(req.payload));
   const vapidJwk: JsonWebKey = JSON.parse(env.VAPID_PRIVATE_JWK);
   const results: { endpoint: string; status: number; ok: boolean }[] = [];
@@ -132,21 +210,21 @@ async function sendWebPush(
   const authSecret = base64urlDecode(subscription.keys.auth);
 
   // 3. Generate ephemeral ECDH key pair (for this push only)
-  const ephemeralKeyPair = await crypto.subtle.generateKey(
+  const ephemeralKeyPair = await (crypto.subtle.generateKey(
     { name: 'ECDH', namedCurve: 'P-256' },
     true, ['deriveBits']
-  );
+  ) as Promise<CryptoKeyPair>);
 
   // 4. ECDH shared secret
   const sharedSecretBits = await crypto.subtle.deriveBits(
-    { name: 'ECDH', public: uaPublic },
+    { name: 'ECDH', public: uaPublic } as any,
     ephemeralKeyPair.privateKey,
     256
   );
   const ecdhSecret = new Uint8Array(sharedSecretBits);
 
   // 5. Export ephemeral public key (raw, 65 bytes uncompressed)
-  const asPublicBytes = new Uint8Array(await crypto.subtle.exportKey('raw', ephemeralKeyPair.publicKey));
+  const asPublicBytes = new Uint8Array(await crypto.subtle.exportKey('raw', ephemeralKeyPair.publicKey) as ArrayBuffer);
 
   // 6. Derive IKM using HKDF ( RFC 8291, Section 3.4 )
   //    salt = auth_secret, IKM = ecdh_secret
@@ -213,7 +291,7 @@ async function createVapidAuth(
   const header = base64urlEncode(JSON.stringify({ typ: 'JWT', alg: 'ES256' }));
   const payload = base64urlEncode(JSON.stringify({
     aud: origin,
-    exp: Math.floor(Date.now() / 1000) + 12 * 3600,
+    exp: Math.floor(Date.now() / 1000) + 1 * 3600,
     sub: 'mailto:noreply@yapp.app',
   }));
 
@@ -298,13 +376,13 @@ function corsHeaders(request: Request, env: Env): Record<string, string> {
     allowOrigin = '*';
   } else {
     const allowedList = allowedRaw.split(',').map((o) => o.trim());
-    allowOrigin = allowedList.includes(origin) ? origin : allowedList[0];
+    allowOrigin = allowedList.includes(origin) ? origin : '';
   }
 
   return {
     'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
+    'Access-Control-Allow-Headers': 'Authorization, Content-Type',
     'Vary': 'Origin',
   };
 }

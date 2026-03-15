@@ -9,10 +9,10 @@ interface ToggleProps {
 
 const Toggle: React.FC<ToggleProps> = ({ on, onToggle, label }) => (
   <button
+    type="button"
     className={`notif-toggle ${on ? 'on' : 'off'}`}
     onClick={onToggle}
-    role="switch"
-    aria-checked={on}
+    aria-pressed={on}
     aria-label={label}
   >
     <span className="notif-toggle-thumb" />

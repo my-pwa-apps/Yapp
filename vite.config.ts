@@ -90,5 +90,32 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/firebase/')) return 'firebase';
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) return 'react-vendor';
+          if (id.includes('/src/components/Feed/') || id.includes('/src/hooks/useYapps') || id.includes('/src/hooks/useYappsSettings')) {
+            return 'feed';
+          }
+          if (
+            id.includes('/src/components/Chat/') ||
+            id.includes('/src/hooks/useChats') ||
+            id.includes('/src/hooks/useMessages') ||
+            id.includes('/src/hooks/useCall') ||
+            id.includes('/src/hooks/useContactRequests') ||
+            id.includes('/src/hooks/useUnreadCounts') ||
+            id.includes('/src/hooks/useNotifications')
+          ) {
+            return 'chat';
+          }
+          if (id.includes('/src/contexts/AuthContext') || id.includes('/src/hooks/useCrypto') || id.includes('/src/hooks/useE2EE')) {
+            return 'auth';
+          }
+        },
+      },
+    },
+  },
   server: { port: 5173 },
 });

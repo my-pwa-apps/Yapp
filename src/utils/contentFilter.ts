@@ -87,21 +87,27 @@ export async function loadProfanityList(): Promise<Set<string>> {
   if (loadingPromise) return loadingPromise;
 
   loadingPromise = (async () => {
-    const allWords = new Set<string>();
-    const results = await Promise.allSettled(
-      LANGUAGES.map((lang) => fetchLanguageWords(lang)),
-    );
-    for (const result of results) {
-      if (result.status === 'fulfilled') {
-        for (const word of result.value) {
-          allWords.add(word);
+    try {
+      const allWords = new Set<string>();
+      const results = await Promise.allSettled(
+        LANGUAGES.map((lang) => fetchLanguageWords(lang)),
+      );
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          for (const word of result.value) {
+            allWords.add(word);
+          }
         }
       }
+      wordSet = allWords;
+      saveToLocalStorage(allWords);
+      loadingPromise = null;
+      return allWords;
+    } catch (e) {
+      // Reset loading promise on error so subsequent calls can retry
+      loadingPromise = null;
+      throw e;
     }
-    wordSet = allWords;
-    saveToLocalStorage(allWords);
-    loadingPromise = null;
-    return allWords;
   })();
 
   return loadingPromise;

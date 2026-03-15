@@ -5,5 +5,8 @@ compatibility_date = "2024-01-01"
 # Environment variables (set via `npx wrangler secret put <NAME>`):
 # VAPID_PRIVATE_JWK  — JWK JSON string of the VAPID P-256 private key
 # VAPID_PUBLIC_KEY   — base64url-encoded 65-byte uncompressed public key
-# PUSH_API_KEY       — shared secret between client and worker
 # ALLOWED_ORIGINS    — comma-separated allowed origins (e.g. "https://my-pwa-apps.github.io,http://localhost:5173")
+# FIREBASE_DATABASE_URL             — Realtime Database base URL
+# FIREBASE_WEB_API_KEY              — Firebase Web API key for ID token validation
+# FIREBASE_SERVICE_ACCOUNT_EMAIL    — service account email with RTDB access
+# FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY — PEM private key for that service account

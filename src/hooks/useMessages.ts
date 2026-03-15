@@ -48,6 +48,8 @@ export async function sendMessage(
   ephemeralTTL?: number,
   forwardable?: boolean,
 ) {
+  if (!chatId || !senderId) throw new Error('Missing chatId or senderId');
+  if (text.length > 50000) throw new Error('Message text exceeds maximum length');
   const msg: Record<string, unknown> = {
     chatId,
     senderId,

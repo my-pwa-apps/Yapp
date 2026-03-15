@@ -1,7 +1,7 @@
 /**
  * generate-vapid-keys.mjs
  *
- * Run once to generate VAPID keys and an API key for the Cloudflare Worker:
+ * Run once to generate VAPID keys for the Cloudflare Worker:
  *   node generate-vapid-keys.mjs
  *
  * Then follow the printed instructions to configure the Worker and client.
@@ -32,14 +32,9 @@ const privateKeyJwk = await subtle.exportKey('jwk', keyPair.privateKey);
 const publicKeyBase64url = bufToBase64url(publicKeyRaw);
 const privateKeyJwkString = JSON.stringify(privateKeyJwk);
 
-// 2. Generate a random API key
-const apiKeyBytes = new Uint8Array(32);
-webcrypto.getRandomValues(apiKeyBytes);
-const apiKey = bufToBase64url(apiKeyBytes);
-
 console.log('');
 console.log('╔══════════════════════════════════════════════════════════╗');
-console.log('║           VAPID Keys & API Key Generated                ║');
+console.log('║                 VAPID Keys Generated                    ║');
 console.log('╚══════════════════════════════════════════════════════════╝');
 console.log('');
 console.log('── Step 1: Set Cloudflare Worker secrets ──');
@@ -50,12 +45,14 @@ console.log('');
 console.log(`  npx wrangler secret put VAPID_PUBLIC_KEY`);
 console.log(`  → Paste: ${publicKeyBase64url}`);
 console.log('');
-console.log(`  npx wrangler secret put PUSH_API_KEY`);
-console.log(`  → Paste: ${apiKey}`);
+console.log('  Also set these worker secrets for server-side RTDB access:');
+console.log('  FIREBASE_DATABASE_URL');
+console.log('  FIREBASE_WEB_API_KEY');
+console.log('  FIREBASE_SERVICE_ACCOUNT_EMAIL');
+console.log('  FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY');
 console.log('');
-console.log('── Step 2: Update src/pushConfig.ts ──');
-console.log(`  VAPID_PUBLIC_KEY = '${publicKeyBase64url}'`);
-console.log(`  PUSH_API_KEY    = '${apiKey}'`);
+console.log('── Step 2: Update client env ──');
+console.log(`  VITE_VAPID_PUBLIC_KEY = '${publicKeyBase64url}'`);
 console.log('');
 console.log('── Step 3: Deploy the Worker ──');
 console.log('  cd worker');

@@ -1,6 +1,16 @@
 /* push-sw.js — Web Push event handler
    Imported by the PWA service worker via workbox importScripts.
-   SW_VERSION: 4 */
+   SW_VERSION: 5 */
+
+/** Check if a client URL belongs to the Yapp app using proper URL parsing */
+function isYappWindow(clientUrl) {
+  try {
+    var parsed = new URL(clientUrl);
+    return parsed.pathname === '/Yapp/' || parsed.pathname.startsWith('/Yapp/');
+  } catch (e) {
+    return false;
+  }
+}
 
 self.addEventListener('push', function (event) {
   if (!event.data) return;
@@ -9,6 +19,7 @@ self.addEventListener('push', function (event) {
   try {
     payload = event.data.json();
   } catch (e) {
+    console.warn('[push-sw] Failed to parse push payload:', e);
     payload = { title: 'Yapp', body: event.data.text() };
   }
 
@@ -36,10 +47,10 @@ self.addEventListener('push', function (event) {
   // Skip notification if a focused Yapp window exists (app is in foreground)
   event.waitUntil(
     self.clients
-      .matchAll({ type: 'window', includeUncontrolled: true })
+      .matchAll({ type: 'window', includeUncontrolled: false })
       .then(function (clientList) {
         for (var i = 0; i < clientList.length; i++) {
-          if (clientList[i].url.indexOf('/Yapp') !== -1 && clientList[i].focused) {
+          if (isYappWindow(clientList[i].url) && clientList[i].focused) {
             // App is focused — forward push data to the app, skip OS notification
             clientList[i].postMessage({ type: 'PUSH_RECEIVED', payload: payload });
             return;
@@ -59,10 +70,10 @@ self.addEventListener('notificationclick', function (event) {
   if (event.action === 'decline' && isCall) {
     event.waitUntil(
       self.clients
-        .matchAll({ type: 'window', includeUncontrolled: true })
+        .matchAll({ type: 'window', includeUncontrolled: false })
         .then(function (clientList) {
           for (var i = 0; i < clientList.length; i++) {
-            if (clientList[i].url.indexOf('/Yapp') !== -1) {
+            if (isYappWindow(clientList[i].url)) {
               clientList[i].postMessage({ type: 'DECLINE_CALL', callId: data.callId });
             }
           }
@@ -81,12 +92,12 @@ self.addEventListener('notificationclick', function (event) {
 
   event.waitUntil(
     self.clients
-      .matchAll({ type: 'window', includeUncontrolled: true })
+      .matchAll({ type: 'window', includeUncontrolled: false })
       .then(function (clientList) {
         // Try to focus an existing Yapp window
         for (var i = 0; i < clientList.length; i++) {
           var client = clientList[i];
-          if (client.url.indexOf('/Yapp') !== -1 && 'focus' in client) {
+          if (isYappWindow(client.url) && 'focus' in client) {
             if (msg) client.postMessage(msg);
             return client.focus();
           }
@@ -101,4 +112,20 @@ self.addEventListener('notificationclick', function (event) {
         return self.clients.openWindow(url);
       })
   );
+});
+
+self.addEventListener('notificationclose', function (event) {
+  // Clean up state when notification is dismissed (e.g., ringing call)
+  var data = event.notification.data || {};
+  if (data.type === 'call') {
+    self.clients
+      .matchAll({ type: 'window', includeUncontrolled: false })
+      .then(function (clientList) {
+        for (var i = 0; i < clientList.length; i++) {
+          if (isYappWindow(clientList[i].url)) {
+            clientList[i].postMessage({ type: 'NOTIFICATION_CLOSED', data: data });
+          }
+        }
+      });
+  }
 });

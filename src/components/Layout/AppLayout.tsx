@@ -40,7 +40,7 @@ export const AppLayout: React.FC = () => {
 
   const call = useCall(user?.uid ?? '', profile?.displayName ?? '', showToast);
   const contactRequests = useContactRequests(user?.uid);
-  const { invites: groupInvites, joinRequests } = useGroupInvites(user?.uid);
+  const { invites: groupInvites, joinRequests } = useGroupInvites(user?.uid, chats);
   const { notifyMessage, notifyGroupInvite, notifyJoinRequest, notifyContactRequest, notifyIncomingCall, refreshPrefs } = useNotifications();
   const unreadCounts = useUnreadCounts(chats, user?.uid);
   const totalUnread = Object.values(unreadCounts).reduce((sum, n) => sum + n, 0);

@@ -2,14 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ref,
   onValue,
+  get,
   push,
   set,
-  remove,
   update,
   query,
-  orderByChild,
-  equalTo,
   limitToLast,
+  orderByValue,
   runTransaction,
 } from 'firebase/database';
 import { db } from '../firebase';
@@ -18,93 +17,183 @@ import { isBlocked } from './useBlockedUsers';
 
 /* ─── Feed hook ─── */
 
-export function useYapps(uid: string | undefined) {
+function useIndexedYapps(yappIds: string[], sorter: (a: Yapp, b: Yapp) => number) {
   const [yapps, setYapps] = useState<Yapp[]>([]);
   const [loading, setLoading] = useState(true);
+  const idsKey = yappIds.slice().sort().join('|');
 
   useEffect(() => {
-    if (!uid) return;
-    const yappsRef = query(ref(db, 'yapps'), orderByChild('timestamp'), limitToLast(200));
-    const unsub = onValue(
-      yappsRef,
-      (snap) => {
-        const list: Yapp[] = [];
-        snap.forEach((child) => {
-          const val = child.val();
-          // Only include top-level yapps in the feed (no replies)
-          if (!val.parentId) {
-            list.push({ ...val, id: child.key!, privacy: val.privacy ?? 'public' });
-          }
-        });
-        // Newest first
-        list.sort((a, b) => b.timestamp - a.timestamp);
-        setYapps(list);
+    if (yappIds.length === 0) {
+      setYapps([]);
+      setLoading(false);
+      return;
+    }
+
+    const listeners = new Map<string, () => void>();
+    const yappData = new Map<string, Yapp>();
+    const pending = new Set(yappIds);
+
+    const publish = () => {
+      const next = Array.from(yappData.values()).sort(sorter);
+      setYapps(next);
+      if (pending.size === 0) {
         setLoading(false);
-      },
-      () => setLoading(false),
-    );
-    return () => unsub();
-  }, [uid]);
+      }
+    };
+
+    setLoading(true);
+    for (const yappId of yappIds) {
+      const unsub = onValue(
+        ref(db, `yapps/${yappId}`),
+        (snap) => {
+          if (snap.exists()) {
+            const value = snap.val();
+            yappData.set(yappId, { ...value, id: yappId, privacy: value.privacy ?? 'public' });
+          } else {
+            yappData.delete(yappId);
+          }
+          pending.delete(yappId);
+          publish();
+        },
+        () => {
+          pending.delete(yappId);
+          yappData.delete(yappId);
+          publish();
+        }
+      );
+      listeners.set(yappId, unsub);
+    }
+
+    return () => listeners.forEach((unsub) => unsub());
+  }, [idsKey]);
 
   return { yapps, loading };
+}
+
+function readIndexIds(snapshot: { forEach: (action: (child: { key: string | null }) => void) => void }) {
+  const ids: string[] = [];
+  snapshot.forEach((child) => {
+    if (child.key) ids.push(child.key);
+  });
+  return ids;
+}
+
+export function useYapps(uid: string | undefined, contacts: Set<string>) {
+  const [visibleIds, setVisibleIds] = useState<string[]>([]);
+  const contactKey = Array.from(contacts).sort().join('|');
+
+  useEffect(() => {
+    if (!uid) {
+      setVisibleIds([]);
+      return;
+    }
+
+    let publicIds: string[] = [];
+    const privateByAuthor = new Map<string, string[]>();
+
+    const publish = () => {
+      const merged = new Set<string>(publicIds);
+      for (const ids of privateByAuthor.values()) {
+        for (const id of ids) merged.add(id);
+      }
+      setVisibleIds(Array.from(merged));
+    };
+
+    const publicRef = query(ref(db, 'publicYappIds'), orderByValue(), limitToLast(200));
+    const publicUnsub = onValue(publicRef, (snap) => {
+      publicIds = readIndexIds(snap);
+      publish();
+    }, () => {
+      publicIds = [];
+      publish();
+    });
+
+    const authorIds = Array.from(new Set([uid, ...contacts]));
+    const privateUnsubs = authorIds.map((authorId) => {
+      const authorRef = query(ref(db, `privateAuthorYappIds/${authorId}`), orderByValue(), limitToLast(authorId === uid ? 200 : 100));
+      return onValue(authorRef, (snap) => {
+        privateByAuthor.set(authorId, readIndexIds(snap));
+        publish();
+      }, () => {
+        privateByAuthor.delete(authorId);
+        publish();
+      });
+    });
+
+    return () => {
+      publicUnsub();
+      privateUnsubs.forEach((unsub) => unsub());
+    };
+  }, [uid, contactKey]);
+
+  return useIndexedYapps(visibleIds, (a, b) => b.timestamp - a.timestamp);
 }
 
 /* ─── Replies hook ─── */
 
 export function useReplies(parentId: string | undefined) {
-  const [replies, setReplies] = useState<Yapp[]>([]);
-  const [loading, setLoading] = useState(true);
-
+  const [replyIds, setReplyIds] = useState<string[]>([]);
   useEffect(() => {
-    if (!parentId) { setLoading(false); return; }
-    const q = query(ref(db, 'yapps'), orderByChild('parentId'), equalTo(parentId));
-    const unsub = onValue(
-      q,
-      (snap) => {
-        const list: Yapp[] = [];
-        snap.forEach((child) => {
-          const val = child.val();
-          list.push({ ...val, id: child.key!, privacy: val.privacy ?? 'public' });
-        });
-        list.sort((a, b) => a.timestamp - b.timestamp);
-        setReplies(list);
-        setLoading(false);
-      },
-      () => setLoading(false),
-    );
+    if (!parentId) {
+      setReplyIds([]);
+      return;
+    }
+    const replyRef = query(ref(db, `replyYappIds/${parentId}`), orderByValue(), limitToLast(200));
+    const unsub = onValue(replyRef, (snap) => {
+      setReplyIds(readIndexIds(snap));
+    }, () => setReplyIds([]));
     return () => unsub();
   }, [parentId]);
 
-  return { replies, loading };
+  const { yapps, loading } = useIndexedYapps(replyIds, (a, b) => a.timestamp - b.timestamp);
+  return { replies: yapps, loading };
 }
 
 /* ─── User yapps hook ─── */
 
-export function useUserYapps(authorId: string | undefined) {
-  const [yapps, setYapps] = useState<Yapp[]>([]);
-  const [loading, setLoading] = useState(true);
-
+export function useUserYapps(authorId: string | undefined, viewerUid: string | undefined, includePrivate: boolean) {
+  const [visibleIds, setVisibleIds] = useState<string[]>([]);
   useEffect(() => {
-    if (!authorId) { setLoading(false); return; }
-    const q = query(ref(db, 'yapps'), orderByChild('authorId'), equalTo(authorId));
-    const unsub = onValue(
-      q,
-      (snap) => {
-        const list: Yapp[] = [];
-        snap.forEach((child) => {
-          const val = child.val();
-          if (!val.parentId) list.push({ ...val, id: child.key!, privacy: val.privacy ?? 'public' });
-        });
-        list.sort((a, b) => b.timestamp - a.timestamp);
-        setYapps(list);
-        setLoading(false);
-      },
-      () => setLoading(false),
-    );
-    return () => unsub();
-  }, [authorId]);
+    if (!authorId || !viewerUid) {
+      setVisibleIds([]);
+      return;
+    }
 
-  return { yapps, loading };
+    let publicIds: string[] = [];
+    let privateIds: string[] = [];
+
+    const publish = () => {
+      setVisibleIds(Array.from(new Set([...publicIds, ...privateIds])));
+    };
+
+    const publicRef = query(ref(db, `publicAuthorYappIds/${authorId}`), orderByValue(), limitToLast(200));
+    const publicUnsub = onValue(publicRef, (snap) => {
+      publicIds = readIndexIds(snap);
+      publish();
+    }, () => {
+      publicIds = [];
+      publish();
+    });
+
+    let privateUnsub = () => {};
+    if (includePrivate || authorId === viewerUid) {
+      const privateRef = query(ref(db, `privateAuthorYappIds/${authorId}`), orderByValue(), limitToLast(200));
+      privateUnsub = onValue(privateRef, (snap) => {
+        privateIds = readIndexIds(snap);
+        publish();
+      }, () => {
+        privateIds = [];
+        publish();
+      });
+    }
+
+    return () => {
+      publicUnsub();
+      privateUnsub();
+    };
+  }, [authorId, viewerUid, includePrivate]);
+
+  return useIndexedYapps(visibleIds, (a, b) => b.timestamp - a.timestamp);
 }
 
 /* ─── Likes hook ─── */
@@ -199,6 +288,9 @@ export async function postYapp(
   voiceDuration?: number,
   privacy: 'public' | 'contacts' = 'public',
 ): Promise<string> {
+  if (!authorId || !authorName) throw new Error('Missing author info');
+  if (text.length > 5000) throw new Error('Yapp text exceeds maximum length');
+  if (authorName.length > 30) throw new Error('Author name exceeds maximum length');
   const yappsRef = ref(db, 'yapps');
   const newRef = push(yappsRef);
   const yapp: Omit<Yapp, 'id'> = {
@@ -221,13 +313,41 @@ export async function postYapp(
     const parentRef = ref(db, `yapps/${parentId}/replyCount`);
     await runTransaction(parentRef, (current) => (current || 0) + 1);
   }
-  await set(newRef, { ...yapp, id: newRef.key! });
-  return newRef.key!;
+  const yappId = newRef.key!;
+  await set(newRef, { ...yapp, id: yappId });
+
+  const indexUpdates: Record<string, number> = {};
+  if (parentId) {
+    indexUpdates[`replyYappIds/${parentId}/${yappId}`] = yapp.timestamp;
+  } else if (privacy === 'contacts') {
+    indexUpdates[`privateAuthorYappIds/${authorId}/${yappId}`] = yapp.timestamp;
+  } else {
+    indexUpdates[`publicYappIds/${yappId}`] = yapp.timestamp;
+    indexUpdates[`publicAuthorYappIds/${authorId}/${yappId}`] = yapp.timestamp;
+  }
+
+  await update(ref(db), indexUpdates);
+  return yappId;
 }
 
 export async function deleteYapp(yappId: string, parentId?: string): Promise<void> {
-  await remove(ref(db, `yapps/${yappId}`));
-  await remove(ref(db, `yappLikes/${yappId}`));
+  const snap = await get(ref(db, `yapps/${yappId}`));
+  const yapp = snap.exists() ? snap.val() as Yapp : null;
+  const updates: Record<string, null> = {
+    [`yapps/${yappId}`]: null,
+    [`yappLikes/${yappId}`]: null,
+  };
+
+  if (yapp?.parentId) {
+    updates[`replyYappIds/${yapp.parentId}/${yappId}`] = null;
+  } else if ((yapp?.privacy ?? 'public') === 'contacts' && yapp?.authorId) {
+    updates[`privateAuthorYappIds/${yapp.authorId}/${yappId}`] = null;
+  } else if (yapp?.authorId) {
+    updates[`publicYappIds/${yappId}`] = null;
+    updates[`publicAuthorYappIds/${yapp.authorId}/${yappId}`] = null;
+  }
+
+  await update(ref(db), updates);
   if (parentId) {
     const parentRef = ref(db, `yapps/${parentId}/replyCount`);
     await runTransaction(parentRef, (current) => Math.max((current || 1) - 1, 0));
@@ -251,8 +371,9 @@ export async function toggleLike(yappId: string, uid: string): Promise<void> {
     return current ? null : true;
   });
   if (result.committed) {
-    const wasLiked = result.snapshot.exists();
-    if (wasLiked) {
+    // result.snapshot reflects the NEW state after the transaction
+    const isNowLiked = result.snapshot.exists();
+    if (isNowLiked) {
       await runTransaction(countRef, (current) => (current || 0) + 1);
     } else {
       await runTransaction(countRef, (current) => Math.max((current || 1) - 1, 0));
