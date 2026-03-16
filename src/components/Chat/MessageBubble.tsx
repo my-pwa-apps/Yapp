@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { Message } from '../../types';
 import { formatDuration, formatMessageTime } from '../../utils';
 import { editMessage, deleteMessage } from '../../hooks/useMessages';
@@ -26,12 +26,24 @@ interface Props {
 
 export const MessageBubble = React.memo(function MessageBubble({ message, isMine, showSender, memberCount: _memberCount, highlight, onForward }: Props) {
   const [showMenu, setShowMenu] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const editInputRef = useRef<HTMLTextAreaElement>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Click-outside dismiss for context menu
+  useEffect(() => {
+    if (!showMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowMenu(false);
+    };
+    const id = setTimeout(() => document.addEventListener('mousedown', handleClickOutside), 0);
+    return () => { clearTimeout(id); document.removeEventListener('mousedown', handleClickOutside); };
+  }, [showMenu]);
 
   if (message.type === 'system') {
     return (
@@ -68,9 +80,11 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isMine
   const isTextMessage = message.type === 'text';
   const canForward = message.forwardable !== false && !message.encrypted && !message.ephemeralTTL && !!onForward;
 
-  const handleLongPressStart = () => {
+  const handleLongPressStart = (e: React.TouchEvent) => {
     if (!isMine && !canForward) return;
-    longPressTimer.current = setTimeout(() => setShowMenu(true), 500);
+    const touch = e.touches[0];
+    const pos = { x: touch.clientX, y: touch.clientY };
+    longPressTimer.current = setTimeout(() => { setMenuPos(pos); setShowMenu(true); }, 500);
   };
   const handleLongPressEnd = () => {
     clearTimeout(longPressTimer.current);
@@ -178,7 +192,7 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isMine
       onTouchStart={handleLongPressStart}
       onTouchEnd={handleLongPressEnd}
       onTouchCancel={handleLongPressEnd}
-      onContextMenu={(e) => { if (isMine || canForward) { e.preventDefault(); setShowMenu(true); } }}
+      onContextMenu={(e) => { if (isMine || canForward) { e.preventDefault(); setMenuPos({ x: e.clientX, y: e.clientY }); setShowMenu(true); } }}
     >
       <div className={`message-bubble ${isMine ? 'sent' : 'received'} ${isMediaOnly ? 'sticker-bubble' : ''} ${isEphemeral ? 'ephemeral' : ''}`}>
         {showSender && !isMine && (
@@ -210,7 +224,7 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isMine
 
         {/* Context menu for own messages */}
         {showMenu && isMine && !editing && (
-          <div className="message-context-menu" onClick={(e) => e.stopPropagation()}>
+          <div ref={menuRef} className="message-context-menu" style={{ left: menuPos.x, top: menuPos.y }} onClick={(e) => e.stopPropagation()}>
             {isTextMessage && (
               <button onClick={handleStartEdit}>
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.33a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.83z"/></svg>

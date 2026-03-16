@@ -506,14 +506,12 @@
 
 /* Message context menu */
 .message-context-menu {
-  position: absolute;
-  bottom: 100%;
-  right: 0;
+  position: fixed;
   background: var(--bg-modal);
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: 0 4px 12px var(--shadow);
-  z-index: 20;
+  z-index: 1000;
   min-width: 130px;
   overflow: hidden;
 }

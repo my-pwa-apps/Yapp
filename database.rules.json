@@ -168,6 +168,7 @@
     "yappLikes": {
       ".read": "auth != null",
       "$yappId": {
+        ".write": "auth != null && !newData.exists() && root.child('yapps').child($yappId).child('authorId').val() === auth.uid",
         "$uid": {
           ".write": "auth != null && auth.uid === $uid",
           ".validate": "!newData.exists() || newData.val() === true"
@@ -177,6 +178,7 @@
 
     "publicYappIds": {
       ".read": "auth != null",
+      ".indexOn": [".value"],
       "$yappId": {
         ".write": "auth != null && root.child('yapps').child($yappId).child('authorId').val() === auth.uid",
         ".validate": "!newData.exists() || (newData.isNumber() && root.child('yapps').child($yappId).child('privacy').val() === 'public' && !root.child('yapps').child($yappId).child('parentId').exists())"
@@ -186,6 +188,7 @@
     "publicAuthorYappIds": {
       "$authorId": {
         ".read": "auth != null",
+        ".indexOn": [".value"],
         "$yappId": {
           ".write": "auth != null && auth.uid === $authorId",
           ".validate": "!newData.exists() || (newData.isNumber() && root.child('yapps').child($yappId).child('authorId').val() === $authorId && root.child('yapps').child($yappId).child('privacy').val() === 'public' && !root.child('yapps').child($yappId).child('parentId').exists())"
@@ -196,6 +199,7 @@
     "privateAuthorYappIds": {
       "$authorId": {
         ".read": "auth != null && (auth.uid === $authorId || root.child('contacts').child($authorId).child(auth.uid).exists())",
+        ".indexOn": [".value"],
         "$yappId": {
           ".write": "auth != null && auth.uid === $authorId",
           ".validate": "!newData.exists() || (newData.isNumber() && root.child('yapps').child($yappId).child('authorId').val() === $authorId && root.child('yapps').child($yappId).child('privacy').val() === 'contacts' && !root.child('yapps').child($yappId).child('parentId').exists())"
@@ -206,6 +210,7 @@
     "replyYappIds": {
       "$parentId": {
         ".read": "auth != null && ((root.child('yapps').child($parentId).child('privacy').val() !== 'contacts' && root.child('yapps').child($parentId).exists()) || root.child('yapps').child($parentId).child('authorId').val() === auth.uid || root.child('contacts').child(root.child('yapps').child($parentId).child('authorId').val()).child(auth.uid).exists())",
+        ".indexOn": [".value"],
         "$yappId": {
           ".write": "auth != null && root.child('yapps').child($yappId).child('authorId').val() === auth.uid",
           ".validate": "!newData.exists() || (newData.isNumber() && root.child('yapps').child($yappId).child('parentId').val() === $parentId)"
