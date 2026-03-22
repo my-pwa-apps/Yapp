@@ -91,7 +91,7 @@ export const YappProfile: React.FC<Props> = ({ uid, currentUser, onBack, onOpenT
       <div className="yapp-profile-info">
         <div className="yapp-profile-avatar">
           {profile.photoURL
-            ? <img src={profile.photoURL} alt="" className="avatar-img" />
+            ? <img src={profile.photoURL} alt={`${profile.displayName}'s avatar`} className="avatar-img" />
             : <span>{profile.displayName.charAt(0).toUpperCase()}</span>
           }
         </div>

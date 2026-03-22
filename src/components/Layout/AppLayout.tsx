@@ -7,6 +7,7 @@ import { useGroupInvites } from '../../hooks/useGroupInvites';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useUnreadCounts } from '../../hooks/useUnreadCounts';
 import { usePushSubscription } from '../../hooks/usePushSubscription';
+import { useConnectionStatus } from '../../hooks/useConnectionStatus';
 import { ChatList } from '../Chat/ChatList';
 import { ChatWindow } from '../Chat/ChatWindow';
 import { NewChatModal } from '../Chat/NewChatModal';
@@ -47,6 +48,7 @@ export const AppLayout: React.FC = () => {
 
   // Register for Web Push (saves subscription to RTDB)
   usePushSubscription(user?.uid);
+  const connected = useConnectionStatus();
   const notificationCount = contactRequests.length + groupInvites.length + joinRequests.length;
 
   // Set app badge on installed PWA (Android, Windows, iOS)
@@ -305,7 +307,7 @@ export const AppLayout: React.FC = () => {
           <div className="sidebar-user" onClick={() => setShowProfile(true)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowProfile(true); } }} aria-label="Open profile">
             <div className="avatar avatar-sm">
               {profile?.photoURL
-                ? <img src={profile.photoURL} alt="" className="avatar-img" />
+                ? <img src={profile.photoURL} alt={`${profile.displayName}'s avatar`} className="avatar-img" />
                 : profile?.displayName?.charAt(0).toUpperCase()
               }
             </div>
@@ -530,6 +532,14 @@ export const AppLayout: React.FC = () => {
           onRecover={recoverKeys}
           onSkip={() => setKeyRecoveryDismissed(true)}
         />
+      )}
+      {!connected && (
+        <div className="connection-banner" role="alert">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+            <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+          </svg>
+          Connecting...
+        </div>
       )}
       {toastMsg && (
         <div className="app-toast" role="alert" aria-live="polite" onClick={() => setToastMsg(null)}>

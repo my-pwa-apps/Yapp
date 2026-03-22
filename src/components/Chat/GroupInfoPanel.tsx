@@ -182,7 +182,7 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
                 <div key={uid} className="group-member-item">
                   <div className="avatar avatar-sm">
                     {p?.photoURL
-                      ? <img src={p.photoURL} alt="" className="avatar-img" />
+                      ? <img src={p.photoURL} alt={`${p.displayName}'s avatar`} className="avatar-img" />
                       : (p?.displayName?.charAt(0).toUpperCase() || '?')
                     }
                   </div>
@@ -230,7 +230,7 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
                     <div key={uid} className="group-member-item">
                       <div className="avatar avatar-sm">
                         {p?.photoURL
-                          ? <img src={p.photoURL} alt="" className="avatar-img" />
+                          ? <img src={p.photoURL} alt={`${p.displayName || pm.fromName}'s avatar`} className="avatar-img" />
                           : (p?.displayName?.charAt(0).toUpperCase() || pm.fromName.charAt(0).toUpperCase())
                         }
                       </div>
@@ -274,7 +274,7 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
                     <div key={uid} className="group-member-item">
                       <div className="avatar avatar-sm">
                         {p?.photoURL
-                          ? <img src={p.photoURL} alt="" className="avatar-img" />
+                          ? <img src={p.photoURL} alt={`${p.displayName || 'Invited user'}'s avatar`} className="avatar-img" />
                           : (p?.displayName?.charAt(0).toUpperCase() || pm.fromName.charAt(0).toUpperCase())
                         }
                       </div>
@@ -324,7 +324,7 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
                     <div key={user.uid} className="group-member-item mt-8">
                       <div className="avatar avatar-sm">
                         {user.photoURL
-                          ? <img src={user.photoURL} alt="" className="avatar-img" />
+                          ? <img src={user.photoURL} alt={`${user.displayName}'s avatar`} className="avatar-img" />
                           : user.displayName.charAt(0).toUpperCase()
                         }
                       </div>

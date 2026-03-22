@@ -2536,6 +2536,51 @@
   line-height: 1.4;
 }
 
+/* Connection status banner */
+.connection-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: #b45309;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 500;
+  z-index: 10000;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+
+/* Load more messages button */
+.load-more-messages {
+  text-align: center;
+  padding: 12px 0;
+}
+
+.load-more-btn {
+  background: var(--bg-bubble-received, #202C33);
+  border: none;
+  color: var(--accent, #84cc16);
+  padding: 6px 16px;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.load-more-btn:hover {
+  opacity: 0.8;
+}
+
 @keyframes toastIn {
   from { opacity: 0; transform: translateX(-50%) translateY(12px); }
   to { opacity: 1; transform: translateX(-50%) translateY(0); }

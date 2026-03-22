@@ -173,7 +173,7 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
           <div className="avatar avatar-md">
             {(() => {
               const av = getChatAvatar(chat);
-              if (av && av.type === 'photo') return <img src={av.url} alt="" className="avatar-img" />;
+              if (av && av.type === 'photo') return <img src={av.url} alt={`${getChatName(chat)}'s avatar`} className="avatar-img" />;
               return av ? av.letter : '📝';
             })()}
           </div>

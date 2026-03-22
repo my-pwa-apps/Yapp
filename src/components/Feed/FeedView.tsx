@@ -25,8 +25,17 @@ export const FeedView: React.FC<Props> = ({ currentUser }) => {
   const [threadStack, setThreadStack] = useState<Yapp[]>([]);
   const [profileUid, setProfileUid] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [searchActive, setSearchActive] = useState(false);
   const autoFollowedRef = useRef<Set<string>>(new Set());
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Debounce search query (300ms)
+  useEffect(() => {
+    clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => clearTimeout(searchTimerRef.current);
+  }, [searchQuery]);
 
   // Auto-follow contacts when setting is on
   useEffect(() => {
@@ -46,11 +55,15 @@ export const FeedView: React.FC<Props> = ({ currentUser }) => {
 
   const threadYapp = threadStack.length > 0 ? threadStack[threadStack.length - 1] : null;
 
-  const pushThread = useCallback((y: Yapp) => setThreadStack((prev) => [...prev, y]), []);
+  const pushThread = useCallback((y: Yapp) => setThreadStack((prev) => {
+    const next = [...prev, y];
+    // Limit thread stack depth to prevent unbounded memory growth
+    return next.length > 20 ? next.slice(next.length - 20) : next;
+  }), []);
   const popThread = useCallback(() => setThreadStack((prev) => prev.length <= 1 ? [] : prev.slice(0, -1)), []);
 
   const filteredYapps = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
+    const q = debouncedSearch.trim().toLowerCase();
 
     let result = yapps.filter((y) => {
       // Always exclude blocked users (both directions)
@@ -77,7 +90,7 @@ export const FeedView: React.FC<Props> = ({ currentUser }) => {
     });
     if (!yappsSettings.showReyapps) result = result.filter((y) => !y.reyappOf);
     return result;
-  }, [yapps, following, contacts, currentUser.uid, yappsSettings.showReyapps, blockedUsers, blockedBy, searchQuery]);
+  }, [yapps, following, contacts, currentUser.uid, yappsSettings.showReyapps, blockedUsers, blockedBy, debouncedSearch]);
 
   const handlePost = async (text: string, mediaURL?: string, mediaType?: 'image' | 'gif' | 'sticker' | 'voice', voiceDuration?: number, privacy?: 'public' | 'contacts') => {
     await postYapp(currentUser.uid, currentUser.displayName, currentUser.photoURL, text, mediaURL, mediaType, undefined, voiceDuration, privacy ?? 'public');
@@ -153,7 +166,7 @@ export const FeedView: React.FC<Props> = ({ currentUser }) => {
         <div className="feed-composer-wrap">
           <div className="feed-composer-avatar">
             {currentUser.photoURL
-              ? <img src={currentUser.photoURL} alt="" className="avatar-img" />
+              ? <img src={currentUser.photoURL} alt={`${currentUser.displayName}'s avatar`} className="avatar-img" />
               : <span>{currentUser.displayName.charAt(0).toUpperCase()}</span>
             }
           </div>

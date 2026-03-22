@@ -27,7 +27,7 @@ interface Props {
 
 export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onBack, onStartCall, onShowGroupInfo }) => {
   const { cryptoKeys, needsKeyRecovery, recoverKeys } = useAuth();
-  const { messages, loading } = useMessages(chat.id);
+  const { messages, loading, hasMore, loadMore } = useMessages(chat.id);
   const { encryptMessage, decryptMessage, chatKey, refreshKey } = useChatEncryption(chat, currentUid, cryptoKeys);
   const [enablingE2EE, setEnablingE2EE] = useState(false);
   const [showKeyRecovery, setShowKeyRecovery] = useState(false);
@@ -412,7 +412,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
           else if (chat.type === 'direct' && !isSelfChat && otherProfile) setShowUserDetail(!showUserDetail);
         }}>
           {otherProfile?.photoURL
-            ? <img src={otherProfile.photoURL} alt="" className="avatar-img" />
+            ? <img src={otherProfile.photoURL} alt={`${chatName}'s avatar`} className="avatar-img" />
             : chatName.charAt(0).toUpperCase()
           }
           {chat.type === 'direct' && !isSelfChat && otherProfile && (
@@ -642,6 +642,11 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
         </div>
       )}
       <div className="messages-container" ref={messagesContainerRef}>
+        {hasMore && !loading && (
+          <div className="load-more-messages">
+            <button className="load-more-btn" onClick={loadMore}>Load older messages</button>
+          </div>
+        )}
         {loading && <div className="loading-spinner">Loading messages...</div>}
         {!loading && decryptedMessages.length === 0 && (
           <div className="empty-state">

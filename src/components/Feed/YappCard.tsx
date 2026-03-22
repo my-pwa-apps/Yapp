@@ -135,7 +135,7 @@ const YappCardInner: React.FC<Props> = ({ yapp, currentUser, onOpenThread, onOpe
           onClick={(e) => { e.stopPropagation(); onOpenProfile?.(yapp.authorId); }}
         >
           {yapp.authorPhotoURL
-            ? <img src={yapp.authorPhotoURL} alt="" className="avatar-img" />
+            ? <img src={yapp.authorPhotoURL} alt={`${yapp.authorName}'s avatar`} className="avatar-img" />
             : <span>{yapp.authorName.charAt(0).toUpperCase()}</span>
           }
         </div>

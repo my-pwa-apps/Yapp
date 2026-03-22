@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ref,
   get,
@@ -6,37 +6,70 @@ import {
   push,
   update,
   remove,
+  query,
+  orderByChild,
+  limitToLast,
+  endBefore,
+  onDisconnect,
 } from 'firebase/database';
 import { db } from '../firebase';
 import type { Message } from '../types';
 import { sendPushToUsers } from '../utils/sendPushNotification';
 
+const PAGE_SIZE = 80;
+
 export function useMessages(chatId: string | null) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(false);
+  const olderMessagesRef = useRef<Message[]>([]);
 
   useEffect(() => {
     if (!chatId) {
       setMessages([]);
       setLoading(false);
+      setHasMore(false);
+      olderMessagesRef.current = [];
       return;
     }
     setLoading(true);
-    const msgsRef = ref(db, `messages/${chatId}`);
+    olderMessagesRef.current = [];
+    const msgsRef = query(ref(db, `messages/${chatId}`), orderByChild('timestamp'), limitToLast(PAGE_SIZE));
     const unsub = onValue(msgsRef, (snap) => {
       const data: Message[] = [];
       snap.forEach((child) => {
         data.push({ ...child.val(), id: child.key! });
       });
-      // Sort by timestamp ascending
       data.sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
-      setMessages(data);
+      setHasMore(data.length >= PAGE_SIZE);
+      setMessages([...olderMessagesRef.current, ...data]);
       setLoading(false);
     }, () => setLoading(false));
     return () => unsub();
   }, [chatId]);
 
-  return { messages, loading };
+  const loadMore = useCallback(async () => {
+    if (!chatId || !hasMore) return;
+    const oldest = messages[0];
+    if (!oldest) return;
+    const olderQuery = query(
+      ref(db, `messages/${chatId}`),
+      orderByChild('timestamp'),
+      endBefore(oldest.timestamp ?? 0),
+      limitToLast(PAGE_SIZE)
+    );
+    const snap = await get(olderQuery);
+    const data: Message[] = [];
+    snap.forEach((child) => {
+      data.push({ ...child.val(), id: child.key! });
+    });
+    data.sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+    setHasMore(data.length >= PAGE_SIZE);
+    olderMessagesRef.current = [...data, ...olderMessagesRef.current];
+    setMessages((prev) => [...data, ...prev]);
+  }, [chatId, hasMore, messages]);
+
+  return { messages, loading, hasMore, loadMore };
 }
 
 export async function sendMessage(
@@ -241,5 +274,10 @@ export async function forwardMessage(
 }
 
 export async function setTyping(chatId: string, uid: string, isTyping: boolean) {
+  const typingRef = ref(db, `chats/${chatId}/typing/${uid}`);
   await update(ref(db, `chats/${chatId}/typing`), { [uid]: isTyping });
+  // Auto-clear typing indicator if client disconnects unexpectedly
+  if (isTyping) {
+    onDisconnect(typingRef).set(false).catch(() => {});
+  }
 }

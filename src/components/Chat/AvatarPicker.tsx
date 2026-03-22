@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { compressImage } from '../../hooks/useMediaUpload';
 
 // Default avatar options — colorful gradient circles with icons
@@ -50,6 +50,13 @@ export const AvatarPicker: React.FC<Props> = ({ currentPhotoURL, displayName, on
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [selected, setSelected] = useState<string | null>(currentPhotoURL);
+
+  // Close on Escape key
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
