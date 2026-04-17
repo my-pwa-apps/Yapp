@@ -6,6 +6,7 @@ import {
   update,
   onValue,
   onChildAdded,
+  onDisconnect,
   push,
   remove,
 } from 'firebase/database';
@@ -89,28 +90,36 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
     setIsVideoOff(false);
   }, []);
 
-  // Listen for incoming calls — use a ref for callState to avoid re-subscribing on every state change
+  // Listen for incoming calls via per-user index (callsForUser/{uid}) — scoped to
+  // avoid the world-readable /calls leak. The index is written by participants
+  // whenever a call is created/accepted/ended.
   const callStateRef = useRef(callState);
   callStateRef.current = callState;
 
   useEffect(() => {
     if (!currentUid) return;
-    const callsRef = ref(db, 'calls');
-    const unsub = onValue(callsRef, (snap) => {
+    const myCallsRef = ref(db, `callsForUser/${currentUid}`);
+    const unsub = onValue(myCallsRef, async (snap) => {
       if (callStateRef.current !== 'idle') return;
+      // Find a ringing call where I'm not the caller
+      let matchedId: string | null = null;
       snap.forEach((child) => {
-        const data = { ...child.val(), id: child.key! } as CallData;
-        if (
-          data.status === 'ringing' &&
-          data.participants?.[currentUid] &&
-          data.callerId !== currentUid
-        ) {
-          setCallData(data);
-          callIdRef.current = data.id;
-          setCallState('incoming');
-          return true; // break forEach after first match
+        const entry = child.val() as { status?: string; callerId?: string } | null;
+        if (entry?.status === 'ringing' && entry.callerId && entry.callerId !== currentUid) {
+          matchedId = child.key!;
+          return true;
         }
       });
+      if (!matchedId) return;
+      // Fetch full call record
+      const callSnap = await get(ref(db, `calls/${matchedId}`));
+      if (!callSnap.exists()) return;
+      const data = { ...callSnap.val(), id: matchedId } as CallData;
+      if (data.status === 'ringing' && data.participants?.[currentUid] && data.callerId !== currentUid) {
+        setCallData(data);
+        callIdRef.current = matchedId;
+        setCallState('incoming');
+      }
     }, (err) => {
       console.warn('[useCall] Cannot listen for calls:', err.message);
     });
@@ -254,6 +263,22 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
     };
 
     await set(callRef, newCall);
+
+    // Fan-out to per-user index so each participant can listen without reading all /calls
+    const indexUpdates: Record<string, unknown> = {};
+    for (const uid of Object.keys(participants)) {
+      indexUpdates[`callsForUser/${uid}/${callId}`] = { status: 'ringing', callerId: currentUid };
+    }
+    await update(ref(db), indexUpdates);
+
+    // Safety net: if the caller's tab crashes, mark the call ended so recipients don't ring forever.
+    try {
+      onDisconnect(ref(db, `calls/${callId}/status`)).set('ended').catch(() => {});
+      for (const uid of Object.keys(participants)) {
+        onDisconnect(ref(db, `callsForUser/${uid}/${callId}`)).remove().catch(() => {});
+      }
+    } catch { /* onDisconnect unsupported */ }
+
     setCallData({ ...newCall, id: callId });
     setCallState('outgoing');
 
@@ -400,6 +425,15 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
 
     await update(ref(db, `calls/${callId}`), { status: 'active' });
 
+    // Flip index status for all participants
+    if (callData?.participants) {
+      const flip: Record<string, unknown> = {};
+      for (const uid of Object.keys(callData.participants)) {
+        flip[`callsForUser/${uid}/${callId}/status`] = 'active';
+      }
+      update(ref(db), flip).catch(() => {});
+    }
+
     // Listen for call status changes
     const statusRef = ref(db, `calls/${callId}/status`);
     const unsubStatus = onValue(statusRef, (snap) => {
@@ -416,10 +450,22 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
     unsubscribersRef.current.push(unsubStatus);
   }; // eslint-disable-line react-hooks/exhaustive-deps
 
+  /** Internal: mark a call ended in /calls and clean up callsForUser index. */
+  const markCallEnded = useCallback((callId: string, participants?: Record<string, boolean>) => {
+    const updates: Record<string, unknown> = {};
+    updates[`calls/${callId}/status`] = 'ended';
+    if (participants) {
+      for (const uid of Object.keys(participants)) {
+        updates[`callsForUser/${uid}/${callId}`] = null;
+      }
+    }
+    update(ref(db), updates).catch(() => {});
+    remove(ref(db, `callSignaling/${callId}`)).catch(() => {});
+  }, []);
+
   const rejectCall = () => {
     if (callIdRef.current) {
-      update(ref(db, `calls/${callIdRef.current}`), { status: 'ended' }).catch(() => {});
-      remove(ref(db, `callSignaling/${callIdRef.current}`)).catch(() => {});
+      markCallEnded(callIdRef.current, callData?.participants);
     }
     cleanup();
     setCallState('idle');
@@ -428,8 +474,7 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
 
   const endCall = () => {
     if (callIdRef.current) {
-      update(ref(db, `calls/${callIdRef.current}`), { status: 'ended' }).catch(() => {});
-      remove(ref(db, `callSignaling/${callIdRef.current}`)).catch(() => {});
+      markCallEnded(callIdRef.current, callData?.participants);
     }
     cleanup();
     setCallState('ended');
@@ -446,8 +491,16 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
     if (!callId || !stream) return;
     if (peerConnectionsRef.current.has(uid)) return; // already connected
 
-    // Add participant to the call record in Firebase
-    await update(ref(db, `calls/${callId}/participants`), { [uid]: true });
+    // Add participant to the call record in Firebase + index
+    await update(ref(db), {
+      [`calls/${callId}/participants/${uid}`]: true,
+      [`callsForUser/${uid}/${callId}`]: {
+        status: callData?.status || 'active',
+        callerId: callData?.callerId || currentUid,
+      },
+    });
+    // Safety net for this new participant's tab crash
+    try { onDisconnect(ref(db, `callsForUser/${uid}/${callId}`)).remove().catch(() => {}); } catch {}
 
     // Send push notification to the added participant
     sendPushToUsers([uid], {

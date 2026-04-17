@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useYapps, useFollowing, useContacts, followUser, postYapp } from '../../hooks/useYapps';
 import { useYappsSettings } from '../../hooks/useYappsSettings';
 import { useBlockedUsers, useBlockedByUsers } from '../../hooks/useBlockedUsers';
+import { useHistoryStack } from '../../hooks/useHistoryStack';
 import { YappCard } from './YappCard';
 import { YappComposer } from './YappComposer';
 import { YappThread } from './YappThread';
@@ -22,8 +23,10 @@ export const FeedView: React.FC<Props> = ({ currentUser }) => {
   const blockedUsers = useBlockedUsers(currentUser.uid);
   const blockedBy = useBlockedByUsers(currentUser.uid);
   const [showSettings, setShowSettings] = useState(false);
-  const [threadStack, setThreadStack] = useState<Yapp[]>([]);
-  const [profileUid, setProfileUid] = useState<string | null>(null);
+  // History-backed navigation stacks so hardware/browser Back button
+  // pops threads/profiles instead of exiting the PWA.
+  const threadNav = useHistoryStack<Yapp>('feed-thread', 20);
+  const profileNav = useHistoryStack<string>('feed-profile', 20);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [searchActive, setSearchActive] = useState(false);
@@ -53,14 +56,11 @@ export const FeedView: React.FC<Props> = ({ currentUser }) => {
     });
   }, [contacts, settingsLoading, yappsSettings.autoFollowContacts, following, currentUser.uid, blockedUsers, blockedBy]);
 
-  const threadYapp = threadStack.length > 0 ? threadStack[threadStack.length - 1] : null;
+  const threadYapp = threadNav.active;
+  const profileUid = profileNav.active;
 
-  const pushThread = useCallback((y: Yapp) => setThreadStack((prev) => {
-    const next = [...prev, y];
-    // Limit thread stack depth to prevent unbounded memory growth
-    return next.length > 20 ? next.slice(next.length - 20) : next;
-  }), []);
-  const popThread = useCallback(() => setThreadStack((prev) => prev.length <= 1 ? [] : prev.slice(0, -1)), []);
+  const pushThread = useCallback((y: Yapp) => threadNav.push(y), [threadNav]);
+  const popThread = useCallback(() => threadNav.pop(), [threadNav]);
 
   const filteredYapps = useMemo(() => {
     const q = debouncedSearch.trim().toLowerCase();
@@ -102,9 +102,9 @@ export const FeedView: React.FC<Props> = ({ currentUser }) => {
       <YappProfile
         uid={profileUid}
         currentUser={currentUser}
-        onBack={() => setProfileUid(null)}
-        onOpenThread={(y) => { setProfileUid(null); pushThread(y); }}
-        onOpenProfile={(uid) => setProfileUid(uid)}
+        onBack={() => profileNav.pop()}
+        onOpenThread={(y) => { profileNav.pop(); pushThread(y); }}
+        onOpenProfile={(uid) => profileNav.push(uid)}
       />
     );
   }
@@ -117,7 +117,7 @@ export const FeedView: React.FC<Props> = ({ currentUser }) => {
         currentUser={currentUser}
         onBack={popThread}
         onOpenThread={pushThread}
-        onOpenProfile={(uid) => { setThreadStack([]); setProfileUid(uid); }}
+        onOpenProfile={(uid) => { threadNav.clear(); profileNav.push(uid); }}
       />
     );
   }
@@ -202,7 +202,7 @@ export const FeedView: React.FC<Props> = ({ currentUser }) => {
               yapp={y}
               currentUser={currentUser}
               onOpenThread={pushThread}
-              onOpenProfile={setProfileUid}
+              onOpenProfile={profileNav.push}
               defaultExpanded={yappsSettings.autoExpandThreads}
             />
           ))

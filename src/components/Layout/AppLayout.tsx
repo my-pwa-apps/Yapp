@@ -18,13 +18,14 @@ import { ContactRequestsModal } from '../Chat/ContactRequestsModal';
 import { GroupInfoPanel } from '../Chat/GroupInfoPanel';
 import { NotificationSettings } from '../Chat/NotificationSettings';
 import { KeyRecoveryModal } from '../Chat/KeyRecoveryModal';
+import { E2EEPassphraseSetupModal } from '../Chat/E2EEPassphraseSetupModal';
 import { FeedView } from '../Feed/FeedView';
 import type { Chat, UserProfile } from '../../types';
 import { YappLogo } from '../YappLogo';
 import './AppLayout.css';
 
 export const AppLayout: React.FC = () => {
-  const { user, profile, needsKeyRecovery, recoverKeys } = useAuth();
+  const { user, profile, needsKeyRecovery, recoverKeys, needsPassphraseSetup, setupE2EEPassphrase, skipE2EEPassphrase } = useAuth();
   const { chats, loading } = useChats(user?.uid);
 
   // Toast state — must be declared before useCall which receives showToast
@@ -197,17 +198,47 @@ export const AppLayout: React.FC = () => {
     prevJoinRequestCountRef.current = joinRequests.length;
   }, [joinRequests, notifyJoinRequest]);
 
-  // On mobile, hide sidebar when chat is selected
+  // On mobile, hide sidebar when chat is selected. Use a history stack entry
+  // so the hardware/browser Back button pops back to the chat list instead of
+  // exiting the app.
+  const chatOpenRef = useRef(false);
   const handleSelectChat = useCallback((chat: Chat) => {
     setActiveChat(chat);
     if (window.innerWidth < 768) {
       setShowSidebar(false);
+      if (!chatOpenRef.current) {
+        chatOpenRef.current = true;
+        try { window.history.pushState({ yappKey: 'mobile-chat' }, ''); } catch { /* noop */ }
+      }
     }
   }, []);
 
   const handleBack = useCallback(() => {
     setShowSidebar(true);
     setActiveChat(null);
+    if (chatOpenRef.current) {
+      chatOpenRef.current = false;
+      const state = window.history.state as { yappKey?: string } | null;
+      if (state?.yappKey === 'mobile-chat') {
+        try { window.history.back(); } catch { /* noop */ }
+      }
+    }
+  }, []);
+
+  // Sync with browser Back
+  useEffect(() => {
+    const onPop = () => {
+      if (chatOpenRef.current) {
+        const state = window.history.state as { yappKey?: string } | null;
+        if (state?.yappKey !== 'mobile-chat') {
+          chatOpenRef.current = false;
+          setShowSidebar(true);
+          setActiveChat(null);
+        }
+      }
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
   }, []);
 
   // Stable callback for starting calls
@@ -531,6 +562,13 @@ export const AppLayout: React.FC = () => {
         <KeyRecoveryModal
           onRecover={recoverKeys}
           onSkip={() => setKeyRecoveryDismissed(true)}
+        />
+      )}
+      {/* E2EE passphrase setup (Google sign-in, first device) */}
+      {needsPassphraseSetup && (
+        <E2EEPassphraseSetupModal
+          onSet={setupE2EEPassphrase}
+          onSkip={skipE2EEPassphrase}
         />
       )}
       {!connected && (

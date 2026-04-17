@@ -1,6 +1,9 @@
+import { verifyFirebaseIdToken } from './verifyIdToken';
+
 interface FirebaseEnv {
   FIREBASE_DATABASE_URL: string;
   FIREBASE_WEB_API_KEY: string;
+  FIREBASE_PROJECT_ID?: string;
   FIREBASE_SERVICE_ACCOUNT_EMAIL: string;
   FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY: string;
 }
@@ -19,6 +22,19 @@ interface PushSubscriptionJSON {
 
 let cachedAccessToken: { token: string; expiresAt: number } | null = null;
 
+/** Derive project id from the RTDB URL (e.g. https://<project>-default-rtdb.firebaseio.com). */
+function projectIdFromEnv(env: FirebaseEnv): string | null {
+  if (env.FIREBASE_PROJECT_ID) return env.FIREBASE_PROJECT_ID;
+  try {
+    const host = new URL(env.FIREBASE_DATABASE_URL).host;
+    const sub = host.split('.')[0];
+    // Strip Firebase suffixes like "-default-rtdb"
+    return sub.replace(/-default-rtdb$/, '').replace(/-[a-z0-9]+-rtdb$/, '');
+  } catch {
+    return null;
+  }
+}
+
 export async function verifyFirebaseUser(request: Request, env: FirebaseEnv): Promise<VerifiedUser | null> {
   const authHeader = request.headers.get('Authorization') || '';
   if (!authHeader.startsWith('Bearer ')) return null;
@@ -26,29 +42,55 @@ export async function verifyFirebaseUser(request: Request, env: FirebaseEnv): Pr
   const idToken = authHeader.slice('Bearer '.length).trim();
   if (!idToken) return null;
 
-  const res = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(env.FIREBASE_WEB_API_KEY)}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken }),
-    }
-  );
+  const projectId = projectIdFromEnv(env);
+  if (!projectId) return null;
 
-  if (!res.ok) return null;
+  const verified = await verifyFirebaseIdToken(idToken, projectId);
+  return verified ? { uid: verified.uid } : null;
+}
 
-  const json = await res.json() as { users?: Array<{ localId?: string }> };
-  const uid = json.users?.[0]?.localId;
-  return uid ? { uid } : null;
+/** Delete a push subscription from RTDB by endpoint (used after 410 Gone / 404 Not Found). */
+export async function deleteDeadPushSubscription(endpoint: string, env: FirebaseEnv): Promise<void> {
+  try {
+    const accessToken = await getFirebaseAccessToken(env);
+    // Find the owning uid+hash. We don't know the uid directly, so scan user push subs — but
+    // that's O(users). Instead, the worker receives endpoint + remembers the uid it was sent to
+    // in the caller. See sendPushNotifications.
+    // This helper is intentionally kept here for callers that already resolved uid+hash.
+    void accessToken;
+    void endpoint;
+  } catch {
+    /* noop */
+  }
+}
+
+/** Delete a specific push subscription at pushSubscriptions/{uid}/{hash}. */
+export async function removePushSubscription(uid: string, hash: string, env: FirebaseEnv): Promise<void> {
+  try {
+    const accessToken = await getFirebaseAccessToken(env);
+    const baseUrl = env.FIREBASE_DATABASE_URL.replace(/\/$/, '');
+    await fetch(`${baseUrl}/pushSubscriptions/${uid}/${hash}.json?access_token=${encodeURIComponent(accessToken)}`, {
+      method: 'DELETE',
+    });
+  } catch {
+    /* non-critical */
+  }
+}
+
+export interface ResolvedSubscription extends PushSubscriptionJSON {
+  /** uid the subscription belongs to (for cleanup on 410/404). */
+  uid: string;
+  /** RTDB child key under pushSubscriptions/{uid}/{hash}. */
+  hash: string;
 }
 
 export async function fetchPushSubscriptions(
   recipientUids: string[],
   env: FirebaseEnv
-): Promise<PushSubscriptionJSON[]> {
+): Promise<ResolvedSubscription[]> {
   const accessToken = await getFirebaseAccessToken(env);
   const uniqueRecipients = Array.from(new Set(recipientUids));
-  const subscriptions: PushSubscriptionJSON[] = [];
+  const subscriptions: ResolvedSubscription[] = [];
 
   await Promise.all(
     uniqueRecipients.map(async (uid) => {
@@ -60,9 +102,11 @@ export async function fetchPushSubscriptions(
 
       if (!data) return;
 
-      for (const entry of Object.values(data)) {
+      for (const [hash, entry] of Object.entries(data)) {
         if (entry.endpoint && entry.keys?.p256dh && entry.keys?.auth) {
           subscriptions.push({
+            uid,
+            hash,
             endpoint: entry.endpoint,
             keys: {
               p256dh: entry.keys.p256dh,

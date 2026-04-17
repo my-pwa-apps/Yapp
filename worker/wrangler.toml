@@ -2,11 +2,25 @@ name = "yapp-push"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
 
+# ─── Scheduled triggers ──────────────────────────────────────
+# Runs every 10 minutes to purge expired ephemeral messages server-side.
+[triggers]
+crons = ["*/10 * * * *"]
+
+# ─── Rate limiting binding (Cloudflare native, durable across isolates) ──
+# Docs: https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/
+[[unsafe.bindings]]
+name = "RATE_LIMITER"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 30, period = 60 }
+
 # Environment variables (set via `npx wrangler secret put <NAME>`):
 # VAPID_PRIVATE_JWK  — JWK JSON string of the VAPID P-256 private key
 # VAPID_PUBLIC_KEY   — base64url-encoded 65-byte uncompressed public key
 # ALLOWED_ORIGINS    — comma-separated allowed origins (e.g. "https://my-pwa-apps.github.io,http://localhost:5173")
 # FIREBASE_DATABASE_URL             — Realtime Database base URL
 # FIREBASE_WEB_API_KEY              — Firebase Web API key for ID token validation
+# FIREBASE_PROJECT_ID               — (optional) Firebase project id; auto-derived from DB URL when omitted
 # FIREBASE_SERVICE_ACCOUNT_EMAIL    — service account email with RTDB access
 # FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY — PEM private key for that service account

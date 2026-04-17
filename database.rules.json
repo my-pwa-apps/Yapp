@@ -109,13 +109,22 @@
     },
 
     "calls": {
-      ".read": "auth != null",
-      ".indexOn": ["status"],
       "$callId": {
+        ".read": "auth != null && data.child('participants').child(auth.uid).exists()",
         ".write": "auth != null && (!data.exists() || data.child('participants').child(auth.uid).exists())",
         ".validate": "newData.hasChildren(['chatId', 'callerId', 'callerName', 'callType', 'status', 'participants', 'createdAt']) && newData.child('chatId').isString() && newData.child('callerName').isString() && (newData.child('callType').val() === 'audio' || newData.child('callType').val() === 'video') && (newData.child('status').val() === 'ringing' || newData.child('status').val() === 'active' || newData.child('status').val() === 'ended') && newData.child('participants').child(auth.uid).exists() && newData.child('createdAt').isNumber()",
         "callerId": {
           ".validate": "(data.exists() && newData.val() === data.val()) || (!data.exists() && newData.val() === auth.uid)"
+        }
+      }
+    },
+
+    "callsForUser": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$callId": {
+          ".write": "auth != null && (root.child('calls').child($callId).child('participants').child(auth.uid).exists() || (!newData.exists() && auth.uid === $uid))",
+          ".validate": "!newData.exists() || (newData.hasChildren(['status', 'callerId']) && (newData.child('status').val() === 'ringing' || newData.child('status').val() === 'active' || newData.child('status').val() === 'ended'))"
         }
       }
     },

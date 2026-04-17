@@ -1,8 +1,11 @@
 import {
   fetchPushSubscriptions,
   notificationRequestIsAuthorized,
+  removePushSubscription,
   verifyFirebaseUser,
+  type ResolvedSubscription,
 } from './firebase';
+import { scheduledPurgeEphemeralMessages } from './ephemeralPurge';
 
 /**
  * Cloudflare Worker for sending Web Push notifications.
@@ -18,31 +21,47 @@ interface Env {
   GIPHY_API_KEY?: string;       // Giphy API key (server-side only, never exposed to client)
   FIREBASE_DATABASE_URL: string;
   FIREBASE_WEB_API_KEY: string;
+  FIREBASE_PROJECT_ID?: string;
   FIREBASE_SERVICE_ACCOUNT_EMAIL: string;
   FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY: string;
+  /**
+   * Cloudflare Rate Limiting binding (configured in wrangler.toml).
+   * Falls back to the in-memory limiter if absent (e.g. local dev without binding).
+   */
+  RATE_LIMITER?: { limit(opts: { key: string }): Promise<{ success: boolean }> };
 }
 
-// ─── Simple in-memory rate limiter ────────────────────────────
+// ─── Rate limiter ─────────────────────────────────────────────
+//
+// Primary: Cloudflare Rate Limiting binding (`env.RATE_LIMITER`) — durable across isolates.
+// Fallback: in-memory map, used only when the binding is unavailable (local dev).
+
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_WINDOW = 60_000; // 1 minute
 const RATE_LIMIT_MAX = 30;        // max requests per window per IP
 const RATE_LIMIT_CLEANUP_INTERVAL = 5 * 60_000; // 5 minutes
 let lastCleanup = Date.now();
 
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-
-  // Periodically clean up expired entries to prevent memory leak
-  if (now - lastCleanup > RATE_LIMIT_CLEANUP_INTERVAL) {
-    lastCleanup = now;
-    for (const [key, entry] of rateLimitMap) {
-      if (now > entry.resetAt) rateLimitMap.delete(key);
+async function checkRateLimit(env: Env, key: string): Promise<boolean> {
+  if (env.RATE_LIMITER) {
+    try {
+      const { success } = await env.RATE_LIMITER.limit({ key });
+      return success;
+    } catch {
+      // Fall through to in-memory limiter on binding error
     }
   }
 
-  const entry = rateLimitMap.get(ip);
+  const now = Date.now();
+  if (now - lastCleanup > RATE_LIMIT_CLEANUP_INTERVAL) {
+    lastCleanup = now;
+    for (const [k, entry] of rateLimitMap) {
+      if (now > entry.resetAt) rateLimitMap.delete(k);
+    }
+  }
+  const entry = rateLimitMap.get(key);
   if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    rateLimitMap.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
     return true;
   }
   if (entry.count >= RATE_LIMIT_MAX) return false;
@@ -68,7 +87,7 @@ interface PushRequest {
 }
 
 interface PushDeliveryRequest {
-  subscriptions: PushSubscriptionJSON[];
+  subscriptions: (PushSubscriptionJSON & { uid?: string; hash?: string })[];
   payload: {
     title: string;
     body: string;
@@ -98,7 +117,7 @@ export default {
     if (url.pathname === '/push' && request.method === 'POST') {
       // Rate limit by IP
       const clientIp = request.headers.get('CF-Connecting-IP') || 'unknown';
-      if (!checkRateLimit(clientIp)) {
+      if (!(await checkRateLimit(env, `push:${clientIp}`))) {
         return Response.json({ error: 'Rate limit exceeded' }, { status: 429, headers: cors });
       }
 
@@ -152,7 +171,7 @@ export default {
         return Response.json({ error: 'Giphy not configured' }, { status: 503, headers: cors });
       }
       const clientIp = request.headers.get('CF-Connecting-IP') || 'unknown';
-      if (!checkRateLimit(clientIp)) {
+      if (!(await checkRateLimit(env, `giphy:${clientIp}`))) {
         return Response.json({ error: 'Rate limit exceeded' }, { status: 429, headers: cors });
       }
       const q = url.searchParams.get('q') || '';
@@ -171,6 +190,15 @@ export default {
 
     return Response.json({ error: 'Not found' }, { status: 404, headers: cors });
   },
+
+  /**
+   * Scheduled handler — runs on the cron triggers defined in wrangler.toml.
+   * Purges expired ephemeral messages server-side so they're deleted even when
+   * no recipient has the chat open.
+   */
+  async scheduled(_event, env, ctx): Promise<void> {
+    ctx.waitUntil(scheduledPurgeEphemeralMessages(env));
+  },
 } satisfies ExportedHandler<Env>;
 
 // ─── Push delivery ───────────────────────────────────────────
@@ -179,15 +207,24 @@ async function sendPushNotifications(req: PushDeliveryRequest, env: Env) {
   const payloadBytes = new TextEncoder().encode(JSON.stringify(req.payload));
   const vapidJwk: JsonWebKey = JSON.parse(env.VAPID_PRIVATE_JWK);
   const results: { endpoint: string; status: number; ok: boolean }[] = [];
+  const pruneTasks: Promise<void>[] = [];
 
   for (const sub of req.subscriptions) {
     try {
       const res = await sendWebPush(sub, payloadBytes, vapidJwk, env.VAPID_PUBLIC_KEY);
       results.push({ endpoint: sub.endpoint.substring(0, 60) + '...', status: res.status, ok: res.ok });
+      // Prune dead subscriptions (410 Gone / 404 Not Found)
+      const resolved = sub as ResolvedSubscription;
+      if ((res.status === 410 || res.status === 404) && resolved.uid && resolved.hash) {
+        pruneTasks.push(removePushSubscription(resolved.uid, resolved.hash, env));
+      }
     } catch (err) {
       results.push({ endpoint: sub.endpoint.substring(0, 60) + '...', status: 0, ok: false });
     }
   }
+
+  // Prune dead subs in the background (do not block the response)
+  if (pruneTasks.length > 0) Promise.allSettled(pruneTasks);
 
   return { sent: results.filter((r) => r.ok).length, total: results.length, results };
 }

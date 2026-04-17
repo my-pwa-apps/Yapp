@@ -812,7 +812,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
         />
       )}
       {toastMsg && (
-        <div className="app-toast" onClick={() => setToastMsg(null)}>
+        <div className="app-toast" role="alert" aria-live="polite" onClick={() => setToastMsg(null)}>
           {toastMsg}
         </div>
       )}
