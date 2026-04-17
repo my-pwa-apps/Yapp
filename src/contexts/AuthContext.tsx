@@ -10,6 +10,8 @@ import {
   EmailAuthProvider,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   User,
 } from 'firebase/auth';
 import {
@@ -151,6 +153,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Listen to auth state
   useEffect(() => {
+    // Resolve any pending signInWithRedirect() so errors surface and
+    // onAuthStateChanged runs against the finalized auth state.
+    getRedirectResult(auth).catch((err) => {
+      console.warn('[Auth] getRedirectResult error:', err);
+    });
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
@@ -234,50 +241,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
-    const cred = await signInWithPopup(auth, provider);
-    const uid = cred.user.uid;
-    const userRef = ref(db, `users/${uid}`);
-    const snap = await get(userRef);
-    const isNewUser = !snap.exists();
-    if (snap.exists()) {
-      await update(userRef, { online: true, lastSeen: serverTimestamp() });
-      setProfile(snap.val() as UserProfile);
-    } else {
-      const newProfile: UserProfile = {
-        uid,
-        displayName: cred.user.displayName || cred.user.email?.split('@')[0] || 'User',
-        email: (cred.user.email || '').toLowerCase(),
-        photoURL: cred.user.photoURL || null,
-        status: "Hey there! I'm using Yappin'",
-        online: true,
-        lastSeen: Date.now(),
-        createdAt: Date.now(),
-      };
-      await set(userRef, newProfile);
-      setProfile(newProfile);
-    }
-
-    // E2EE: Try IndexedDB first
-    try {
-      const local = await loadKeysLocally();
-      if (local) {
-        setCryptoKeys(local);
+    // GitHub Pages (and other hosts that can't set Cross-Origin-Opener-Policy:
+    // same-origin-allow-popups) trigger noisy "window.closed call blocked"
+    // warnings from Chrome when signInWithPopup polls the popup. Use redirect
+    // on production, popup on localhost for fast dev iteration.
+    const isLocalhost =
+      typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1');
+    if (isLocalhost) {
+      try {
+        await signInWithPopup(auth, provider);
         return;
-      }
-    } catch { /* IndexedDB unavailable */ }
-
-    // If a password-encrypted backup exists, prompt for its passphrase via recovery modal.
-    if (!isNewUser) {
-      const pkSnap = await get(ref(db, `users/${uid}/encryptedPrivateKey`));
-      if (pkSnap.exists()) {
-        setNeedsKeyRecovery(true);
-        return;
+      } catch (err: unknown) {
+        const code = (err as { code?: string })?.code;
+        if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+          throw err;
+        }
+        // Fall through to redirect on any other popup failure.
       }
     }
-
-    // No local keys and no backup — ask the user to set a passphrase.
-    // (Previously this silently UID-encrypted the private key, which voided E2EE.)
-    setNeedsPassphraseSetup(true);
+    await signInWithRedirect(auth, provider);
+    // signInWithRedirect navigates away; the promise never resolves in this tab.
   };
 
   const signUp = async (email: string, password: string, displayName: string) => {
