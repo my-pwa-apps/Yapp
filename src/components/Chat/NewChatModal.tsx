@@ -19,7 +19,7 @@ export const NewChatModal: React.FC<Props> = ({ currentUser, existingChats, onCl
   const [creating, setCreating] = useState(false);
   const [notFound, setNotFound] = useState(false);
 
-  const appUrl = 'https://my-pwa-apps.github.io/Yapp/';
+  const appUrl = new URL(import.meta.env.BASE_URL, window.location.origin).href;
 
   // Check if a self-chat already exists
   const hasSelfChat = existingChats.some(

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../../firebase';
 import { membersToArray, clearChatMessages, deleteChat } from '../../hooks/useChats';
@@ -82,19 +82,19 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
     return () => { cancelled = true; };
   }, [chats, cryptoKeys, currentUid]);
 
-  const isSelfChat = (chat: Chat) => {
+  const isSelfChat = useCallback((chat: Chat) => {
     if (chat.type !== 'direct') return false;
     const members = membersToArray(chat.members);
     return members.length === 1 && members[0] === currentUid;
-  };
+  }, [currentUid]);
 
-  const getChatName = (chat: Chat) => {
+  const getChatName = useCallback((chat: Chat) => {
     if (chat.type === 'group') return chat.name || 'Group';
     if (isSelfChat(chat)) return 'You';
     const otherId = membersToArray(chat.members).find((m) => m !== currentUid);
     if (otherId && memberProfiles[otherId]) return memberProfiles[otherId].displayName;
     return 'Chat';
-  };
+  }, [currentUid, isSelfChat, memberProfiles]);
 
   const getChatAvatar = (chat: Chat) => {
     // Try to get profile photo for direct chats
@@ -124,7 +124,7 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
       if (preview?.toLowerCase().includes(q)) return true;
       return false;
     });
-  }, [chats, searchFilter, memberProfiles, decryptedPreviews]);
+  }, [chats, searchFilter, getChatName, decryptedPreviews]);
 
   if (loading) {
     return <div className="loading-spinner">Loading chats...</div>;

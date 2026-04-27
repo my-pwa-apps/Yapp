@@ -65,6 +65,7 @@ function useIndexedYapps(yappIds: string[], sorter: (a: Yapp, b: Yapp) => number
     }
 
     return () => listeners.forEach((unsub) => unsub());
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- idsKey is the stable value for the yapp id set.
   }, [idsKey]);
 
   return { yapps, loading };
@@ -124,6 +125,7 @@ export function useYapps(uid: string | undefined, contacts: Set<string>) {
       publicUnsub();
       privateUnsubs.forEach((unsub) => unsub());
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- contactKey is the stable value for the contacts set.
   }, [uid, contactKey]);
 
   return useIndexedYapps(visibleIds, (a, b) => b.timestamp - a.timestamp);

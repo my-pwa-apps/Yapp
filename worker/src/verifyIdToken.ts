@@ -181,7 +181,7 @@ function readTlv(buf: Uint8Array, offset: number): {
   totalLen: number;
 } {
   const tag = buf[offset];
-  let lenByte = buf[offset + 1];
+  const lenByte = buf[offset + 1];
   let contentLen: number;
   let headerLen: number;
   if ((lenByte & 0x80) === 0) {

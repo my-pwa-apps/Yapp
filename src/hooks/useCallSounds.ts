@@ -68,7 +68,6 @@ function createRingtone(ctx: AudioContext): { oscillators: OscillatorNode[]; gai
   osc.start();
 
   // Pattern: short beep at 660Hz, short beep at 880Hz, pause — repeat
-  let step = 0;
   const playPattern = () => {
     const now = ctx.currentTime;
     masterGain.gain.cancelScheduledValues(now);
@@ -105,7 +104,6 @@ function createRingtone(ctx: AudioContext): { oscillators: OscillatorNode[]; gai
     masterGain.gain.linearRampToValueAtTime(0, now + 1.05);
 
     // Then silence for the rest of the 3s cycle
-    step++;
   };
 
   playPattern();

@@ -246,7 +246,7 @@ export const AppLayout: React.FC = () => {
     if (!activeChat) return;
     const members = membersToArray(activeChat.members);
     call.startCall(activeChat.id, callType, members);
-  }, [activeChat, call.startCall]);
+  }, [activeChat, call]);
 
   // Use refs for stable service worker handler to avoid re-registering on every render
   const callRef = useRef(call);
@@ -291,7 +291,7 @@ export const AppLayout: React.FC = () => {
         window.history.replaceState({}, '', window.location.pathname);
       }
     }
-  }, [call.callState, call.callData, call.acceptCall]);
+  }, [call, call.callState, call.callData]);
 
   // Handle cold-start: if app was opened via notification with ?openChat= param
   const openChatHandledRef = useRef(false);

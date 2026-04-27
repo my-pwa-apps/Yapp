@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../../firebase';
 import {
@@ -11,6 +11,8 @@ import {
   approvePendingMember,
   rejectPendingMember,
 } from '../../hooks/useChats';
+import { useAuth } from '../../contexts/AuthContext';
+import { ensureGroupKeyForMember } from '../../hooks/useE2EE';
 import type { Chat, UserProfile } from '../../types';
 
 interface Props {
@@ -22,6 +24,7 @@ interface Props {
 }
 
 export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName, onClose, onLeft }) => {
+  const { cryptoKeys } = useAuth();
   const [memberProfiles, setMemberProfiles] = useState<Record<string, UserProfile>>({});
   const [showAddMember, setShowAddMember] = useState(false);
   const [searchEmail, setSearchEmail] = useState('');
@@ -38,9 +41,9 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const members = membersToArray(chat.members);
+  const members = useMemo(() => membersToArray(chat.members), [chat.members]);
   const isAdmin = isGroupAdmin(chat, currentUid);
-  const pendingMembers = chat.pendingMembers || {};
+  const pendingMembers = useMemo(() => chat.pendingMembers || {}, [chat.pendingMembers]);
 
   // Live-listen for member profiles
   useEffect(() => {
@@ -58,7 +61,7 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
     });
 
     return () => unsubs.forEach((u) => u());
-  }, [chat.members, chat.pendingMembers]);
+  }, [members, pendingMembers]);
 
   const handleSearch = async () => {
     if (!searchEmail.trim()) return;
@@ -75,6 +78,8 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
   const handleInvite = async (user: UserProfile) => {
     setActionLoading(user.uid);
     try {
+      const keyReady = await ensureGroupKeyForMember(chat, currentUid, user.uid, cryptoKeys);
+      if (!keyReady) throw new Error('Could not prepare encryption key for invited member');
       await inviteToGroup(chat.id, user.uid, currentUid, currentName);
       setSearchResults((prev) => prev.filter((u) => u.uid !== user.uid));
     } catch (e) {
@@ -121,6 +126,8 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
     const name = memberProfiles[uid]?.displayName || pendingMembers[uid]?.fromName || 'User';
     setActionLoading(uid);
     try {
+      const keyReady = await ensureGroupKeyForMember(chat, currentUid, uid, cryptoKeys);
+      if (!keyReady) throw new Error('Could not prepare encryption key for approved member');
       await approvePendingMember(chat.id, uid, currentName, name);
     } catch (e) {
       console.error('Failed to approve:', e);
@@ -160,7 +167,7 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
           <h3>Group Info</h3>
         </div>
 
-        <div className="profile-content" style={{ overflowY: 'auto' }}>
+        <div className="profile-content">
           {/* Group avatar + name */}
           <div className="profile-avatar-large">
             {chat.name?.charAt(0).toUpperCase() || 'G'}

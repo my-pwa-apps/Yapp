@@ -27,9 +27,10 @@ export const LoginPage: React.FC = () => {
         }
         await signUp(email, password, displayName.trim());
       }
-    } catch (err: any) {
-      console.error('Auth error:', err.code, err.message);
-      const code = err.code;
+    } catch (err: unknown) {
+      const authError = err as { code?: string; message?: string };
+      console.error('Auth error:', authError.code, authError.message);
+      const code = authError.code ?? '';
       const friendly: Record<string, string> = {
         'auth/email-already-in-use': 'This email is already registered. Try signing in.',
         'auth/invalid-email': 'Please enter a valid email address.',
@@ -41,7 +42,7 @@ export const LoginPage: React.FC = () => {
         'auth/popup-closed-by-user': 'Sign-in popup was closed.',
         'auth/cancelled-popup-request': 'Sign-in was cancelled.',
       };
-      setError(friendly[code] || err.message?.replace('Firebase: ', '') || 'Something went wrong');
+      setError(friendly[code] || authError.message?.replace('Firebase: ', '') || 'Something went wrong');
     }
     setLoading(false);
   };
@@ -51,12 +52,13 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
     try {
       await signInWithGoogle();
-    } catch (err: any) {
-      const code = err.code;
+    } catch (err: unknown) {
+      const authError = err as { code?: string; message?: string };
+      const code = authError.code;
       if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
         // User cancelled — don't show error
       } else {
-        setError(err.message?.replace('Firebase: ', '') || 'Google sign-in failed');
+        setError(authError.message?.replace('Firebase: ', '') || 'Google sign-in failed');
       }
     }
     setLoading(false);

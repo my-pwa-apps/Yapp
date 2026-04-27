@@ -36,6 +36,8 @@ export interface Chat {
   pendingMembers?: Record<string, PendingMember>;
   /** Ephemeral messages: TTL in seconds (0 = off). When set, new messages self-destruct after being read. */
   ephemeralTTL?: number;
+  /** Wrapped AES group key per member uid. Present when group E2EE is enabled. */
+  encryptedGroupKey?: Record<string, { wrappedKey: string; iv: string; wrappedBy: string }>;
 }
 
 export interface PendingMember {

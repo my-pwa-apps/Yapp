@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -78,27 +79,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [needsPassphraseSetup, setNeedsPassphraseSetup] = useState(false);
   const presenceUnsubRef = useRef<(() => void) | null>(null);
 
-  /**
-   * Deprecated: previously wrote a UID-encrypted backup to /privateKeys/{uid}.
-   * UIDs are not secret, so this silently voided E2EE for Google users. No-op
-   * now — users are prompted for a real passphrase via E2EEPassphraseSetupModal.
-   */
-  const ensureGoogleKeyBackup = async (_uid: string, _privateKey: CryptoKey) => {
-    /* intentionally empty */
-  };
-
   /** Load E2EE keys from IndexedDB → password-encrypted backup (flag recovery). */
-  const loadLocalCryptoKeys = async (uid: string) => {
+  const loadLocalCryptoKeys = async (firebaseUser: User) => {
     try {
       const local = await loadKeysLocally();
       if (local) {
         setCryptoKeys(local);
+        setNeedsKeyRecovery(false);
+        setNeedsPassphraseSetup(false);
         return;
       }
       // Password-encrypted backup needs manual recovery
-      const snap = await get(ref(db, `users/${uid}/encryptedPrivateKey`));
+      const snap = await get(ref(db, `users/${firebaseUser.uid}/encryptedPrivateKey`));
       if (snap.exists()) {
         setNeedsKeyRecovery(true);
+        setNeedsPassphraseSetup(false);
+        return;
+      }
+      const isGoogleUser = firebaseUser.providerData.some((provider) => provider.providerId === 'google.com');
+      if (isGoogleUser) {
+        setNeedsPassphraseSetup(true);
       }
     } catch {
       /* IndexedDB unavailable */
@@ -117,8 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await saveKeysLocally(privateKey, publicKey);
         setCryptoKeys({ privateKey, publicKey });
         setNeedsKeyRecovery(false);
-        // Also create Google key backup for future Google sign-ins
-        await ensureGoogleKeyBackup(uid, privateKey);
+        setNeedsPassphraseSetup(false);
       } else {
         // Legacy user: generate keys
         await generateAndStoreKeys(uid, password);
@@ -138,8 +137,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await update(ref(db, `users/${uid}`), { publicKey: pubStr, encryptedPrivateKey: encPriv });
       await saveKeysLocally(keyPair.privateKey, keyPair.publicKey);
       setCryptoKeys({ privateKey: keyPair.privateKey, publicKey: keyPair.publicKey });
-      // Also create Google key backup
-      await ensureGoogleKeyBackup(uid, keyPair.privateKey);
+      setNeedsKeyRecovery(false);
+      setNeedsPassphraseSetup(false);
     } catch (e) {
       console.error('[E2EE] Key generation failed:', e);
     }
@@ -208,7 +207,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           presenceUnsubRef.current = connUnsub;
 
           // Load E2EE keys from IndexedDB (or flag for recovery)
-          await loadLocalCryptoKeys(firebaseUser.uid);
+          await loadLocalCryptoKeys(firebaseUser);
         } catch (e) {
           console.error('[Auth] Database error:', e);
         }
@@ -219,6 +218,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile(null);
         setCryptoKeys(null);
         setNeedsKeyRecovery(false);
+        setNeedsPassphraseSetup(false);
       }
       setLoading(false);
     });
@@ -277,8 +277,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       encPriv = await encryptPrivateKey(keyPair.privateKey, password);
       await saveKeysLocally(keyPair.privateKey, keyPair.publicKey);
       setCryptoKeys({ privateKey: keyPair.privateKey, publicKey: keyPair.publicKey });
-      // Also create Google key backup for future Google sign-ins
-      await ensureGoogleKeyBackup(cred.user.uid, keyPair.privateKey);
+      setNeedsKeyRecovery(false);
+      setNeedsPassphraseSetup(false);
     } catch (e) {
       console.error('[E2EE] Key generation on signup failed:', e);
     }
@@ -362,12 +362,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const skipE2EEPassphrase = () => setNeedsPassphraseSetup(false);
 
-  const contextValue = useMemo(() => ({
+  const contextValue = {
     user, profile, loading, signIn, signInWithGoogle, signUp, signOut,
     updateStatus, updateDisplayName, updatePhotoURL, changePassword,
     cryptoKeys, needsKeyRecovery, recoverKeys,
     needsPassphraseSetup, setupE2EEPassphrase, skipE2EEPassphrase,
-  }), [user, profile, loading, cryptoKeys, needsKeyRecovery, needsPassphraseSetup]);
+  };
 
   return (
     <AuthContext.Provider value={contextValue}>

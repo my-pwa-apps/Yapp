@@ -47,6 +47,9 @@ export const ContactRequestsModal: React.FC<Props> = ({
   const handleAcceptInvite = async (inv: GroupInvite) => {
     setProcessing(`inv-${inv.chatId}`);
     try {
+      if (!inv.encryptedKeyReady) {
+        throw new Error('The group encryption key is not ready yet. Ask an admin to resend the invite.');
+      }
       await approvePendingMember(inv.chatId, currentUser.uid, currentUser.displayName, currentUser.displayName);
     } catch (e) {
       console.error('Failed to accept invite:', e);
@@ -152,13 +155,15 @@ export const ContactRequestsModal: React.FC<Props> = ({
                       </div>
                       <div className="user-result-info">
                         <div className="user-result-name">{inv.chatName}</div>
-                        <div className="user-result-email">Invited by {inv.invitedBy}</div>
+                        <div className="user-result-email">
+                          {inv.encryptedKeyReady ? `Invited by ${inv.invitedBy}` : 'Encryption key pending from admin'}
+                        </div>
                       </div>
                       <div className="request-actions">
                         <button
                           className="request-accept-btn"
                           onClick={() => handleAcceptInvite(inv)}
-                          disabled={processing === `inv-${inv.chatId}`}
+                          disabled={processing === `inv-${inv.chatId}` || !inv.encryptedKeyReady}
                           title="Accept"
                         >
                           ✓

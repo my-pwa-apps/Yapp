@@ -56,7 +56,7 @@
     "chats": {
       "$chatId": {
         ".read": "auth != null && (data.child('members').child(auth.uid).exists() || data.child('pendingMembers').child(auth.uid).exists() || data.child('admins').child(auth.uid).exists())",
-        ".write": "auth != null && (!data.exists() || data.child('members').child(auth.uid).exists())",
+        ".write": "auth != null && ((!data.exists() && newData.exists()) || (data.child('members').child(auth.uid).exists() && !newData.exists()))",
         ".validate": "!newData.exists() || (newData.hasChildren(['type', 'members', 'createdBy', 'createdAt']) && (newData.child('type').val() === 'direct' || newData.child('type').val() === 'group') && newData.child('createdBy').isString() && newData.child('createdAt').isNumber() && (!newData.child('name').exists() || (newData.child('name').isString() && newData.child('name').val().length <= 50)))",
         "members": {
           "$uid": {
@@ -78,14 +78,21 @@
         },
         "typing": {
           "$uid": {
+            ".write": "auth != null && auth.uid === $uid && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
             ".validate": "auth.uid === $uid && newData.isBoolean()"
           }
         },
+        "lastMessage": {
+          ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
+          ".validate": "!newData.exists() || (newData.hasChildren(['text', 'senderId', 'timestamp']) && newData.child('text').isString() && newData.child('text').val().length <= 50000 && newData.child('senderId').isString() && newData.child('timestamp').isNumber())"
+        },
         "ephemeralTTL": {
+          ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
           ".validate": "!newData.exists() || (newData.isNumber() && newData.val() >= 0 && newData.val() <= 604800)"
         },
         "encryptedGroupKey": {
           "$uid": {
+            ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && newData.child('wrappedBy').val() === auth.uid",
             ".validate": "newData.hasChildren(['wrappedKey', 'iv', 'wrappedBy'])"
           }
         }
@@ -95,12 +102,31 @@
     "messages": {
       "$chatId": {
         ".read": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
-        ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
         ".indexOn": ["timestamp"],
         "$msgId": {
+          ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && ((!data.exists() && newData.exists() && newData.child('chatId').val() === $chatId && (newData.child('senderId').val() === auth.uid || newData.child('senderId').val() === 'system')) || (!newData.exists() && data.child('ephemeralExpiry').isNumber() && data.child('ephemeralExpiry').val() <= now))",
           ".validate": "(!newData.exists()) || (newData.hasChildren(['chatId', 'senderId', 'senderName', 'text', 'timestamp', 'type']) && newData.child('chatId').val() === $chatId && newData.child('senderName').isString() && newData.child('senderName').val().length <= 30 && newData.child('text').isString() && newData.child('text').val().length <= 50000 && newData.child('timestamp').isNumber() && (newData.child('type').val() === 'text' || newData.child('type').val() === 'image' || newData.child('type').val() === 'gif' || newData.child('type').val() === 'sticker' || newData.child('type').val() === 'voice' || newData.child('type').val() === 'system') && (data.exists() ? newData.child('senderId').val() === data.child('senderId').val() : (newData.child('senderId').val() === auth.uid || newData.child('senderId').val() === 'system')) && (!newData.child('edited').exists() || newData.child('edited').isBoolean()) && (!newData.child('editedAt').exists() || newData.child('editedAt').isNumber()) && (!newData.child('deleted').exists() || newData.child('deleted').isBoolean()) && (!newData.child('ephemeralTTL').exists() || (newData.child('ephemeralTTL').isNumber() && newData.child('ephemeralTTL').val() >= 0 && newData.child('ephemeralTTL').val() <= 604800)) && (!newData.child('ephemeralExpiry').exists() || newData.child('ephemeralExpiry').isNumber()) && (!newData.child('mediaURL').exists() || (newData.child('mediaURL').isString() && newData.child('mediaURL').val().length <= 2000000)))",
+          "text": {
+            ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && data.parent().child('senderId').val() === auth.uid"
+          },
+          "edited": {
+            ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && data.parent().child('senderId').val() === auth.uid"
+          },
+          "editedAt": {
+            ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && data.parent().child('senderId').val() === auth.uid"
+          },
+          "deleted": {
+            ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && data.parent().child('senderId').val() === auth.uid"
+          },
+          "mediaURL": {
+            ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && data.parent().child('senderId').val() === auth.uid"
+          },
+          "ephemeralExpiry": {
+            ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && data.parent().child('ephemeralTTL').isNumber() && !data.exists() && newData.isNumber() && newData.val() >= now && newData.val() <= now + data.parent().child('ephemeralTTL').val() * 1000 + 60000"
+          },
           "readBy": {
             "$uid": {
+              ".write": "auth != null && auth.uid === $uid && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
               ".validate": "auth.uid === $uid && newData.val() === true"
             }
           }
@@ -133,14 +159,6 @@
       "$callId": {
         ".read": "auth != null && root.child('calls').child($callId).child('participants').child(auth.uid).exists()",
         ".write": "auth != null && root.child('calls').child($callId).child('participants').child(auth.uid).exists() && root.child('calls').child($callId).child('status').val() !== 'ended'"
-      }
-    },
-
-    "privateKeys": {
-      "$uid": {
-        ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid",
-        ".validate": "newData.hasChildren(['encryptedPrivateKey']) && newData.child('encryptedPrivateKey').hasChildren(['ciphertext', 'iv', 'salt'])"
       }
     },
 

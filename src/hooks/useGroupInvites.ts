@@ -8,6 +8,7 @@ export interface GroupInvite {
   chatName: string;
   invitedBy: string;  // admin's display name
   timestamp: number;
+  encryptedKeyReady: boolean;
 }
 
 export interface GroupJoinRequest {
@@ -50,6 +51,7 @@ export function useGroupInvites(uid: string | undefined, chats?: Chat[]) {
             chatName: val.name || 'Group',
             invitedBy: val.pendingMembers[uid].fromName,
             timestamp: val.pendingMembers[uid].timestamp,
+            encryptedKeyReady: !val.encryptedGroupKey || !!val.encryptedGroupKey[uid],
           });
         }
       }

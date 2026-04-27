@@ -42,14 +42,15 @@ export const ProfilePanel: React.FC<Props> = ({ profile, onClose }) => {
       setPwSuccess('Password changed successfully!');
       setCurrentPw(''); setNewPw(''); setConfirmPw('');
       setTimeout(() => { setPwSuccess(''); setShowPasswordForm(false); }, 2000);
-    } catch (err: any) {
-      const code = err?.code;
+    } catch (err: unknown) {
+      const authError = err as { code?: string; message?: string };
+      const code = authError.code;
       if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
         setPwError('Current password is incorrect');
       } else if (code === 'auth/weak-password') {
         setPwError('New password is too weak');
       } else {
-        setPwError(err?.message || 'Failed to change password');
+        setPwError(authError.message || 'Failed to change password');
       }
     }
     setPwLoading(false);

@@ -2,7 +2,7 @@
  * Minimal security-rule unit tests against the Firebase RTDB emulator.
  * Run via: `firebase emulators:exec --only database --project yapp-ci "npm run test:rules"`
  */
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, beforeAll, afterAll, beforeEach } from 'vitest';
 import {
   initializeTestEnvironment,
   assertSucceeds,
@@ -24,7 +24,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await env.cleanup();
+  await env?.cleanup();
 });
 
 beforeEach(async () => {
@@ -41,6 +41,33 @@ async function seedUser(uid: string) {
       online: true,
       lastSeen: Date.now(),
       createdAt: Date.now(),
+    });
+  });
+}
+
+async function seedDirectChat(chatId = 'c1') {
+  await seedUser('alice');
+  await seedUser('bob');
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.database().ref(`chats/${chatId}`).set({
+      type: 'direct',
+      members: { alice: true, bob: true },
+      createdBy: 'alice',
+      createdAt: Date.now(),
+    });
+  });
+}
+
+async function seedMessage(chatId = 'c1', messageId = 'm1', senderId = 'alice') {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.database().ref(`messages/${chatId}/${messageId}`).set({
+      chatId,
+      senderId,
+      senderName: senderId === 'alice' ? 'Alice' : 'Bob',
+      text: 'hello',
+      timestamp: Date.now(),
+      type: 'text',
+      readBy: { [senderId]: true },
     });
   });
 }
@@ -114,6 +141,51 @@ describe('chats & messages', () => {
         type: 'text',
       }),
     );
+  });
+
+  it('member cannot edit another member\'s message', async () => {
+    await seedDirectChat();
+    await seedMessage();
+    const bob = env.authenticatedContext('bob').database();
+    await assertFails(bob.ref('messages/c1/m1/text').set('tampered'));
+  });
+
+  it('sender can edit their own message', async () => {
+    await seedDirectChat();
+    await seedMessage();
+    const alice = env.authenticatedContext('alice').database();
+    await assertSucceeds(alice.ref().update({
+      'messages/c1/m1/text': 'edited',
+      'messages/c1/m1/edited': true,
+      'messages/c1/m1/editedAt': Date.now(),
+    }));
+  });
+
+  it('member cannot mutate protected chat metadata', async () => {
+    await seedDirectChat();
+    const bob = env.authenticatedContext('bob').database();
+    await assertFails(bob.ref('chats/c1/name').set('renamed'));
+    await assertFails(bob.ref('chats/c1/admins/bob').set(true));
+  });
+
+  it('member can update allowed chat activity fields', async () => {
+    await seedDirectChat();
+    const alice = env.authenticatedContext('alice').database();
+    await assertSucceeds(alice.ref('chats/c1/typing/alice').set(true));
+    await assertSucceeds(alice.ref('chats/c1/ephemeralTTL').set(3600));
+    await assertSucceeds(alice.ref('chats/c1/lastMessage').set({
+      text: 'hello',
+      senderId: 'alice',
+      timestamp: Date.now(),
+    }));
+  });
+
+  it('recipient can only write their own read receipt', async () => {
+    await seedDirectChat();
+    await seedMessage();
+    const bob = env.authenticatedContext('bob').database();
+    await assertSucceeds(bob.ref('messages/c1/m1/readBy/bob').set(true));
+    await assertFails(bob.ref('messages/c1/m1/readBy/alice').set(true));
   });
 });
 

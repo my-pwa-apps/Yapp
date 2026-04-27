@@ -218,7 +218,7 @@ async function sendPushNotifications(req: PushDeliveryRequest, env: Env) {
       if ((res.status === 410 || res.status === 404) && resolved.uid && resolved.hash) {
         pruneTasks.push(removePushSubscription(resolved.uid, resolved.hash, env));
       }
-    } catch (err) {
+    } catch {
       results.push({ endpoint: sub.endpoint.substring(0, 60) + '...', status: 0, ok: false });
     }
   }
@@ -253,8 +253,9 @@ async function sendWebPush(
   ) as Promise<CryptoKeyPair>);
 
   // 4. ECDH shared secret
+  const deriveParams: EcdhKeyDeriveParams = { name: 'ECDH', public: uaPublic };
   const sharedSecretBits = await crypto.subtle.deriveBits(
-    { name: 'ECDH', public: uaPublic } as any,
+    deriveParams,
     ephemeralKeyPair.privateKey,
     256
   );

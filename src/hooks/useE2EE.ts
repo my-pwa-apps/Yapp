@@ -94,6 +94,38 @@ export async function enableGroupEncryption(
   }
 }
 
+/** Wrap an existing encrypted group's key for a newly invited/approved member. */
+export async function ensureGroupKeyForMember(
+  chat: Chat,
+  currentUid: string,
+  targetUid: string,
+  cryptoKeys: CryptoKeys | null
+): Promise<boolean> {
+  if (chat.type !== 'group' || !chat.encryptedGroupKey) return true;
+  if (chat.encryptedGroupKey[targetUid]) return true;
+  if (!cryptoKeys) return false;
+
+  const groupKey = await resolveChatKey(chat, currentUid, cryptoKeys.privateKey);
+  if (!groupKey) return false;
+
+  const targetPubSnap = await get(ref(db, `users/${targetUid}/publicKey`));
+  if (!targetPubSnap.exists()) return false;
+
+  const targetPub = await importPublicKey(targetPubSnap.val());
+  const { wrappedKey, iv } = await wrapGroupKeyForMember(
+    groupKey,
+    cryptoKeys.privateKey,
+    targetPub,
+    chat.id
+  );
+  await set(ref(db, `chats/${chat.id}/encryptedGroupKey/${targetUid}`), {
+    wrappedKey,
+    iv,
+    wrappedBy: currentUid,
+  });
+  return true;
+}
+
 /**
  * React hook: provides encrypt/decrypt functions for the active chat.
  */
@@ -130,7 +162,7 @@ export function useChatEncryption(
         resolvingRef.current = null;
       });
     return () => { cancelled = true; };
-  }, [chat?.id, currentUid, keys, keyVersion]);
+  }, [chat, currentUid, keys, keyVersion]);
 
   /** Encrypt plaintext for the current chat. Returns null if E2EE is not available. */
   const encryptMessage = useCallback(

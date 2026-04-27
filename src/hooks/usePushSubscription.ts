@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { ref, set } from 'firebase/database';
 import { db } from '../firebase';
 import { VAPID_PUBLIC_KEY } from '../pushConfig';
+import { getNotificationPrefs } from './useNotifications';
 
 /**
  * Subscribes the browser to Web Push and saves the PushSubscription
@@ -18,6 +19,8 @@ export function usePushSubscription(uid: string | undefined) {
     let cancelled = false;
 
     const subscribe = async () => {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      if (!getNotificationPrefs().enabled) return;
       try {
         const registration = await navigator.serviceWorker.ready;
 
@@ -51,9 +54,11 @@ export function usePushSubscription(uid: string | undefined) {
     };
 
     subscribe();
+    window.addEventListener('yapp:notification-prefs-changed', subscribe);
 
     return () => {
       cancelled = true;
+      window.removeEventListener('yapp:notification-prefs-changed', subscribe);
     };
   }, [uid]);
 }

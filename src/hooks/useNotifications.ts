@@ -28,6 +28,7 @@ export function getNotificationPrefs(): NotificationPreferences {
 
 export function saveNotificationPrefs(prefs: NotificationPreferences) {
   localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+  window.dispatchEvent(new Event('yapp:notification-prefs-changed'));
 }
 
 export function getPermissionState(): NotificationPermission | 'unsupported' {
@@ -40,6 +41,7 @@ export async function requestPermission(): Promise<boolean> {
   if (Notification.permission === 'granted') return true;
   if (Notification.permission === 'denied') return false;
   const result = await Notification.requestPermission();
+  window.dispatchEvent(new Event('yapp:notification-prefs-changed'));
   return result === 'granted';
 }
 
@@ -83,13 +85,9 @@ async function showNotification(title: string, body: string, tag?: string, data?
 export function useNotifications() {
   const prefsRef = useRef<NotificationPreferences>(getNotificationPrefs());
 
-  // Refresh prefs on mount and auto-request permission
+  // Refresh prefs on mount. Permission is requested only from Settings.
   useEffect(() => {
     prefsRef.current = getNotificationPrefs();
-    // Auto-request permission on first load
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
   }, []);
 
   const refreshPrefs = useCallback(() => {

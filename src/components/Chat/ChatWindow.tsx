@@ -145,7 +145,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
       }
     });
     return () => unsub();
-  }, [chat, currentUid, isSelfChat]);
+  }, [chat, currentUid, isSelfChat, members]);
 
   // Listen for page visibility and focus changes
   useEffect(() => {
@@ -254,7 +254,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
         }
       }
     }
-  }, [decryptedMessages, loading]); // eslint-disable-line react-hooks/exhaustive-deps -- chat.id intentionally excluded: reset effect handles initialScrollDone; including chat.id causes scroll with stale messages on chat switch
+  }, [decryptedMessages, loading]);
 
   // Mark unread messages as read — only when page is visible
   useEffect(() => {

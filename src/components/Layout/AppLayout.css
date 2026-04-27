@@ -1159,6 +1159,7 @@
 .profile-content {
   padding: 24px;
   flex: 1;
+  overflow-y: auto;
 }
 
 .profile-avatar-large {

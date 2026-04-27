@@ -172,7 +172,7 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
     }
   }, []);
 
-  const createPeerConnection = (
+  const createPeerConnection = useCallback((
     callId: string,
     remoteUid: string,
     stream: MediaStream,
@@ -226,7 +226,7 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
 
     peerConnectionsRef.current.set(remoteUid, pc);
     return pc;
-  };
+  }, [currentUid]);
 
   const startCall = async (
     chatId: string,
@@ -374,7 +374,7 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
     });
 
     return () => unsubParticipants();
-  }, [callState, currentUid, flushIceCandidates]);
+  }, [callState, currentUid, createPeerConnection, flushIceCandidates]);
 
   const acceptCall = async () => {
     if (!callData || !callIdRef.current) return;
@@ -448,7 +448,7 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
       }
     });
     unsubscribersRef.current.push(unsubStatus);
-  }; // eslint-disable-line react-hooks/exhaustive-deps
+  };
 
   /** Internal: mark a call ended in /calls and clean up callsForUser index. */
   const markCallEnded = useCallback((callId: string, participants?: Record<string, boolean>) => {
@@ -500,7 +500,7 @@ export function useCall(currentUid: string, currentName: string, onMediaError?: 
       },
     });
     // Safety net for this new participant's tab crash
-    try { onDisconnect(ref(db, `callsForUser/${uid}/${callId}`)).remove().catch(() => {}); } catch {}
+    try { onDisconnect(ref(db, `callsForUser/${uid}/${callId}`)).remove().catch(() => {}); } catch { /* noop */ }
 
     // Send push notification to the added participant
     sendPushToUsers([uid], {
