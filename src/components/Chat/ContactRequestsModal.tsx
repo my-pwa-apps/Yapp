@@ -1,8 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import { ref, get } from 'firebase/database';
+import { db } from '../../firebase';
 import type { ContactRequest, UserProfile } from '../../types';
 import { acceptContactRequest, rejectContactRequest } from '../../hooks/useContactRequests';
 import type { GroupInvite, GroupJoinRequest } from '../../hooks/useGroupInvites';
 import { approvePendingMember, rejectPendingMember } from '../../hooks/useChats';
+import { useAuth } from '../../contexts/AuthContext';
+import { ensureGroupKeyForMember } from '../../hooks/useE2EE';
+import type { Chat } from '../../types';
 
 interface Props {
   currentUser: UserProfile;
@@ -21,6 +26,7 @@ export const ContactRequestsModal: React.FC<Props> = ({
   onClose,
   onChatCreated,
 }) => {
+  const { cryptoKeys } = useAuth();
   const [processing, setProcessing] = useState<string | null>(null);
 
   const handleAccept = async (request: ContactRequest) => {
@@ -50,7 +56,7 @@ export const ContactRequestsModal: React.FC<Props> = ({
       if (!inv.encryptedKeyReady) {
         throw new Error('The group encryption key is not ready yet. Ask an admin to resend the invite.');
       }
-      await approvePendingMember(inv.chatId, currentUser.uid, currentUser.displayName, currentUser.displayName);
+      await approvePendingMember(inv.chatId, currentUser.uid, currentUser.uid, currentUser.displayName, currentUser.displayName);
     } catch (e) {
       console.error('Failed to accept invite:', e);
     }
@@ -70,7 +76,12 @@ export const ContactRequestsModal: React.FC<Props> = ({
   const handleApproveJoin = async (req: GroupJoinRequest) => {
     setProcessing(`join-${req.chatId}-${req.uid}`);
     try {
-      await approvePendingMember(req.chatId, req.uid, currentUser.displayName, req.fromName);
+      const chatSnap = await get(ref(db, `chats/${req.chatId}`));
+      if (!chatSnap.exists()) throw new Error('Group no longer exists');
+      const chat = { ...chatSnap.val(), id: req.chatId } as Chat;
+      const keyReady = await ensureGroupKeyForMember(chat, currentUser.uid, req.uid, cryptoKeys);
+      if (!keyReady) throw new Error('Could not prepare encryption key for approved member');
+      await approvePendingMember(req.chatId, req.uid, currentUser.uid, currentUser.displayName, req.fromName);
     } catch (e) {
       console.error('Failed to approve join request:', e);
     }

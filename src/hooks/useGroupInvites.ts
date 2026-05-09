@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ref, onValue, get } from 'firebase/database';
 import { db } from '../firebase';
 import type { Chat, PendingMember } from '../types';
+import { isE2EMockMode } from '../utils/e2eMockData';
 
 export interface GroupInvite {
   chatId: string;
@@ -29,6 +30,10 @@ export function useGroupInvites(uid: string | undefined, chats?: Chat[]) {
 
   // Listen for pending invites via userPendingInvites index
   useEffect(() => {
+    if (isE2EMockMode()) {
+      setInvites([]);
+      return;
+    }
     if (!uid) return;
     const indexRef = ref(db, `userPendingInvites/${uid}`);
     const unsub = onValue(indexRef, async (snap) => {
@@ -63,6 +68,10 @@ export function useGroupInvites(uid: string | undefined, chats?: Chat[]) {
 
   // Derive join requests from already-loaded chats where user is admin
   useEffect(() => {
+    if (isE2EMockMode()) {
+      setJoinRequests([]);
+      return;
+    }
     if (!uid || !chats) {
       setJoinRequests([]);
       return;

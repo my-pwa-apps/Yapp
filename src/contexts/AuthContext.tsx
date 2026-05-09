@@ -37,6 +37,7 @@ import {
   clearLocalKeys,
   clearChatKeyCache,
 } from '../hooks/useCrypto';
+import { e2eProfile, isE2EMockMode } from '../utils/e2eMockData';
 
 interface AuthContextType {
   user: User | null;
@@ -71,9 +72,17 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const e2eEnabled = isE2EMockMode();
+  const e2eUser = e2eEnabled ? ({
+    uid: e2eProfile.uid,
+    email: e2eProfile.email,
+    displayName: e2eProfile.displayName,
+    photoURL: e2eProfile.photoURL,
+    providerData: [],
+  } as unknown as User) : null;
+  const [user, setUser] = useState<User | null>(e2eUser);
+  const [profile, setProfile] = useState<UserProfile | null>(e2eEnabled ? e2eProfile : null);
+  const [loading, setLoading] = useState(!e2eEnabled);
   const [cryptoKeys, setCryptoKeys] = useState<CryptoKeys | null>(null);
   const [needsKeyRecovery, setNeedsKeyRecovery] = useState(false);
   const [needsPassphraseSetup, setNeedsPassphraseSetup] = useState(false);
@@ -152,6 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Listen to auth state
   useEffect(() => {
+    if (isE2EMockMode()) return;
     // Resolve any pending signInWithRedirect() so errors surface and
     // onAuthStateChanged runs against the finalized auth state.
     getRedirectResult(auth).catch((err) => {
@@ -230,6 +240,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signIn = async (email: string, password: string) => {
+    if (isE2EMockMode()) return;
     const cred = await signInWithEmailAndPassword(auth, email, password);
     const userRef = ref(db, `users/${cred.user.uid}`);
     await update(userRef, { online: true, lastSeen: serverTimestamp() });
@@ -240,6 +251,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signInWithGoogle = async () => {
+    if (isE2EMockMode()) return;
     const provider = new GoogleAuthProvider();
     // GitHub Pages (and other hosts that can't set Cross-Origin-Opener-Policy:
     // same-origin-allow-popups) trigger noisy "window.closed call blocked"
@@ -266,6 +278,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signUp = async (email: string, password: string, displayName: string) => {
+    if (isE2EMockMode()) return;
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(cred.user, { displayName });
     // Generate E2EE key pair
@@ -299,6 +312,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
+    if (isE2EMockMode()) return;
     if (user) {
       await update(ref(db, `users/${user.uid}`), { online: false, lastSeen: serverTimestamp() });
     }
@@ -311,12 +325,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateStatus = async (status: string) => {
+    if (isE2EMockMode()) {
+      setProfile((p) => (p ? { ...p, status } : null));
+      return;
+    }
     if (!user) return;
     await update(ref(db, `users/${user.uid}`), { status });
     setProfile((p) => (p ? { ...p, status } : null));
   };
 
   const updateDisplayName = async (displayName: string) => {
+    if (isE2EMockMode()) {
+      setProfile((p) => (p ? { ...p, displayName } : null));
+      return;
+    }
     if (!user) return;
     await updateProfile(user, { displayName });
     await update(ref(db, `users/${user.uid}`), { displayName });
@@ -324,12 +346,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updatePhotoURL = async (photoURL: string | null) => {
+    if (isE2EMockMode()) {
+      setProfile((p) => (p ? { ...p, photoURL } : null));
+      return;
+    }
     if (!user) return;
     await update(ref(db, `users/${user.uid}`), { photoURL });
     setProfile((p) => (p ? { ...p, photoURL } : null));
   };
 
   const changePassword = async (currentPassword: string, newPassword: string) => {
+    if (isE2EMockMode()) return;
     if (!user || !user.email) throw new Error('Not signed in');
     const credential = EmailAuthProvider.credential(user.email, currentPassword);
     await reauthenticateWithCredential(user, credential);
@@ -346,6 +373,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const setupE2EEPassphrase = async (passphrase: string) => {
+    if (isE2EMockMode()) return;
     if (!user) throw new Error('Not signed in');
     if (passphrase.length < 8) throw new Error('Passphrase too short');
     const keyPair = await generateKeyPair();

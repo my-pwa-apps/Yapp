@@ -6,6 +6,7 @@ import {
   update,
 } from 'firebase/database';
 import { db } from '../firebase';
+import { isE2EMockMode } from '../utils/e2eMockData';
 
 /**
  * Hook that subscribes to the current user's blocked users list.
@@ -14,6 +15,10 @@ export function useBlockedUsers(uid: string | undefined) {
   const [blockedUsers, setBlockedUsers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    if (isE2EMockMode()) {
+      setBlockedUsers(new Set());
+      return;
+    }
     if (!uid) return;
     const blockedRef = ref(db, `blockedUsers/${uid}`);
     const unsub = onValue(blockedRef, (snap) => {
@@ -35,6 +40,10 @@ export function useBlockedByUsers(uid: string | undefined) {
   const [blockedBy, setBlockedBy] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    if (isE2EMockMode()) {
+      setBlockedBy(new Set());
+      return;
+    }
     if (!uid) return;
     const blockedByRef = ref(db, `blockedBy/${uid}`);
     const unsub = onValue(blockedByRef, (snap) => {
@@ -52,6 +61,7 @@ export function useBlockedByUsers(uid: string | undefined) {
  * Check if either user has blocked the other (one-shot check).
  */
 export async function isBlocked(uid1: string, uid2: string): Promise<boolean> {
+  if (isE2EMockMode()) return false;
   const [snap1, snap2] = await Promise.all([
     get(ref(db, `blockedUsers/${uid1}/${uid2}`)),
     get(ref(db, `blockedUsers/${uid2}/${uid1}`)),

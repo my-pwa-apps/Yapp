@@ -537,6 +537,7 @@
 
 .yapp-voice-progress {
   height: 100%;
+  width: 0;
   background: var(--accent);
   border-radius: 2px;
   transition: width 0.1s linear;
@@ -626,6 +627,14 @@
   opacity: 0.8;
 }
 
+.yapp-expand-icon {
+  transition: transform 0.2s;
+}
+
+.yapp-expand-icon-open {
+  transform: rotate(180deg);
+}
+
 /* ── Inline expanded replies ── */
 .yapp-inline-replies {
   margin-left: 28px;
@@ -682,6 +691,15 @@
   padding: 40px 16px;
   color: var(--text-muted);
   font-size: 0.9rem;
+}
+
+.feed-loading-compact {
+  padding: 12px 16px;
+}
+
+.feed-empty-replies {
+  padding: 8px 16px;
+  font-size: 0.82rem;
 }
 
 .feed-spinner {

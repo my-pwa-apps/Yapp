@@ -9,6 +9,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run --exclude 'tests/rules.test.ts'",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "test:watch": "vitest",
     "test:rules": "firebase emulators:exec --only database --project yapp-ci \"vitest run tests/rules.test.ts\"",
     "typecheck": "tsc --noEmit",
@@ -24,6 +26,7 @@
   "devDependencies": {
     "@eslint/js": "^9.15.0",
     "@firebase/rules-unit-testing": "^4.0.1",
+    "@playwright/test": "^1.59.1",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",

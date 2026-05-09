@@ -14,6 +14,14 @@ import {
 import { db } from '../firebase';
 import type { Yapp } from '../types';
 import { isBlocked } from './useBlockedUsers';
+import {
+  addE2EYapp,
+  getE2EYappLiked,
+  getE2EYapps,
+  isE2EMockMode,
+  subscribeE2EYapps,
+  toggleE2EYappLike,
+} from '../utils/e2eMockData';
 
 /* ─── Feed hook ─── */
 
@@ -81,9 +89,18 @@ function readIndexIds(snapshot: { forEach: (action: (child: { key: string | null
 
 export function useYapps(uid: string | undefined, contacts: Set<string>) {
   const [visibleIds, setVisibleIds] = useState<string[]>([]);
+  const [mockYapps, setMockYapps] = useState<Yapp[]>(isE2EMockMode() ? getE2EYapps() : []);
   const contactKey = Array.from(contacts).sort().join('|');
 
   useEffect(() => {
+    if (!isE2EMockMode()) return;
+    const publish = () => setMockYapps(getE2EYapps());
+    publish();
+    return subscribeE2EYapps(publish);
+  }, []);
+
+  useEffect(() => {
+    if (isE2EMockMode()) return;
     if (!uid) {
       setVisibleIds([]);
       return;
@@ -128,7 +145,8 @@ export function useYapps(uid: string | undefined, contacts: Set<string>) {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- contactKey is the stable value for the contacts set.
   }, [uid, contactKey]);
 
-  return useIndexedYapps(visibleIds, (a, b) => b.timestamp - a.timestamp);
+  const indexed = useIndexedYapps(visibleIds, (a, b) => b.timestamp - a.timestamp);
+  return isE2EMockMode() ? { yapps: mockYapps, loading: false } : indexed;
 }
 
 /* ─── Replies hook ─── */
@@ -136,6 +154,7 @@ export function useYapps(uid: string | undefined, contacts: Set<string>) {
 export function useReplies(parentId: string | undefined) {
   const [replyIds, setReplyIds] = useState<string[]>([]);
   useEffect(() => {
+    if (isE2EMockMode()) return;
     if (!parentId) {
       setReplyIds([]);
       return;
@@ -155,7 +174,15 @@ export function useReplies(parentId: string | undefined) {
 
 export function useUserYapps(authorId: string | undefined, viewerUid: string | undefined, includePrivate: boolean) {
   const [visibleIds, setVisibleIds] = useState<string[]>([]);
+  const [mockYapps, setMockYapps] = useState<Yapp[]>(isE2EMockMode() ? getE2EYapps() : []);
   useEffect(() => {
+    if (!isE2EMockMode()) return;
+    const publish = () => setMockYapps(getE2EYapps().filter((yapp) => yapp.authorId === authorId));
+    publish();
+    return subscribeE2EYapps(publish);
+  }, [authorId]);
+  useEffect(() => {
+    if (isE2EMockMode()) return;
     if (!authorId || !viewerUid) {
       setVisibleIds([]);
       return;
@@ -195,7 +222,8 @@ export function useUserYapps(authorId: string | undefined, viewerUid: string | u
     };
   }, [authorId, viewerUid, includePrivate]);
 
-  return useIndexedYapps(visibleIds, (a, b) => b.timestamp - a.timestamp);
+  const indexed = useIndexedYapps(visibleIds, (a, b) => b.timestamp - a.timestamp);
+  return isE2EMockMode() ? { yapps: mockYapps, loading: false } : indexed;
 }
 
 /* ─── Likes hook ─── */
@@ -204,6 +232,11 @@ export function useYappLikes(yappId: string | undefined, uid: string | undefined
   const [liked, setLiked] = useState(false);
 
   useEffect(() => {
+    if (isE2EMockMode()) {
+      setLiked(getE2EYappLiked(yappId));
+      const publish = () => setLiked(getE2EYappLiked(yappId));
+      return subscribeE2EYapps(publish);
+    }
     if (!yappId || !uid) return;
     const likeRef = ref(db, `yappLikes/${yappId}/${uid}`);
     const unsub = onValue(likeRef, (snap) => setLiked(snap.exists()));
@@ -213,12 +246,44 @@ export function useYappLikes(yappId: string | undefined, uid: string | undefined
   return liked;
 }
 
+function useNodeCount(path: string | undefined, fallback = 0) {
+  const [count, setCount] = useState(fallback);
+
+  useEffect(() => {
+    if (isE2EMockMode()) return;
+    if (!path) {
+      setCount(fallback);
+      return;
+    }
+    const unsub = onValue(ref(db, path), (snap) => setCount(snap.size), () => setCount(fallback));
+    return () => unsub();
+  }, [path, fallback]);
+
+  return count;
+}
+
+export function useYappLikeCount(yappId: string | undefined, fallback = 0) {
+  return useNodeCount(yappId ? `yappLikes/${yappId}` : undefined, fallback);
+}
+
+export function useYappReplyCount(yappId: string | undefined, fallback = 0) {
+  return useNodeCount(yappId ? `replyYappIds/${yappId}` : undefined, fallback);
+}
+
+export function useYappReyappCount(yappId: string | undefined, fallback = 0) {
+  return useNodeCount(yappId ? `reyappIds/${yappId}` : undefined, fallback);
+}
+
 /* ─── Contacts hook ─── */
 
 export function useContacts(uid: string | undefined) {
   const [contactIds, setContactIds] = useState<string[]>([]);
 
   useEffect(() => {
+    if (isE2EMockMode()) {
+      setContactIds(['e2e-friend']);
+      return;
+    }
     if (!uid) return;
     const contactsRef = ref(db, `contacts/${uid}`);
     const unsub = onValue(contactsRef, (snap) => {
@@ -238,6 +303,10 @@ export function useFollowing(uid: string | undefined) {
   const [followingIds, setFollowingIds] = useState<string[]>([]);
 
   useEffect(() => {
+    if (isE2EMockMode()) {
+      setFollowingIds(['e2e-friend']);
+      return;
+    }
     if (!uid) return;
     const followRef = ref(db, `yappFollowing/${uid}`);
     const unsub = onValue(followRef, (snap) => {
@@ -293,6 +362,19 @@ export async function postYapp(
   if (!authorId || !authorName) throw new Error('Missing author info');
   if (text.length > 5000) throw new Error('Yapp text exceeds maximum length');
   if (authorName.length > 30) throw new Error('Author name exceeds maximum length');
+  if (isE2EMockMode()) {
+    return addE2EYapp({
+      authorId,
+      authorName,
+      authorPhotoURL,
+      text,
+      privacy,
+      ...(mediaURL && { mediaURL }),
+      ...(mediaType && { mediaType }),
+      ...(voiceDuration != null && { voiceDuration }),
+      ...(parentId && { parentId }),
+    });
+  }
   const yappsRef = ref(db, 'yapps');
   const newRef = push(yappsRef);
   const yapp: Omit<Yapp, 'id'> = {
@@ -311,9 +393,6 @@ export async function postYapp(
   };
   if (parentId) {
     yapp.parentId = parentId;
-    // Increment reply count on parent
-    const parentRef = ref(db, `yapps/${parentId}/replyCount`);
-    await runTransaction(parentRef, (current) => (current || 0) + 1);
   }
   const yappId = newRef.key!;
   await set(newRef, { ...yapp, id: yappId });
@@ -332,7 +411,7 @@ export async function postYapp(
   return yappId;
 }
 
-export async function deleteYapp(yappId: string, parentId?: string): Promise<void> {
+export async function deleteYapp(yappId: string): Promise<void> {
   const snap = await get(ref(db, `yapps/${yappId}`));
   const yapp = snap.exists() ? snap.val() as Yapp : null;
   const updates: Record<string, null> = {
@@ -348,12 +427,11 @@ export async function deleteYapp(yappId: string, parentId?: string): Promise<voi
     updates[`publicYappIds/${yappId}`] = null;
     updates[`publicAuthorYappIds/${yapp.authorId}/${yappId}`] = null;
   }
+  if (yapp?.reyappOf) {
+    updates[`reyappIds/${yapp.reyappOf}/${yappId}`] = null;
+  }
 
   await update(ref(db), updates);
-  if (parentId) {
-    const parentRef = ref(db, `yapps/${parentId}/replyCount`);
-    await runTransaction(parentRef, (current) => Math.max((current || 1) - 1, 0));
-  }
 }
 
 /** Edit a yapp's text (only the author can edit). */
@@ -366,21 +444,14 @@ export async function editYapp(yappId: string, newText: string): Promise<void> {
 }
 
 export async function toggleLike(yappId: string, uid: string): Promise<void> {
+  if (isE2EMockMode()) {
+    toggleE2EYappLike(yappId);
+    return;
+  }
   const likeRef = ref(db, `yappLikes/${yappId}/${uid}`);
-  const countRef = ref(db, `yapps/${yappId}/likeCount`);
-  // Use transaction on the like ref to avoid TOCTOU race from rapid taps
-  const result = await runTransaction(likeRef, (current) => {
+  await runTransaction(likeRef, (current) => {
     return current ? null : true;
   });
-  if (result.committed) {
-    // result.snapshot reflects the NEW state after the transaction
-    const isNowLiked = result.snapshot.exists();
-    if (isNowLiked) {
-      await runTransaction(countRef, (current) => (current || 0) + 1);
-    } else {
-      await runTransaction(countRef, (current) => Math.max((current || 1) - 1, 0));
-    }
-  }
 }
 
 export async function reyapp(
@@ -395,14 +466,13 @@ export async function reyapp(
   }
   const id = await postYapp(uid, displayName, photoURL, yapp.text, yapp.mediaURL, yapp.mediaType, undefined, undefined, 'public');
   // Mark the new yapp as a reyapp
+  const timestamp = Date.now();
   await update(ref(db, `yapps/${id}`), {
     reyappOf: yapp.id,
     reyappByUid: uid,
     reyappByName: displayName,
   });
-  // Increment reyapp count on original
-  const countRef = ref(db, `yapps/${yapp.id}/reyappCount`);
-  await runTransaction(countRef, (current) => (current || 0) + 1);
+  await set(ref(db, `reyappIds/${yapp.id}/${id}`), timestamp);
   return id;
 }
 

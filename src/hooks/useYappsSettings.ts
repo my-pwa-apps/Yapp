@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ref, onValue, set } from 'firebase/database';
 import { db } from '../firebase';
+import { isE2EMockMode } from '../utils/e2eMockData';
 
 export interface YappsSettings {
   /* ── Notifications ── */
@@ -37,6 +38,11 @@ export function useYappsSettings(uid: string | undefined) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (isE2EMockMode()) {
+      setSettings(defaultSettings);
+      setLoading(false);
+      return;
+    }
     if (!uid) { setLoading(false); return; }
     const settingsRef = ref(db, `yappsSettings/${uid}`);
     const unsub = onValue(settingsRef, (snap) => {
@@ -54,5 +60,6 @@ export function useYappsSettings(uid: string | undefined) {
 }
 
 export async function saveYappsSettings(uid: string, settings: YappsSettings): Promise<void> {
+  if (isE2EMockMode()) return;
   await set(ref(db, `yappsSettings/${uid}`), settings);
 }

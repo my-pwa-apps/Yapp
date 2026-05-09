@@ -15,6 +15,7 @@ import {
 import { db } from '../firebase';
 import type { Message } from '../types';
 import { sendPushToUsers } from '../utils/sendPushNotification';
+import { addE2EMessage, getE2EMessages, isE2EMockMode, subscribeE2EMessages } from '../utils/e2eMockData';
 
 const PAGE_SIZE = 80;
 
@@ -22,18 +23,32 @@ export function useMessages(chatId: string | null) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
-  const olderMessagesRef = useRef<Message[]>([]);
+  const messageMapRef = useRef<Map<string, Message>>(new Map());
+
+  const publishMessages = () => {
+    const sorted = Array.from(messageMapRef.current.values()).sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+    setMessages(sorted);
+  };
 
   useEffect(() => {
+    if (isE2EMockMode()) {
+      const publish = () => {
+        setMessages(getE2EMessages(chatId));
+        setLoading(false);
+        setHasMore(false);
+      };
+      publish();
+      return subscribeE2EMessages(publish);
+    }
     if (!chatId) {
       setMessages([]);
       setLoading(false);
       setHasMore(false);
-      olderMessagesRef.current = [];
+      messageMapRef.current = new Map();
       return;
     }
     setLoading(true);
-    olderMessagesRef.current = [];
+    messageMapRef.current = new Map();
     const msgsRef = query(ref(db, `messages/${chatId}`), orderByChild('timestamp'), limitToLast(PAGE_SIZE));
     const unsub = onValue(msgsRef, (snap) => {
       const data: Message[] = [];
@@ -42,7 +57,8 @@ export function useMessages(chatId: string | null) {
       });
       data.sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
       setHasMore(data.length >= PAGE_SIZE);
-      setMessages([...olderMessagesRef.current, ...data]);
+      data.forEach((msg) => messageMapRef.current.set(msg.id, msg));
+      publishMessages();
       setLoading(false);
     }, () => setLoading(false));
     return () => unsub();
@@ -65,8 +81,8 @@ export function useMessages(chatId: string | null) {
     });
     data.sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
     setHasMore(data.length >= PAGE_SIZE);
-    olderMessagesRef.current = [...data, ...olderMessagesRef.current];
-    setMessages((prev) => [...data, ...prev]);
+    data.forEach((msg) => messageMapRef.current.set(msg.id, msg));
+    publishMessages();
   }, [chatId, hasMore, messages]);
 
   return { messages, loading, hasMore, loadMore };
@@ -83,6 +99,20 @@ export async function sendMessage(
 ) {
   if (!chatId || !senderId) throw new Error('Missing chatId or senderId');
   if (text.length > 50000) throw new Error('Message text exceeds maximum length');
+  if (isE2EMockMode()) {
+    addE2EMessage({
+      chatId,
+      senderId,
+      senderName,
+      text,
+      timestamp: Date.now(),
+      readBy: { [senderId]: true },
+      type: 'text',
+      ...(ephemeralTTL && ephemeralTTL > 0 ? { ephemeralTTL } : {}),
+      ...(forwardable === false ? { forwardable: false } : {}),
+    });
+    return;
+  }
   const msg: Record<string, unknown> = {
     chatId,
     senderId,
@@ -118,6 +148,21 @@ export async function sendMediaMessage(
   previewText: string,
   extra?: { voiceDuration?: number; ephemeralTTL?: number }
 ) {
+  if (isE2EMockMode()) {
+    addE2EMessage({
+      chatId,
+      senderId,
+      senderName,
+      text: previewText,
+      timestamp: Date.now(),
+      readBy: { [senderId]: true },
+      type,
+      mediaURL,
+      ...(extra?.voiceDuration !== undefined ? { voiceDuration: extra.voiceDuration } : {}),
+      ...(extra?.ephemeralTTL && extra.ephemeralTTL > 0 ? { ephemeralTTL: extra.ephemeralTTL } : {}),
+    });
+    return;
+  }
   await _pushMessage(chatId, {
     chatId,
     senderId,
@@ -195,6 +240,7 @@ async function _pushNotifyMembers(
 }
 
 export async function markMessagesRead(chatId: string, messageIds: string[], uid: string) {
+  if (isE2EMockMode()) return;
   const updates: Record<string, boolean> = {};
   messageIds.forEach((id) => {
     updates[`messages/${chatId}/${id}/readBy/${uid}`] = true;
@@ -208,6 +254,7 @@ export async function editMessage(
   messageId: string,
   newText: string,
 ) {
+  if (isE2EMockMode()) return;
   const updates: Record<string, unknown> = {
     [`messages/${chatId}/${messageId}/text`]: newText,
     [`messages/${chatId}/${messageId}/edited`]: true,
@@ -218,6 +265,7 @@ export async function editMessage(
 
 /** Soft-delete a message (replaces content, keeps the row so read receipts aren't lost). */
 export async function deleteMessage(chatId: string, messageId: string) {
+  if (isE2EMockMode()) return;
   const updates: Record<string, unknown> = {
     [`messages/${chatId}/${messageId}/deleted`]: true,
     [`messages/${chatId}/${messageId}/text`]: '',
@@ -228,11 +276,13 @@ export async function deleteMessage(chatId: string, messageId: string) {
 
 /** Set the ephemeral (self-destruct) timer for a chat. 0 = off. */
 export async function setEphemeralTTL(chatId: string, ttlSeconds: number) {
+  if (isE2EMockMode()) return;
   await update(ref(db, `chats/${chatId}`), { ephemeralTTL: ttlSeconds || null });
 }
 
 /** Set the expiry timestamp on an ephemeral message once it's been read by a recipient. */
 export async function setEphemeralExpiry(chatId: string, messageId: string, ttlSeconds: number) {
+  if (isE2EMockMode()) return;
   const expiry = Date.now() + ttlSeconds * 1000;
   await update(ref(db), {
     [`messages/${chatId}/${messageId}/ephemeralExpiry`]: expiry,
@@ -241,6 +291,7 @@ export async function setEphemeralExpiry(chatId: string, messageId: string, ttlS
 
 /** Delete a message permanently (used for expired ephemeral messages). */
 export async function purgeMessage(chatId: string, messageId: string) {
+  if (isE2EMockMode()) return;
   await remove(ref(db, `messages/${chatId}/${messageId}`));
 }
 

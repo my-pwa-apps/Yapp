@@ -45,6 +45,12 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isMine
     return () => { clearTimeout(id); document.removeEventListener('mousedown', handleClickOutside); };
   }, [showMenu]);
 
+  useEffect(() => {
+    if (!showMenu || !menuRef.current) return;
+    menuRef.current.style.left = `${menuPos.x}px`;
+    menuRef.current.style.top = `${menuPos.y}px`;
+  }, [showMenu, menuPos]);
+
   if (message.type === 'system') {
     return (
       <div className="message-row system">
@@ -59,7 +65,7 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isMine
       <div className={`message-row ${isMine ? 'sent' : 'received'}`}>
         <div className={`message-bubble ${isMine ? 'sent' : 'received'} message-deleted`}>
           <span className="message-deleted-text">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style={{ marginRight: 4, verticalAlign: 'middle' }}>
+            <svg className="message-deleted-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
             </svg>
             This message was deleted
@@ -224,7 +230,7 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isMine
 
         {/* Context menu for own messages */}
         {showMenu && isMine && !editing && (
-          <div ref={menuRef} className="message-context-menu" style={{ left: menuPos.x, top: menuPos.y }} onClick={(e) => e.stopPropagation()}>
+          <div ref={menuRef} className="message-context-menu" onClick={(e) => e.stopPropagation()}>
             {isTextMessage && (
               <button onClick={handleStartEdit}>
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.33a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.83z"/></svg>
@@ -259,8 +265,13 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isMine
 /* ── Inline voice player ── */
 const VoicePlayer: React.FC<{ message: Message }> = ({ message }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    if (progressRef.current) progressRef.current.style.width = `${progress}%`;
+  }, [progress]);
 
   const toggle = () => {
     if (!audioRef.current) return;
@@ -286,7 +297,7 @@ const VoicePlayer: React.FC<{ message: Message }> = ({ message }) => {
         )}
       </button>
       <div className="voice-waveform">
-        <div className="voice-progress" style={{ width: `${progress}%` }} />
+        <div ref={progressRef} className="voice-progress" />
       </div>
       <span className="voice-duration">
         {formatDuration(message.voiceDuration || 0)}

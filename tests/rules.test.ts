@@ -103,6 +103,66 @@ describe('users', () => {
 });
 
 describe('chats & messages', () => {
+  it('chat creation must be by and include the authenticated user', async () => {
+    await seedUser('alice');
+    await seedUser('bob');
+    const alice = env.authenticatedContext('alice').database();
+
+    await assertSucceeds(alice.ref('chats/c1').set({
+      type: 'direct',
+      members: { alice: true, bob: true },
+      createdBy: 'alice',
+      createdAt: Date.now(),
+    }));
+
+    await assertFails(alice.ref('chats/c2').set({
+      type: 'direct',
+      members: { bob: true },
+      createdBy: 'alice',
+      createdAt: Date.now(),
+    }));
+
+    await assertFails(alice.ref('chats/c3').set({
+      type: 'direct',
+      members: { alice: true, bob: true },
+      createdBy: 'bob',
+      createdAt: Date.now(),
+    }));
+  });
+
+  it('member cannot add another user chat index unless they are contacts', async () => {
+    await seedDirectChat();
+    const alice = env.authenticatedContext('alice').database();
+
+    await assertFails(alice.ref('userChats/bob/c1').set(true));
+
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.database().ref('contacts/bob/alice').set(true);
+    });
+
+    await assertSucceeds(alice.ref('userChats/bob/c1').set(true));
+  });
+
+  it('group admin can add an approved join requester to the chat index', async () => {
+    await seedUser('alice');
+    await seedUser('eve');
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.database().ref('chats/g1').set({
+        type: 'group',
+        name: 'Group',
+        members: { alice: true },
+        admins: { alice: true },
+        pendingMembers: {
+          eve: { type: 'request', fromUid: 'eve', fromName: 'Eve', timestamp: Date.now() },
+        },
+        createdBy: 'alice',
+        createdAt: Date.now(),
+      });
+    });
+    const alice = env.authenticatedContext('alice').database();
+    await assertSucceeds(alice.ref('userChats/eve/g1').set(true));
+  });
+
   it('non-member cannot read a chat', async () => {
     await seedUser('alice');
     await seedUser('bob');
@@ -187,6 +247,29 @@ describe('chats & messages', () => {
     await assertSucceeds(bob.ref('messages/c1/m1/readBy/bob').set(true));
     await assertFails(bob.ref('messages/c1/m1/readBy/alice').set(true));
   });
+
+  it('member cannot spoof the synthetic system sender id', async () => {
+    await seedDirectChat();
+    const alice = env.authenticatedContext('alice').database();
+
+    await assertFails(alice.ref('messages/c1/system-spoof').set({
+      chatId: 'c1',
+      senderId: 'system',
+      senderName: 'System',
+      text: 'Bob left the group',
+      timestamp: Date.now(),
+      type: 'system',
+    }));
+
+    await assertSucceeds(alice.ref('messages/c1/system-real-actor').set({
+      chatId: 'c1',
+      senderId: 'alice',
+      senderName: 'Alice',
+      text: 'Alice created the group',
+      timestamp: Date.now(),
+      type: 'system',
+    }));
+  });
 });
 
 describe('calls', () => {
@@ -219,6 +302,23 @@ describe('calls', () => {
 });
 
 describe('yapps', () => {
+  async function seedYapp(id = 'y1', authorId = 'alice', privacy: 'public' | 'contacts' = 'public') {
+    await seedUser(authorId);
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.database().ref(`yapps/${id}`).set({
+        id,
+        authorId,
+        authorName: authorId === 'alice' ? 'Alice' : 'Bob',
+        text: 'hi',
+        timestamp: Date.now(),
+        likeCount: 0,
+        replyCount: 0,
+        reyappCount: 0,
+        privacy,
+      });
+    });
+  }
+
   it('non-author cannot edit someone else\'s yapp', async () => {
     await seedUser('alice');
     await seedUser('bob');
@@ -237,5 +337,51 @@ describe('yapps', () => {
     });
     const bob = env.authenticatedContext('bob').database();
     await assertFails(bob.ref('yapps/y1/text').set('pwned'));
+  });
+
+  it('author can edit text but cannot mutate identity or aggregate counts', async () => {
+    await seedYapp();
+    const alice = env.authenticatedContext('alice').database();
+
+    await assertSucceeds(alice.ref().update({
+      'yapps/y1/text': 'edited',
+      'yapps/y1/edited': true,
+      'yapps/y1/editedAt': Date.now(),
+    }));
+
+    await assertFails(alice.ref('yapps/y1/authorId').set('bob'));
+    await assertFails(alice.ref('yapps/y1/likeCount').set(1));
+    await assertFails(alice.ref('yapps/y1/replyCount').set(1));
+    await assertFails(alice.ref('yapps/y1/reyappCount').set(1));
+  });
+
+  it('likes are stored per user while aggregate like count writes are denied', async () => {
+    await seedYapp();
+    await seedUser('bob');
+    const bob = env.authenticatedContext('bob').database();
+
+    await assertSucceeds(bob.ref('yappLikes/y1/bob').set(true));
+    await assertFails(bob.ref('yapps/y1/likeCount').set(1));
+  });
+
+  it('reyapp index is allowed for public yapps and denied for contacts-only yapps', async () => {
+    await seedYapp('original', 'alice', 'public');
+    await seedYapp('private-original', 'alice', 'contacts');
+    await seedYapp('reyapp-public', 'bob', 'public');
+    await seedYapp('reyapp-private', 'bob', 'public');
+    const bob = env.authenticatedContext('bob').database();
+
+    await assertSucceeds(bob.ref().update({
+      'yapps/reyapp-public/reyappOf': 'original',
+      'yapps/reyapp-public/reyappByUid': 'bob',
+      'yapps/reyapp-public/reyappByName': 'Bob',
+    }));
+    await assertSucceeds(bob.ref('reyappIds/original/reyapp-public').set(Date.now()));
+
+    await assertFails(bob.ref().update({
+      'yapps/reyapp-private/reyappOf': 'private-original',
+      'yapps/reyapp-private/reyappByUid': 'bob',
+      'yapps/reyapp-private/reyappByName': 'Bob',
+    }));
   });
 });

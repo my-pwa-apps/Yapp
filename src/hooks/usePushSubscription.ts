@@ -3,6 +3,7 @@ import { ref, set } from 'firebase/database';
 import { db } from '../firebase';
 import { VAPID_PUBLIC_KEY } from '../pushConfig';
 import { getNotificationPrefs } from './useNotifications';
+import { isE2EMockMode } from '../utils/e2eMockData';
 
 /**
  * Subscribes the browser to Web Push and saves the PushSubscription
@@ -14,6 +15,7 @@ export function usePushSubscription(uid: string | undefined) {
   const subKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
+    if (isE2EMockMode()) return;
     if (!uid || !VAPID_PUBLIC_KEY || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
     let cancelled = false;

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ref, onValue, query, limitToLast } from 'firebase/database';
 import { db } from '../firebase';
 import type { Chat } from '../types';
+import { isE2EMockMode } from '../utils/e2eMockData';
 
 /**
  * Listen to unread message counts for all user's chats.
@@ -12,6 +13,10 @@ export function useUnreadCounts(chats: Chat[], currentUid: string | undefined) {
   const chatIds = useMemo(() => chats.map(c => c.id).sort().join(','), [chats]);
 
   useEffect(() => {
+    if (isE2EMockMode()) {
+      setCounts({});
+      return;
+    }
     if (!currentUid || !chatIds) return;
 
     const ids = chatIds.split(',');

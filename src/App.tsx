@@ -24,15 +24,14 @@ class ErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="app-loading" style={{ textAlign: 'center', padding: 32 }}>
+        <div className="app-loading app-error">
           <YappLogo size={64} />
-          <h2 style={{ marginTop: 16 }}>Something went wrong</h2>
-          <p style={{ color: 'var(--text-secondary)', marginTop: 8 }}>
+          <h2 className="app-error-title">Something went wrong</h2>
+          <p className="app-error-message">
             {this.state.error?.message || 'An unexpected error occurred.'}
           </p>
           <button
-            style={{ marginTop: 16, padding: '8px 24px', cursor: 'pointer' }}
-            className="modal-btn"
+            className="modal-btn app-error-reload"
             onClick={() => window.location.reload()}
           >
             Reload App

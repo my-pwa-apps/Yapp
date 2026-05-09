@@ -253,9 +253,13 @@ async function sendWebPush(
   ) as Promise<CryptoKeyPair>);
 
   // 4. ECDH shared secret
-  const deriveParams: EcdhKeyDeriveParams = { name: 'ECDH', public: uaPublic };
-  const sharedSecretBits = await crypto.subtle.deriveBits(
-    deriveParams,
+  const deriveEcdhBits = crypto.subtle.deriveBits as unknown as (
+    algorithm: { name: 'ECDH'; public: CryptoKey },
+    baseKey: CryptoKey,
+    length: number,
+  ) => Promise<ArrayBuffer>;
+  const sharedSecretBits = await deriveEcdhBits(
+    { name: 'ECDH', public: uaPublic },
     ephemeralKeyPair.privateKey,
     256
   );

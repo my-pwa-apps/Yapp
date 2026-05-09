@@ -99,7 +99,7 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
     setConfirmRemoveUid(null);
     setActionLoading(uid);
     try {
-      await removeGroupMember(chat.id, uid, currentName, name);
+      await removeGroupMember(chat.id, uid, currentUid, currentName, name);
     } catch (e) {
       console.error('Failed to remove:', e);
     }
@@ -128,7 +128,7 @@ export const GroupInfoPanel: React.FC<Props> = ({ chat, currentUid, currentName,
     try {
       const keyReady = await ensureGroupKeyForMember(chat, currentUid, uid, cryptoKeys);
       if (!keyReady) throw new Error('Could not prepare encryption key for approved member');
-      await approvePendingMember(chat.id, uid, currentName, name);
+      await approvePendingMember(chat.id, uid, currentUid, currentName, name);
     } catch (e) {
       console.error('Failed to approve:', e);
     }

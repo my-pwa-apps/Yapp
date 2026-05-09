@@ -20,6 +20,7 @@ import {
 } from './useCrypto';
 import { isBlocked } from './useBlockedUsers';
 import { sendPushToUsers } from '../utils/sendPushNotification';
+import { e2eChats, e2eProfile, isE2EMockMode } from '../utils/e2eMockData';
 
 /** Helper: convert members record {uid: true} to array */
 export function membersToArray(members: Record<string, boolean> | undefined): string[] {
@@ -31,13 +32,13 @@ export function isGroupAdmin(chat: Chat, uid: string): boolean {
   return !!(chat.admins && chat.admins[uid]);
 }
 
-/** Post a system message to a chat */
-async function sendSystemMessage(chatId: string, text: string) {
+/** Post a system-styled message using the real actor uid for rule enforcement. */
+async function sendSystemMessage(chatId: string, actorUid: string, actorName: string, text: string) {
   const msgRef = push(ref(db, `messages/${chatId}`));
   await set(msgRef, {
     chatId,
-    senderId: 'system',
-    senderName: 'System',
+    senderId: actorUid,
+    senderName: actorName,
     text,
     timestamp: Date.now(),
     readBy: {},
@@ -46,10 +47,15 @@ async function sendSystemMessage(chatId: string, text: string) {
 }
 
 export function useChats(uid: string | undefined) {
-  const [chats, setChats] = useState<Chat[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [chats, setChats] = useState<Chat[]>(isE2EMockMode() ? e2eChats : []);
+  const [loading, setLoading] = useState(!isE2EMockMode());
 
   useEffect(() => {
+    if (isE2EMockMode()) {
+      setChats(e2eChats);
+      setLoading(false);
+      return;
+    }
     if (!uid) return;
     const indexRef = ref(db, `userChats/${uid}`);
     const chatListeners = new Map<string, () => void>();
@@ -224,33 +230,26 @@ export async function createGroupChat(
     }
   }
 
-  await sendSystemMessage(chatId, `${currentUser.displayName} created the group "${name}"`);
+  await sendSystemMessage(chatId, currentUser.uid, currentUser.displayName, `${currentUser.displayName} created the group "${name}"`);
 
   return chatId;
 }
 
-/** Add member to group (direct add, no approval) — currently unused but kept for future admin panel */
-export async function addGroupMember(chatId: string, uid: string, addedByName: string) {
-  await update(ref(db, `chats/${chatId}/members`), { [uid]: true });
-  await set(ref(db, `userChats/${uid}/${chatId}`), true);
-  await sendSystemMessage(chatId, `${addedByName} added a new member`);
-}
-
 /** Remove member from group (admin action) */
-export async function removeGroupMember(chatId: string, uid: string, removedByName: string, memberName: string) {
+export async function removeGroupMember(chatId: string, uid: string, removedByUid: string, removedByName: string, memberName: string) {
   const updates: Record<string, null> = {};
   updates[`userChats/${uid}/${chatId}`] = null;
   updates[`userPendingInvites/${uid}/${chatId}`] = null;
   updates[`chats/${chatId}/members/${uid}`] = null;
   updates[`chats/${chatId}/admins/${uid}`] = null;
   await update(ref(db), updates);
-  await sendSystemMessage(chatId, `${removedByName} removed ${memberName}`);
+  await sendSystemMessage(chatId, removedByUid, removedByName, `${removedByName} removed ${memberName}`);
 }
 
 /** Leave group (self-removal) */
 export async function leaveGroup(chatId: string, uid: string, memberName: string) {
   // Send system message BEFORE removing member (write rule requires membership)
-  await sendSystemMessage(chatId, `${memberName} left the group`);
+  await sendSystemMessage(chatId, uid, memberName, `${memberName} left the group`);
   const updates: Record<string, null> = {};
   updates[`chats/${chatId}/members/${uid}`] = null;
   updates[`chats/${chatId}/admins/${uid}`] = null;
@@ -305,7 +304,7 @@ export async function requestToJoinGroup(chatId: string, uid: string, userName: 
 }
 
 /** Approve a pending member (admin approves a join request, or user accepts an invite) */
-export async function approvePendingMember(chatId: string, uid: string, _approverName: string, memberName: string) {
+export async function approvePendingMember(chatId: string, uid: string, approverUid: string, approverName: string, memberName: string) {
   const updates: Record<string, true | null> = {
     [`chats/${chatId}/members/${uid}`]: true,
     [`chats/${chatId}/pendingMembers/${uid}`]: null,
@@ -313,7 +312,7 @@ export async function approvePendingMember(chatId: string, uid: string, _approve
     [`userPendingInvites/${uid}/${chatId}`]: null,
   };
   await update(ref(db), updates);
-  await sendSystemMessage(chatId, `${memberName} joined the group`);
+  await sendSystemMessage(chatId, approverUid, approverName, `${memberName} joined the group`);
 }
 
 /** Reject/decline a pending member */
@@ -353,6 +352,7 @@ export async function searchUsers(emailQuery: string, currentUid: string): Promi
 
 /** Get user profile by uid */
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
+  if (isE2EMockMode()) return uid === e2eProfile.uid ? e2eProfile : null;
   const snap = await get(ref(db, `users/${uid}`));
   return snap.exists() ? (snap.val() as UserProfile) : null;
 }
@@ -393,7 +393,7 @@ export async function deleteChat(chatId: string, currentUid: string) {
     await remove(ref(db, `chats/${chatId}`));
   } else {
     // Group chat: send system message first (write rule requires membership), then leave
-    await sendSystemMessage(chatId, 'A member left the group');
+    await sendSystemMessage(chatId, currentUid, 'Member', 'A member left the group');
     await update(ref(db), {
       [`userChats/${currentUid}/${chatId}`]: null,
       [`userPendingInvites/${currentUid}/${chatId}`]: null,

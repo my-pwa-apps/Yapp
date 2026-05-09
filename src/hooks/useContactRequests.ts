@@ -11,6 +11,7 @@ import type { ContactRequest, UserProfile } from '../types';
 import { sendPushToUsers } from '../utils/sendPushNotification';
 import { findOrCreateDirectChat } from './useChats';
 import { isBlocked } from './useBlockedUsers';
+import { isE2EMockMode } from '../utils/e2eMockData';
 
 /**
  * Hook that listens for incoming contact requests for the current user.
@@ -19,6 +20,10 @@ export function useContactRequests(uid: string | undefined) {
   const [requests, setRequests] = useState<ContactRequest[]>([]);
 
   useEffect(() => {
+    if (isE2EMockMode()) {
+      setRequests([]);
+      return;
+    }
     if (!uid) return;
     const reqRef = ref(db, `contactRequests/${uid}`);
     const unsub = onValue(reqRef, (snap) => {

@@ -392,7 +392,7 @@ export const AppLayout: React.FC = () => {
           </div>
         )}
 
-        <div ref={chatListRef} style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div ref={chatListRef} className="chat-list-shell">
           <ChatList
           chats={chats}
           loading={loading}
