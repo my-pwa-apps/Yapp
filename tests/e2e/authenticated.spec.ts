@@ -44,3 +44,27 @@ test.describe('authenticated app flows', () => {
     await expect(page.getByRole('button', { name: 'Close search' })).toBeVisible();
   });
 });
+
+test.describe('chat scroll restoration', () => {
+  test('opens an unseen chat at the newest message', async ({ page }) => {
+    await openAuthenticatedApp(page);
+
+    await page.getByText('Scroll Lab').click();
+
+    await expect(page.locator('.message-text').getByText('Scroll memory message 36', { exact: true })).toBeVisible();
+  });
+
+  test('restores the saved position when reopening a chat', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('yapp:chat-scroll:e2e-user:e2e-scroll-chat', JSON.stringify({
+        scrollTop: 0,
+        bottomDistance: 1000,
+      }));
+    });
+    await openAuthenticatedApp(page);
+
+    await page.getByText('Scroll Lab').click();
+
+    await expect(page.locator('.message-text').getByText('Scroll memory message 1', { exact: true })).toBeVisible();
+  });
+});

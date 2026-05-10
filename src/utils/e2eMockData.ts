@@ -35,6 +35,21 @@ export const e2eChats: Chat[] = [
       timestamp: now - 5_000,
     },
   },
+  {
+    id: 'e2e-scroll-chat',
+    type: 'group',
+    name: 'Scroll Lab',
+    members: { 'e2e-user': true, 'e2e-friend': true },
+    admins: { 'e2e-user': true },
+    createdBy: 'e2e-user',
+    createdAt: now - 50_000,
+    lastMessage: {
+      text: 'Scroll memory message 36',
+      senderId: 'e2e-friend',
+      senderName: 'Avery',
+      timestamp: now - 1_000,
+    },
+  },
 ];
 
 const initialMessages: Message[] = [
@@ -60,6 +75,20 @@ const initialMessages: Message[] = [
   },
 ];
 
+const initialScrollMessages: Message[] = Array.from({ length: 36 }, (_unused, index) => {
+  const messageNumber = index + 1;
+  return {
+    id: `e2e-scroll-message-${messageNumber}`,
+    chatId: 'e2e-scroll-chat',
+    senderId: messageNumber % 2 === 0 ? 'e2e-user' : 'e2e-friend',
+    senderName: messageNumber % 2 === 0 ? 'E2E Tester' : 'Avery',
+    text: `Scroll memory message ${messageNumber}`,
+    timestamp: now - 40_000 + messageNumber * 1_000,
+    readBy: { 'e2e-user': true },
+    type: 'text',
+  } satisfies Message;
+});
+
 const initialYapps: Yapp[] = [
   {
     id: 'e2e-yapp-1',
@@ -75,7 +104,10 @@ const initialYapps: Yapp[] = [
   },
 ];
 
-const messagesByChat = new Map<string, Message[]>([['e2e-chat', [...initialMessages]]]);
+const messagesByChat = new Map<string, Message[]>([
+  ['e2e-chat', [...initialMessages]],
+  ['e2e-scroll-chat', [...initialScrollMessages]],
+]);
 let yapps = [...initialYapps];
 const likedYapps = new Set<string>();
 

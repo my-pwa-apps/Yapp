@@ -14,6 +14,42 @@ import { KeyRecoveryModal } from './KeyRecoveryModal';
 import type { Chat, UserProfile, Message } from '../../types';
 import { formatLastSeen } from '../../utils';
 
+const CHAT_SCROLL_KEY_PREFIX = 'yapp:chat-scroll:';
+const CHAT_SCROLL_BOTTOM_THRESHOLD = 80;
+
+interface SavedChatScrollPosition {
+  scrollTop: number;
+  bottomDistance: number;
+}
+
+function getChatScrollKey(uid: string, chatId: string) {
+  return `${CHAT_SCROLL_KEY_PREFIX}${uid}:${chatId}`;
+}
+
+function readChatScrollPosition(uid: string, chatId: string): SavedChatScrollPosition | null {
+  try {
+    const raw = localStorage.getItem(getChatScrollKey(uid, chatId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<SavedChatScrollPosition>;
+    if (typeof parsed.scrollTop !== 'number' || typeof parsed.bottomDistance !== 'number') return null;
+    return { scrollTop: parsed.scrollTop, bottomDistance: parsed.bottomDistance };
+  } catch {
+    return null;
+  }
+}
+
+function writeChatScrollPosition(uid: string, chatId: string, element: HTMLElement) {
+  try {
+    const bottomDistance = Math.max(0, element.scrollHeight - element.scrollTop - element.clientHeight);
+    localStorage.setItem(getChatScrollKey(uid, chatId), JSON.stringify({
+      scrollTop: element.scrollTop,
+      bottomDistance,
+    } satisfies SavedChatScrollPosition));
+  } catch {
+    // Non-critical: scroll memory is a convenience only.
+  }
+}
+
 
 
 interface Props {
@@ -56,6 +92,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
   const initialScrollDone = useRef(false);
   const prevMessageCount = useRef(0);
   const currentChatIdRef = useRef(chat.id);
+  const scrollSaveFrameRef = useRef<number | null>(null);
 
   // Scroll to bottom when mobile virtual keyboard opens/closes + keep compose bar in view
   useEffect(() => {
@@ -189,6 +226,21 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     currentChatIdRef.current = chat.id;
   }, [chat.id]);
 
+  const saveCurrentScrollPosition = useCallback((chatId = currentChatIdRef.current) => {
+    const el = messagesContainerRef.current;
+    if (!el || !currentUid || !chatId) return;
+    writeChatScrollPosition(currentUid, chatId, el);
+  }, [currentUid]);
+
+  const scheduleScrollPositionSave = useCallback(() => {
+    if (!initialScrollDone.current) return;
+    if (scrollSaveFrameRef.current !== null) cancelAnimationFrame(scrollSaveFrameRef.current);
+    scrollSaveFrameRef.current = requestAnimationFrame(() => {
+      scrollSaveFrameRef.current = null;
+      saveCurrentScrollPosition();
+    });
+  }, [saveCurrentScrollPosition]);
+
   // Reset scroll tracking on chat switch, close search
   useEffect(() => {
     initialScrollDone.current = false;
@@ -199,11 +251,16 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     setSearchQuery('');
     setSearchResults([]);
     return () => {
+      saveCurrentScrollPosition(chat.id);
+      if (scrollSaveFrameRef.current !== null) {
+        cancelAnimationFrame(scrollSaveFrameRef.current);
+        scrollSaveFrameRef.current = null;
+      }
       // Clear typing indicator when leaving this chat
       setTyping(chat.id, currentUid, false);
       clearTimeout(typingTimeoutRef.current);
     };
-  }, [chat.id, currentUid]);
+  }, [chat.id, currentUid, saveCurrentScrollPosition]);
 
   // Detect when messages container overflows
   useEffect(() => {
@@ -225,14 +282,21 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     }
   }, [messagesScrollable]);
 
-  // Scroll to bottom on initial load
+  // Restore the last chat position on initial load; otherwise open at the end.
   useEffect(() => {
     if (loading || decryptedMessages.length === 0) return;
     if (!initialScrollDone.current) {
       initialScrollDone.current = true;
       prevMessageCount.current = decryptedMessages.length;
       requestAnimationFrame(() => {
-        bottomRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
+        const el = messagesContainerRef.current;
+        const savedPosition = readChatScrollPosition(currentUid, chat.id);
+        if (el && savedPosition && savedPosition.bottomDistance > CHAT_SCROLL_BOTTOM_THRESHOLD) {
+          el.scrollTop = Math.min(savedPosition.scrollTop, el.scrollHeight - el.clientHeight);
+        } else {
+          bottomRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
+        }
+        saveCurrentScrollPosition(chat.id);
       });
       return;
     }
@@ -254,7 +318,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
         }
       }
     }
-  }, [decryptedMessages, loading]);
+  }, [decryptedMessages, loading, chat.id, currentUid, saveCurrentScrollPosition]);
 
   // Mark unread messages as read — only when page is visible
   useEffect(() => {
@@ -641,7 +705,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
           </button>
         </div>
       )}
-      <div className="messages-container" ref={messagesContainerRef}>
+      <div className="messages-container" ref={messagesContainerRef} onScroll={scheduleScrollPositionSave}>
         {hasMore && !loading && (
           <div className="load-more-messages">
             <button className="load-more-btn" onClick={loadMore}>Load older messages</button>
