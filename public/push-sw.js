@@ -1,6 +1,6 @@
 /* push-sw.js — Web Push event handler
    Imported by the PWA service worker via workbox importScripts.
-  SW_VERSION: 13 */
+  SW_VERSION: 14 */
 
 /** Check if a client URL belongs to the Yapp app using proper URL parsing */
 function isYappWindow(clientUrl) {

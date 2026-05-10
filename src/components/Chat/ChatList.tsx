@@ -27,6 +27,7 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
   const [confirmAction, setConfirmAction] = useState<{ type: 'clear' | 'delete'; chatId: string; label: string } | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const longPressTriggered = useRef(false);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
 
   // Compute a stable key of other-user UIDs to avoid re-subscribing on every chats update
   const otherUidKey = useMemo(() => {
@@ -81,6 +82,12 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
     });
     return () => { cancelled = true; };
   }, [chats, cryptoKeys, currentUid]);
+
+  useEffect(() => {
+    if (!contextMenu || !contextMenuRef.current) return;
+    contextMenuRef.current.style.top = `${Math.min(contextMenu.y, window.innerHeight - 120)}px`;
+    contextMenuRef.current.style.left = `${Math.min(contextMenu.x, window.innerWidth - 200)}px`;
+  }, [contextMenu]);
 
   const isSelfChat = useCallback((chat: Chat) => {
     if (chat.type !== 'direct') return false;
@@ -213,8 +220,8 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
       {/* Context menu */}
       {contextMenu && (
         <div
+          ref={contextMenuRef}
           className="chat-context-menu"
-          style={{ top: Math.min(contextMenu.y, window.innerHeight - 120), left: Math.min(contextMenu.x, window.innerWidth - 200) }}
           onClick={(e) => e.stopPropagation()}
         >
           <button onClick={() => {
@@ -238,8 +245,8 @@ export const ChatList: React.FC<Props> = ({ chats, loading, activeId, currentUid
       {confirmAction && (
         <div className="modal-overlay" onClick={() => setConfirmAction(null)}>
           <div className="modal confirm-dialog" onClick={(e) => e.stopPropagation()}>
-            <p style={{ margin: '0 0 16px', color: 'var(--text-primary)', fontSize: '0.95rem' }}>{confirmAction.label}</p>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <p className="confirm-dialog-text">{confirmAction.label}</p>
+            <div className="confirm-dialog-actions">
               <button className="modal-btn secondary" onClick={() => setConfirmAction(null)}>Cancel</button>
               <button className="modal-btn danger" onClick={async () => {
                 if (confirmAction.type === 'clear') {

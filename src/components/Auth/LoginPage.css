@@ -3,17 +3,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #65a30d 0%, #84cc16 50%, #a3e635 100%);
+  background: var(--bg-chat);
   padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
 }
 
 .login-card {
-  background: #fff;
-  border-radius: 16px;
+  background: var(--bg-modal);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
   padding: 2.5rem 2rem;
   width: 100%;
   max-width: 400px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-elevated);
 }
 
 .login-logo {
@@ -24,11 +25,11 @@
 .login-logo h1 {
   margin: 0.5rem 0 0;
   font-size: 2rem;
-  color: #65a30d;
+  color: var(--accent-bright);
 }
 
 .login-subtitle {
-  color: #667781;
+  color: var(--text-secondary);
   margin: 0.25rem 0 0;
   font-size: 0.9rem;
 }
@@ -41,35 +42,41 @@
 
 .login-input {
   padding: 0.85rem 1rem;
-  border: 2px solid #d1d7db;
-  border-radius: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   font-size: 1rem;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast), background var(--motion-fast);
   font-family: inherit;
-  background: #fff;
-  color: #111B21;
+  background: var(--bg-input);
+  color: var(--text-primary);
 }
 
 .login-input:focus {
-  border-color: #65a30d;
+  border-color: rgba(132, 204, 22, 0.32);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .login-btn {
   padding: 0.85rem;
-  background: #65a30d;
+  background: var(--accent);
   color: white;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background var(--motion), transform var(--motion-fast), box-shadow var(--motion-fast);
   font-family: inherit;
 }
 
 .login-btn:hover:not(:disabled) {
-  background: #84cc16;
+  background: var(--accent-hover);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+.login-btn:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .login-btn:disabled {
@@ -87,14 +94,14 @@
 .login-toggle {
   text-align: center;
   margin-top: 1.5rem;
-  color: #667781;
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }
 
 .login-toggle button {
   background: none;
   border: none;
-  color: #65a30d;
+  color: var(--accent-bright);
   font-weight: 600;
   cursor: pointer;
   font-size: 0.9rem;
@@ -111,7 +118,7 @@
   align-items: center;
   gap: 12px;
   margin: 1.25rem 0;
-  color: #8696A0;
+  color: var(--text-muted);
   font-size: 0.85rem;
 }
 
@@ -120,7 +127,7 @@
   content: '';
   flex: 1;
   height: 1px;
-  background: #d1d7db;
+  background: var(--border);
 }
 
 /* Google sign-in button */
@@ -131,20 +138,24 @@
   gap: 10px;
   width: 100%;
   padding: 0.8rem;
-  border: 2px solid #d1d7db;
-  border-radius: 10px;
-  background: #fff;
-  color: #3c4043;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-elevated);
+  color: var(--text-primary);
   font-size: 0.95rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
+  transition: background var(--motion), border-color var(--motion-fast), transform var(--motion-fast);
   font-family: inherit;
 }
 
 .google-sign-in-btn:hover:not(:disabled) {
-  background: #f8f9fa;
-  border-color: #65a30d;
+  background: var(--bg-hover);
+  border-color: rgba(132, 204, 22, 0.32);
+}
+
+.google-sign-in-btn:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .google-sign-in-btn:disabled {

@@ -10,20 +10,23 @@
 /* ── Theme Variables ── */
 :root {
   /* Backgrounds */
-  --bg-app: #111B21;
-  --bg-header: #202C33;
-  --bg-chat: #0B141A;
-  --bg-input: #2A3942;
-  --bg-modal: #222E35;
-  --bg-modal-header: #202C33;
-  --bg-attach: #233138;
-  --bg-picker: #1A2730;
-  --bg-avatar: #2A3942;
+  --bg-app: #0F171B;
+  --bg-header: #182329;
+  --bg-chat: #0A1216;
+  --bg-input: #223139;
+  --bg-modal: #1B2930;
+  --bg-modal-header: #172329;
+  --bg-attach: #203039;
+  --bg-picker: #16232A;
+  --bg-avatar: #26363F;
+  --bg-surface: #142027;
+  --bg-surface-elevated: #1C2A32;
+  --bg-surface-subtle: rgba(255, 255, 255, 0.035);
   --bg-hover: rgba(255, 255, 255, 0.06);
   --bg-hover-strong: rgba(255, 255, 255, 0.10);
-  --bg-active: #2A3942;
-  --bg-bubble-sent: #365314;
-  --bg-bubble-received: #202C33;
+  --bg-active: rgba(132, 204, 22, 0.12);
+  --bg-bubble-sent: #3B5717;
+  --bg-bubble-received: #1D2A31;
   --bg-system: rgba(255, 255, 255, 0.05);
   --bg-scrollbar: transparent;
   --bg-scrollbar-thumb: #374045;
@@ -51,6 +54,7 @@
   --accent-bright: #a3e635;
   --accent-dark: #4d7c0f;
   --accent-glow: rgba(101, 163, 13, 0.6);
+  --accent-soft: rgba(132, 204, 22, 0.14);
 
   /* Semantic */
   --danger: #F15C6D;
@@ -65,6 +69,13 @@
   --voice-progress: #84cc16;
   --search-highlight: rgba(101, 163, 13, 0.4);
   --shadow: rgba(0, 0, 0, 0.4);
+  --shadow-soft: 0 10px 28px rgba(0, 0, 0, 0.22);
+  --shadow-elevated: 0 18px 50px rgba(0, 0, 0, 0.34);
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 8px;
+  --motion-fast: 120ms ease;
+  --motion: 180ms ease;
   color-scheme: dark;
 }
 
@@ -79,6 +90,9 @@
     --bg-attach: #FFFFFF;
     --bg-picker: #FFFFFF;
     --bg-avatar: #DFE5E7;
+    --bg-surface: #FFFFFF;
+    --bg-surface-elevated: #FFFFFF;
+    --bg-surface-subtle: rgba(17, 27, 33, 0.035);
     --bg-hover: rgba(0, 0, 0, 0.05);
     --bg-hover-strong: rgba(0, 0, 0, 0.08);
     --bg-active: #E8ECF0;
@@ -104,6 +118,7 @@
     --border-strong: #D1D7DB;
 
     --accent-bright: #3d7a1a;
+    --accent-soft: rgba(101, 163, 13, 0.12);
 
     --danger: #dc2626;
     --danger-text: #dc2626;
@@ -115,6 +130,8 @@
     --reject-text: #3A3B3C;
     --search-highlight: rgba(101, 163, 13, 0.25);
     --shadow: rgba(0, 0, 0, 0.1);
+    --shadow-soft: 0 8px 24px rgba(17, 27, 33, 0.08);
+    --shadow-elevated: 0 18px 48px rgba(17, 27, 33, 0.14);
     color-scheme: light;
   }
 }
@@ -139,6 +156,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background: var(--bg-app);
   color: var(--text-primary);
+  font-size: 16px;
 }
 
 a {
@@ -148,6 +166,7 @@ a {
 
 button {
   font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* ── Selection ── */
