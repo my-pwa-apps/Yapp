@@ -12,6 +12,25 @@ async function openChat(page: Page, name: string) {
   await page.locator('.chat-item').filter({ hasText: name }).click();
 }
 
+async function leaveChat(page: Page) {
+  const backButton = page.locator('.back-btn');
+  if (await backButton.isVisible()) {
+    await backButton.click();
+    await expect(page.getByText('Select a chat or start a new conversation')).toBeVisible();
+    return;
+  }
+
+  await openChat(page, 'Launch Squad');
+  await expect(page.getByText('Welcome to the launch room.')).toBeVisible();
+}
+
+async function getMessageScrollState(page: Page) {
+  return page.locator('.messages-container').evaluate((element) => ({
+    scrollTop: element.scrollTop,
+    bottomDistance: element.scrollHeight - element.scrollTop - element.clientHeight,
+  }));
+}
+
 test.describe('authenticated app flows', () => {
   test('opens a seeded chat and sends a message', async ({ page }) => {
     await openAuthenticatedApp(page);
@@ -77,6 +96,34 @@ test.describe('chat scroll restoration', () => {
     await expect.poll(async () => page.locator('.messages-container').evaluate((element) => {
       return element.scrollHeight - element.scrollTop - element.clientHeight;
     })).toBeGreaterThan(120);
+  });
+
+  test('remembers the position after scrolling away and reopening', async ({ page }) => {
+    await openAuthenticatedApp(page);
+
+    await openChat(page, 'Scroll Lab');
+    await expect(page.locator('.message-text').getByText('Scroll memory message 36', { exact: true })).toBeVisible();
+
+    await page.locator('.messages-container').evaluate((element) => {
+      element.scrollTop = 220;
+      element.dispatchEvent(new Event('scroll', { bubbles: true }));
+    });
+    await expect.poll(async () => (await getMessageScrollState(page)).scrollTop).toBeGreaterThan(180);
+    await expect.poll(async () => page.evaluate(() => {
+      const raw = window.localStorage.getItem('yapp:chat-scroll:e2e-user:e2e-scroll-chat');
+      return raw ? JSON.parse(raw).scrollTop as number : 0;
+    })).toBeGreaterThan(180);
+    const savedBeforeLeaving = await getMessageScrollState(page);
+
+    await leaveChat(page);
+
+    await openChat(page, 'Scroll Lab');
+
+    await expect.poll(async () => {
+      const restored = await getMessageScrollState(page);
+      return Math.abs(restored.scrollTop - savedBeforeLeaving.scrollTop);
+    }).toBeLessThan(40);
+    await expect.poll(async () => (await getMessageScrollState(page)).bottomDistance).toBeGreaterThan(120);
   });
 
   test('ignores legacy top scroll records and opens at the newest message', async ({ page }) => {

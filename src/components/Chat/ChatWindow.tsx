@@ -253,6 +253,13 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     });
   }, [saveCurrentScrollPosition]);
 
+  useEffect(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', scheduleScrollPositionSave, { passive: true });
+    return () => el.removeEventListener('scroll', scheduleScrollPositionSave);
+  }, [scheduleScrollPositionSave]);
+
   // Reset scroll tracking on chat switch, close search
   useEffect(() => {
     initialScrollDone.current = false;
@@ -296,6 +303,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
   // Restore the last chat position on initial load; otherwise open at the end.
   useEffect(() => {
     if (loading || decryptedMessages.length === 0) return;
+    if (decryptedMessages.some((message) => message.chatId !== chat.id)) return;
     if (!initialScrollDone.current) {
       initialScrollDone.current = true;
       prevMessageCount.current = decryptedMessages.length;
@@ -724,7 +732,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
           </button>
         </div>
       )}
-      <div className="messages-container" ref={messagesContainerRef} onScroll={scheduleScrollPositionSave}>
+      <div className="messages-container" ref={messagesContainerRef}>
         {hasMore && !loading && (
           <div className="load-more-messages">
             <button className="load-more-btn" onClick={loadMore}>Load older messages</button>
