@@ -24,6 +24,6 @@ test.describe('PWA shell', () => {
 
     await expect(await icon.text()).toContain('<svg');
     await expect(await offline.text()).toContain("Yappin'");
-    await expect(await pushWorker.text()).toContain('SW_VERSION: 15');
+    await expect(await pushWorker.text()).toContain('SW_VERSION: 16');
   });
 });

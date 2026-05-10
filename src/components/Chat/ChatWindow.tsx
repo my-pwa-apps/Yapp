@@ -16,10 +16,12 @@ import { formatLastSeen } from '../../utils';
 
 const CHAT_SCROLL_KEY_PREFIX = 'yapp:chat-scroll:';
 const CHAT_SCROLL_BOTTOM_THRESHOLD = 80;
+const CHAT_SCROLL_TOP_STALE_THRESHOLD = 4;
 
 interface SavedChatScrollPosition {
   scrollTop: number;
   bottomDistance: number;
+  savedAt?: number;
 }
 
 function getChatScrollKey(uid: string, chatId: string) {
@@ -44,10 +46,18 @@ function writeChatScrollPosition(uid: string, chatId: string, element: HTMLEleme
     localStorage.setItem(getChatScrollKey(uid, chatId), JSON.stringify({
       scrollTop: element.scrollTop,
       bottomDistance,
+      savedAt: Date.now(),
     } satisfies SavedChatScrollPosition));
   } catch {
     // Non-critical: scroll memory is a convenience only.
   }
+}
+
+function shouldRestoreSavedPosition(savedPosition: SavedChatScrollPosition | null): savedPosition is SavedChatScrollPosition {
+  if (!savedPosition) return false;
+  if (savedPosition.bottomDistance <= CHAT_SCROLL_BOTTOM_THRESHOLD) return false;
+  if (!savedPosition.savedAt && savedPosition.scrollTop <= CHAT_SCROLL_TOP_STALE_THRESHOLD) return false;
+  return true;
 }
 
 
@@ -93,6 +103,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
   const prevMessageCount = useRef(0);
   const currentChatIdRef = useRef(chat.id);
   const scrollSaveFrameRef = useRef<number | null>(null);
+  const suppressScrollSaveRef = useRef(false);
 
   // Scroll to bottom when mobile virtual keyboard opens/closes + keep compose bar in view
   useEffect(() => {
@@ -234,6 +245,7 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
 
   const scheduleScrollPositionSave = useCallback(() => {
     if (!initialScrollDone.current) return;
+    if (suppressScrollSaveRef.current) return;
     if (scrollSaveFrameRef.current !== null) cancelAnimationFrame(scrollSaveFrameRef.current);
     scrollSaveFrameRef.current = requestAnimationFrame(() => {
       scrollSaveFrameRef.current = null;
@@ -251,7 +263,6 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
     setSearchQuery('');
     setSearchResults([]);
     return () => {
-      saveCurrentScrollPosition(chat.id);
       if (scrollSaveFrameRef.current !== null) {
         cancelAnimationFrame(scrollSaveFrameRef.current);
         scrollSaveFrameRef.current = null;
@@ -291,12 +302,15 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
       requestAnimationFrame(() => {
         const el = messagesContainerRef.current;
         const savedPosition = readChatScrollPosition(currentUid, chat.id);
-        if (el && savedPosition && savedPosition.bottomDistance > CHAT_SCROLL_BOTTOM_THRESHOLD) {
+        suppressScrollSaveRef.current = true;
+        if (el && shouldRestoreSavedPosition(savedPosition)) {
           el.scrollTop = Math.min(savedPosition.scrollTop, el.scrollHeight - el.clientHeight);
         } else {
           bottomRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
         }
-        saveCurrentScrollPosition(chat.id);
+        requestAnimationFrame(() => {
+          suppressScrollSaveRef.current = false;
+        });
       });
       return;
     }
@@ -319,6 +333,11 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
       }
     }
   }, [decryptedMessages, loading, chat.id, currentUid, saveCurrentScrollPosition]);
+
+  const handleBack = useCallback(() => {
+    saveCurrentScrollPosition(chat.id);
+    onBack();
+  }, [chat.id, onBack, saveCurrentScrollPosition]);
 
   // Mark unread messages as read — only when page is visible
   useEffect(() => {
@@ -460,13 +479,13 @@ export const ChatWindow: React.FC<Props> = ({ chat, currentUid, currentName, onB
         const dt = Date.now() - touchStartRef.current.t;
         touchStartRef.current = null;
         if (dx > 80 && Math.abs(dy) < Math.abs(dx) * 0.5 && dt < 300) {
-          onBack();
+          handleBack();
         }
       }}
     >
       {/* Header */}
       <div className="chat-window-header">
-        <button className="back-btn" onClick={onBack} title="Back">
+        <button className="back-btn" onClick={handleBack} title="Back">
           <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
             <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
           </svg>

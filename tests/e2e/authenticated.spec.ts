@@ -8,6 +8,10 @@ async function openAuthenticatedApp(page: Page) {
   await expect(page.getByText('Launch Squad')).toBeVisible({ timeout: 20_000 });
 }
 
+async function openChat(page: Page, name: string) {
+  await page.locator('.chat-item').filter({ hasText: name }).click();
+}
+
 test.describe('authenticated app flows', () => {
   test('opens a seeded chat and sends a message', async ({ page }) => {
     await openAuthenticatedApp(page);
@@ -49,12 +53,33 @@ test.describe('chat scroll restoration', () => {
   test('opens an unseen chat at the newest message', async ({ page }) => {
     await openAuthenticatedApp(page);
 
-    await page.getByText('Scroll Lab').click();
+    await openChat(page, 'Scroll Lab');
 
     await expect(page.locator('.message-text').getByText('Scroll memory message 36', { exact: true })).toBeVisible();
+    await expect.poll(async () => page.locator('.messages-container').evaluate((element) => {
+      return element.scrollHeight - element.scrollTop - element.clientHeight;
+    })).toBeLessThan(120);
   });
 
   test('restores the saved position when reopening a chat', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('yapp:chat-scroll:e2e-user:e2e-scroll-chat', JSON.stringify({
+        scrollTop: 180,
+        bottomDistance: 1000,
+        savedAt: Date.now(),
+      }));
+    });
+    await openAuthenticatedApp(page);
+
+    await openChat(page, 'Scroll Lab');
+
+    await expect.poll(async () => page.locator('.messages-container').evaluate((element) => element.scrollTop)).toBeGreaterThan(120);
+    await expect.poll(async () => page.locator('.messages-container').evaluate((element) => {
+      return element.scrollHeight - element.scrollTop - element.clientHeight;
+    })).toBeGreaterThan(120);
+  });
+
+  test('ignores legacy top scroll records and opens at the newest message', async ({ page }) => {
     await page.addInitScript(() => {
       window.localStorage.setItem('yapp:chat-scroll:e2e-user:e2e-scroll-chat', JSON.stringify({
         scrollTop: 0,
@@ -63,8 +88,11 @@ test.describe('chat scroll restoration', () => {
     });
     await openAuthenticatedApp(page);
 
-    await page.getByText('Scroll Lab').click();
+    await openChat(page, 'Scroll Lab');
 
-    await expect(page.locator('.message-text').getByText('Scroll memory message 1', { exact: true })).toBeVisible();
+    await expect(page.locator('.message-text').getByText('Scroll memory message 36', { exact: true })).toBeVisible();
+    await expect.poll(async () => page.locator('.messages-container').evaluate((element) => {
+      return element.scrollHeight - element.scrollTop - element.clientHeight;
+    })).toBeLessThan(120);
   });
 });
